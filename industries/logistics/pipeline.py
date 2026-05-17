@@ -29,9 +29,12 @@ def run_logistics_analysis(payload, client, df=None):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     prompt_path = os.path.join(current_dir, "prompt.txt")
     
-    # 1. Generate KPIs
-    kpi_table = generate_dynamic_kpis(df) if df is not None else ""
-    print(f"⚙️ DEBUG: Generated KPI Table ({len(kpi_table)} characters)")
+    # 1. Generate KPIs and Charts
+    if df is not None:
+        kpi_table = generate_dynamic_kpis(df)
+        generate_logistics_charts(df)  # <--- THIS IS THE NEW LINE
+    else:
+        kpi_table = ""
     
     # 2. Prepare Prompt
     with open(prompt_path, "r", encoding="utf-8") as file:
