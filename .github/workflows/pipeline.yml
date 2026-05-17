@@ -32,10 +32,13 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: python main.py
 
-      - name: Save AI Strategy Report to GitHub
+      - - name: Save AI Strategy Report to GitHub
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          mkdir -p data/outputs/reports/
+          mkdir -p data/outputs/charts/
+          mkdir -p data/outputs/logs/
           git add data/outputs/
           git commit -m "🤖 Auto-generated AI Strategy Report" || echo "No new reports to commit"
           git push
