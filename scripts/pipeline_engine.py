@@ -53,18 +53,34 @@ except Exception as e:
     print(f"⚠️ Could not read file natively: {e}")
     sys.exit(1)
 
-# 3. BUILD THE PROMPT
+# 3. THE BUSINESS RESEARCH & CONSULTING PROMPT
 prompt = f"""
-I have received a new dataset named '{latest_file}'.
-Here is a preview of the raw data:
+You are an elite Business Researcher and Strategic Management Consultant. I have handed you a raw dataset named '{latest_file}'. 
+Here is the statistical profile and schema:
 
-{data_preview}
+{data_payload}
 
-Please provide a comprehensive analysis. Format your response clearly.
-1. INDUSTRY: Identify the exact industry or business domain this data belongs to.
-2. DATA PROFILING: What exactly does this dataset represent?
-3. TOP 3 KPIs: Based on these specific columns, what are the 3 most critical Key Performance Indicators (KPIs) a CEO should track?
-4. EXECUTIVE SUMMARY: Write a brief, professional summary of the data structure.
+Apply a rigorous Business Research Methodology to this data. Do not just blindly describe the numbers. You must first deduce the real-world business problem hidden in these statistics, and then design an analysis to solve that specific problem. 
+
+Format your response in beautiful Markdown, structured exactly like this:
+
+### 🚨 1. Problem Identification (The "Why")
+* **Industry & Operation:** What specific business operation generated this data?
+* **The Core Business Problem:** Look at the maximum values, variances, and standard deviations. What is the likely operational pain point or inefficiency this company is suffering from right now? (e.g., "High variance in duration suggests a severe bottleneck").
+
+### 🎯 2. Research Objectives
+* Based on the business problem identified above, define the top 3 core research questions this analysis must answer to save the company time or money.
+
+### 🧹 3. Data Diagnostics & Cleaning Strategy
+* Look at the data types and missing values (NaNs). What specific data quality issues are hindering this research? 
+* Prescribe the exact cleaning steps required (e.g., standardizing timestamps, mapping missing source/destination IDs, handling outliers) so the analysis can be trusted.
+
+### 🔬 4. Targeted Business Analysis
+* Do not run generic analysis. Outline the specific statistical tests, comparative splits, or predictive models needed to answer the Research Objectives. 
+* Explicitly name the columns you would use as your Dependent and Independent variables to prove where the inefficiencies are coming from.
+
+### 🚀 5. Strategic Action Plan
+* Based on the statistical footprint of the data, provide 3 aggressive, actionable business decisions the C-Suite must make to resolve the core problem you identified. Frame this using high-level strategic management logic.
 """
 
 # 4. CALL ANY MODEL VIA OPENROUTER
