@@ -80,13 +80,17 @@ def run_logistics_analysis(payload, client, df=None):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     prompt_path = os.path.join(current_dir, "prompt.txt")
     
+    # 1. Generate the pure mathematical KPIs
     kpi_text = generate_dynamic_kpis(df) if df is not None else ""
     
+    # 2. Inject just the payload into the prompt
     with open(prompt_path, "r", encoding="utf-8") as file:
         raw_prompt = file.read()
         
-    final_prompt = raw_prompt.format(data_payload=payload + "\n\n" + kpi_text)
+    final_prompt = raw_prompt.format(data_payload=payload)
     
+    # 3. Call the AI
+    print("🧠 Requesting Governed Strategic Insights...")
     response = client.chat.completions.create(
         model="openrouter/free", 
         messages=[
@@ -94,4 +98,10 @@ def run_logistics_analysis(payload, client, df=None):
             {"role": "user", "content": final_prompt}
         ],
     )
-    return response.choices[0].message.content
+    
+    ai_raw_report = response.choices[0].message.content
+    
+    # 4. THE INJECTION PATTERN: Physically insert the KPIs into the AI's markdown
+    final_stitched_report = ai_raw_report.replace("{{INSERT_KPIS_HERE}}", kpi_text)
+    
+    return final_stitched_report
