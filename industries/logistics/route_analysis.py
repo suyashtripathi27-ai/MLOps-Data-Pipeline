@@ -32,6 +32,11 @@ def calc_hub_intelligence(df):
     kpis = []
     if 'source_name' in df.columns and 'actual_time' in df.columns and 'osrm_time' in df.columns:
         df['delay_minutes'] = df['actual_time'] - df['osrm_time']
+        
+        # 🛠️ THE FIX: If the cleaner turned this into a "Time Object", convert it back to a raw number!
+        if pd.api.types.is_timedelta64_dtype(df['delay_minutes']):
+            df['delay_minutes'] = df['delay_minutes'].dt.total_seconds() / 60.0
+            
         bad_hubs = df[df['delay_minutes'] > 0].groupby('source_name')['delay_minutes'].mean()
         if not bad_hubs.empty:
             worst_hub = bad_hubs.idxmax()
