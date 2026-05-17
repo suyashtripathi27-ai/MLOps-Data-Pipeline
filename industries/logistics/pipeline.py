@@ -1,6 +1,7 @@
 import os
 from .kpis import calc_sla_performance
 from .route_analysis import calc_route_efficiency, calc_hub_intelligence, calc_cost_efficiency
+from .charts import generate_logistics_charts
 
 def generate_dynamic_kpis(df):
     """Aggregates all structured KPIs from sub-modules and renders the Markdown Table."""
