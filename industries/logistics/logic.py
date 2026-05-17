@@ -2,12 +2,38 @@ import os
 import pandas as pd
 
 # ==========================================
-# 🧩 TRACEABLE KPI CALCULATION MODULES
+# 🛡️ KPI METADATA & CONFIDENCE ENGINE
+# ==========================================
+
+def evaluate_kpi_confidence(df, columns):
+    """
+    Evaluates the reliability of specific columns used for a KPI.
+    Returns a Confidence Level and a list of Warnings.
+    """
+    warnings = []
+    confidence = "High"
+    
+    for col in columns:
+        if col in df.columns:
+            missing_pct = (df[col].isnull().sum() / len(df)) * 100
+            if missing_pct > 0:
+                warnings.append(f"{missing_pct:.1f}% missing in `{col}`")
+                
+            if missing_pct >= 20:
+                confidence = "Low"
+            elif missing_pct > 5 and confidence != "Low":
+                confidence = "Medium"
+                
+    warning_str = ", ".join(warnings) if warnings else "None"
+    return confidence, warning_str
+
+# ==========================================
+# 🧩 STRUCTURED KPI CALCULATION MODULES
 # ==========================================
 
 def calc_sla_performance(df):
-    """Calculates Time-Based and SLA KPIs with full traceability."""
-    report = "\n#### ⏱️ SLA & Delivery Performance KPIs\n"
+    """Calculates SLA KPIs and returns them as structured dictionaries."""
+    kpis = []
     
     if 'trip_creation_time' in df.columns and 'od_end_time' in df.columns:
         start = pd.to_datetime(df['trip_creation_time'], errors='coerce')
@@ -16,25 +42,40 @@ def calc_sla_performance(df):
         valid_times = (end - start).dropna().dt.total_seconds() / 3600
         if not valid_times.empty:
             avg_transit = valid_times.mean()
-            report += f"- **Average Transit Time:** {avg_transit:.2f} hours\n"
-            report += "  - *Formula:* Mean of (od_end_time - trip_creation_time) in hours\n"
-            report += "  - *Source Columns:* `trip_creation_time`, `od_end_time`\n\n"
-        
+            conf, warns = evaluate_kpi_confidence(df, ['trip_creation_time', 'od_end_time'])
+            
+            kpis.append({
+                "category": "⏱️ SLA & Delivery",
+                "name": "Average Transit Time",
+                "value": f"{avg_transit:.2f} hrs",
+                "formula": "Mean(od_end_time - trip_creation_time)",
+                "source": "`trip_creation_time`, `od_end_time`",
+                "confidence": conf,
+                "warnings": warns
+            })
+            
     if 'is_cutoff' in df.columns:
-        # BUG FIX: Safely handle nulls and string-based booleans
         valid_data = df['is_cutoff'].dropna()
         if not valid_data.empty:
             is_true = valid_data.astype(str).str.lower().isin(['true', '1', 't', 'yes'])
             cutoff_rate = (is_true.sum() / len(valid_data)) * 100
-            report += f"- **Trip Cutoff (Failure) Rate:** {cutoff_rate:.2f}%\n"
-            report += "  - *Formula:* (Count of True / Total Valid Records) * 100\n"
-            report += "  - *Source Column:* `is_cutoff`\n\n"
-        
-    return report
+            conf, warns = evaluate_kpi_confidence(df, ['is_cutoff'])
+            
+            kpis.append({
+                "category": "⏱️ SLA & Delivery",
+                "name": "Trip Cutoff Rate",
+                "value": f"{cutoff_rate:.2f}%",
+                "formula": "(True / Total Valid) * 100",
+                "source": "`is_cutoff`",
+                "confidence": conf,
+                "warnings": warns
+            })
+            
+    return kpis
 
 def calc_route_efficiency(df):
-    """Calculates Route deviation with traceability."""
-    report = "\n#### 🗺️ Route Efficiency KPIs\n"
+    """Calculates Route KPIs and returns them as structured dictionaries."""
+    kpis = []
     
     if 'actual_distance_to_destination' in df.columns and 'osrm_distance' in df.columns:
         actual_dist = df['actual_distance_to_destination'].sum()
@@ -42,54 +83,78 @@ def calc_route_efficiency(df):
         
         if planned_dist > 0:
             deviation = ((actual_dist - planned_dist) / planned_dist) * 100
-            report += f"- **Total Route Deviation:** {deviation:.2f}%\n"
-            report += "  - *Formula:* ((Sum Actual Dist - Sum Planned Dist) / Sum Planned Dist) * 100\n"
-            report += "  - *Source Columns:* `actual_distance_to_destination`, `osrm_distance`\n\n"
+            conf, warns = evaluate_kpi_confidence(df, ['actual_distance_to_destination', 'osrm_distance'])
+            
+            kpis.append({
+                "category": "🗺️ Route Efficiency",
+                "name": "Total Route Deviation",
+                "value": f"{deviation:.2f}%",
+                "formula": "((Actual - Planned) / Planned) * 100",
+                "source": "`actual_...`, `osrm_...`",
+                "confidence": conf,
+                "warnings": warns
+            })
             
     if 'factor' in df.columns:
         avg_factor = df['factor'].dropna().mean()
-        report += f"- **Average Routing Factor:** {avg_factor:.2f}\n"
-        report += "  - *Formula:* Mean of routing factor metric\n"
-        report += "  - *Source Column:* `factor`\n"
-        report += "  - *System Warning:* Semantic business definition of 'factor' is not strictly defined in schema.\n\n"
+        conf, warns = evaluate_kpi_confidence(df, ['factor'])
+        # Hardcode a semantic warning for ambiguous metrics
+        if warns == "None": warns = ""
+        warns += " Semantic definition of 'factor' is ambiguous."
         
-    return report
+        kpis.append({
+            "category": "🗺️ Route Efficiency",
+            "name": "Average Routing Factor",
+            "value": f"{avg_factor:.2f}",
+            "formula": "Mean(factor)",
+            "source": "`factor`",
+            "confidence": conf,
+            "warnings": warns.strip()
+        })
+        
+    return kpis
+
+# ==========================================
+# 🚦 THE KPI RENDERER
+# ==========================================
 
 def generate_dynamic_kpis(df):
-    """Scans the dataframe columns and generates grouped, traceable KPIs."""
-    print("🚦 Scanning columns for Traceable KPI Engine...")
-    columns = set(df.columns)
+    """Aggregates all structured KPIs and renders a Markdown Table."""
+    print("🚦 Generating Traceable KPI Engine Table...")
+    all_kpis = []
     
-    final_kpi_text = "### 📊 2. Core Operational KPIs (System Generated & Traceable)\n"
-    kpis_generated = False
+    # 1. Gather all structured KPIs
+    all_kpis.extend(calc_sla_performance(df))
+    all_kpis.extend(calc_route_efficiency(df))
     
-    if {'trip_creation_time', 'od_end_time', 'is_cutoff'}.intersection(columns):
-        final_kpi_text += calc_sla_performance(df)
-        kpis_generated = True
+    if not all_kpis:
+        return "- *Insufficient columns to generate advanced logistics KPIs.*\n"
         
-    if {'actual_distance_to_destination', 'osrm_distance', 'factor'}.intersection(columns):
-        final_kpi_text += calc_route_efficiency(df)
-        kpis_generated = True
+    # 2. Render the Enterprise Markdown Table
+    table_md = "### 📊 2. Core Operational KPIs (Traceable & Explainable)\n\n"
+    table_md += "| Category | KPI Name | Value | Formula | Source | Confidence | Warnings |\n"
+    table_md += "| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
+    
+    for kpi in all_kpis:
+        table_md += f"| {kpi['category']} | **{kpi['name']}** | `{kpi['value']}` | *{kpi['formula']}* | {kpi['source']} | {kpi['confidence']} | {kpi['warnings']} |\n"
         
-    if not kpis_generated:
-        final_kpi_text += "- *Insufficient columns to generate advanced logistics KPIs.*\n"
-        
-    return final_kpi_text
+    return table_md
+
+# ==========================================
+# 🚀 MAIN EXECUTION
+# ==========================================
 
 def run_logistics_analysis(payload, client, df=None):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     prompt_path = os.path.join(current_dir, "prompt.txt")
     
-    # 1. Generate the pure mathematical KPIs
-    kpi_text = generate_dynamic_kpis(df) if df is not None else ""
+    kpi_table = generate_dynamic_kpis(df) if df is not None else ""
     
-    # 2. Inject just the payload into the prompt
     with open(prompt_path, "r", encoding="utf-8") as file:
         raw_prompt = file.read()
         
     final_prompt = raw_prompt.format(data_payload=payload)
     
-    # 3. Call the AI
     print("🧠 Requesting Governed Strategic Insights...")
     response = client.chat.completions.create(
         model="openrouter/free", 
@@ -100,8 +165,6 @@ def run_logistics_analysis(payload, client, df=None):
     )
     
     ai_raw_report = response.choices[0].message.content
-    
-    # 4. THE INJECTION PATTERN: Physically insert the KPIs into the AI's markdown
-    final_stitched_report = ai_raw_report.replace("{{INSERT_KPIS_HERE}}", kpi_text)
+    final_stitched_report = ai_raw_report.replace("{{INSERT_KPIS_HERE}}", kpi_table)
     
     return final_stitched_report
