@@ -28,21 +28,38 @@ def run_logistics_analysis(payload, client, df=None):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     prompt_path = os.path.join(current_dir, "prompt.txt")
     
+    # 1. Generate KPIs
     kpi_table = generate_dynamic_kpis(df) if df is not None else ""
+    print(f"⚙️ DEBUG: Generated KPI Table ({len(kpi_table)} characters)")
     
+    # 2. Prepare Prompt
     with open(prompt_path, "r", encoding="utf-8") as file:
         raw_prompt = file.read()
         
     final_prompt = raw_prompt.format(data_payload=payload)
     
+    # 3. Call AI
     print("🧠 Requesting Governed Strategic Insights...")
-    response = client.chat.completions.create(
-        model="openrouter/free", 
-        messages=[
-            {"role": "system", "content": "You are a pragmatic, highly experienced Operations Analytics Consultant."},
-            {"role": "user", "content": final_prompt}
-        ],
-    )
+    try:
+        response = client.chat.completions.create(
+            model="openrouter/free", 
+            messages=[
+                {"role": "system", "content": "You are a pragmatic, highly experienced Operations Analytics Consultant."},
+                {"role": "user", "content": final_prompt}
+            ],
+        )
+        ai_raw_report = response.choices[0].message.content
+        print("✅ DEBUG: AI responded successfully.")
+    except Exception as e:
+        print(f"❌ DEBUG: AI API Call Failed! Error: {e}")
+        return "ERROR: AI failed to generate response."
     
-    ai_raw_report = response.choices[0].message.content
-    return ai_raw_report.replace("{{INSERT_KPIS_HERE}}", kpi_table)
+    # 4. BULLETPROOF INJECTION
+    if "{{INSERT_KPIS_HERE}}" in ai_raw_report:
+        print("🔗 DEBUG: Placeholder found! Injecting KPIs...")
+        final_stitched_report = ai_raw_report.replace("{{INSERT_KPIS_HERE}}", kpi_table)
+    else:
+        print("⚠️ DEBUG: AI forgot the placeholder. Forcing KPIs to the bottom of the report.")
+        final_stitched_report = ai_raw_report + "\n\n" + kpi_table
+        
+    return final_stitched_report
