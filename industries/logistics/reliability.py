@@ -17,7 +17,8 @@ def evaluate_kpi_confidence(df, columns):
                 score_deduction += 5
                 
             # 2. Outlier/Corruption Penalty (Basic Sanity Check)
-            if pd.api.types.is_numeric_dtype(df[col]):
+            # 🛠️ THE FIX: Check if it's numeric AND make sure it is NOT a boolean!
+            if pd.api.types.is_numeric_dtype(df[col]) and not pd.api.types.is_bool_dtype(df[col]):
                 max_val = df[col].max()
                 if pd.notnull(max_val):
                     q99 = df[col].quantile(0.99)
