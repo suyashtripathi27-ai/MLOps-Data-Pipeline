@@ -68,7 +68,7 @@ Please provide a comprehensive analysis. Format your response clearly.
 print("🧠 Calling OpenRouter API to analyze the dataset...")
 try:
     completion = client.chat.completions.create(
-        model="google/gemini-2.0-flash-lite-preview-02-05:free", 
+        model="openrouter/free", 
         messages=[
             {"role": "system", "content": "You are a Principal Enterprise Data Analyst."},
             {"role": "user", "content": prompt}
