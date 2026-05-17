@@ -15,6 +15,15 @@ def generate_logistics_charts(df, output_dir="data/outputs/charts/"):
         # 🛠️ THE FIX: Convert Time Objects back to raw numbers
         if pd.api.types.is_timedelta64_dtype(df['delay_minutes']):
             df['delay_minutes'] = df['delay_minutes'].dt.total_seconds() / 60.0
+
+        # 🚨 CHART VALIDATION GATE
+        valid_delays = df[df['delay_minutes'] > 0.1]
+        
+        if valid_delays.empty:
+            print("⚠️ Chart aborted: Delay calculations fell below realistic threshold (1e-8 bug detected).")
+            return chart_paths
+            
+        bad_hubs = valid_delays.groupby('source_name')['delay_minutes'].mean().sort_values(ascending=False).head(5)
         
         bad_hubs = df[df['delay_minutes'] > 0].groupby('source_name')['delay_minutes'].mean().sort_values(ascending=False).head(5)
         
