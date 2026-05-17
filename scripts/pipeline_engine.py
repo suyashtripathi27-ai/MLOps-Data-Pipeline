@@ -3,7 +3,7 @@ import sys
 import pandas as pd
 from openai import OpenAI
 
-print("🌐 Starting Universal Omni-Channel Pipeline (OpenRouter Edition)...")
+print("🌐 Starting Universal Omni-Channel Pipeline (Business Research Edition)...")
 
 or_key = os.getenv("OPENROUTER_API_KEY")
 if not or_key:
@@ -24,7 +24,7 @@ raw_dir = 'data/raw/'
 processed_dir = 'data/processed/'
 os.makedirs(processed_dir, exist_ok=True)
 
-# 2. FIND AND READ THE DATA
+# 2. FIND THE DATA
 files = [f for f in os.listdir(raw_dir) if f != '.gitkeep' and not f.startswith('.')]
 if not files:
     print("No data files found.")
@@ -36,24 +36,47 @@ file_ext = os.path.splitext(latest_file)[1].lower()
 
 print(f"📥 Detected file: {latest_file} | Format: {file_ext}")
 
-data_preview = ""
+# ==========================================
+# 3. DEEP DATA EXTRACTION (Fixes the .zip and data_payload errors)
+# ==========================================
+print("📊 Extracting statistical profile...")
+data_payload = ""
 try:
     if file_ext == '.csv':
         df = pd.read_csv(file_path)
-        data_preview = df.head(15).to_string()
+    elif file_ext == '.zip':
+        df = pd.read_csv(file_path, compression='zip') # Native zip reading!
     elif file_ext in ['.xlsx', '.xls']:
         df = pd.read_excel(file_path)
-        data_preview = df.head(15).to_string()
-    elif file_ext == '.zip':
-        # Pandas reads the CSV directly from inside the zip automatically!
-        df = pd.read_csv(file_path, compression='zip')
     else:
-        data_preview = f"[Non-tabular file format: {file_ext}]"
+        print(f"⚠️ Non-tabular file: {file_ext}")
+        sys.exit(1)
+
+    data_shape = df.shape
+    data_types = df.dtypes.to_string()
+    data_stats = df.describe(include='all').to_string()
+    data_head = df.head(3).to_string()
+    
+    data_payload = f"""
+    Total Rows: {data_shape[0]} | Total Columns: {data_shape[1]}
+    
+    [COLUMN DATA TYPES]
+    {data_types}
+    
+    [STATISTICAL SUMMARY]
+    {data_stats}
+    
+    [SAMPLE DATA (First 3 Rows)]
+    {data_head}
+    """
 except Exception as e:
-    print(f"⚠️ Could not read file natively: {e}")
+    print(f"❌ Error reading data: {e}")
     sys.exit(1)
 
-# 3. THE BUSINESS RESEARCH & CONSULTING PROMPT
+
+# ==========================================
+# 4. THE BUSINESS RESEARCH & CONSULTING PROMPT
+# ==========================================
 prompt = f"""
 You are an elite Business Researcher and Strategic Management Consultant. I have handed you a raw dataset named '{latest_file}'. 
 Here is the statistical profile and schema:
@@ -83,13 +106,15 @@ Format your response in beautiful Markdown, structured exactly like this:
 * Based on the statistical footprint of the data, provide 3 aggressive, actionable business decisions the C-Suite must make to resolve the core problem you identified. Frame this using high-level strategic management logic.
 """
 
-# 4. CALL ANY MODEL VIA OPENROUTER
-print("🧠 Calling OpenRouter API to analyze the dataset...")
+# ==========================================
+# 5. CALL THE AI VIA OPENROUTER
+# ==========================================
+print("🧠 Generating Deep Analysis Report...")
 try:
     completion = client.chat.completions.create(
         model="openrouter/free", 
         messages=[
-            {"role": "system", "content": "You are a Principal Enterprise Data Analyst."},
+            {"role": "system", "content": "You are a highly analytical Business Researcher. You give actionable, data-driven insights."},
             {"role": "user", "content": prompt}
         ],
     )
@@ -98,8 +123,10 @@ except Exception as e:
     print(f"❌ API Call Failed: {e}")
     sys.exit(1)
 
-# 5. SAVE THE REPORT
-report_name = f"AI_Analysis_{os.path.splitext(latest_file)[0]}.txt"
+# ==========================================
+# 6. SAVE THE REPORT
+# ==========================================
+report_name = f"AI_Analysis_{os.path.splitext(latest_file)[0]}.md"
 output_path = os.path.join(processed_dir, report_name)
 
 with open(output_path, "w", encoding="utf-8") as f:
