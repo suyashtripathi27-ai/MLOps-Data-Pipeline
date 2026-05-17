@@ -1,54 +1,29 @@
-```json
-{
-  "response": {
-    "Problem Identification": {
-      "Industry & Operation": "Land-vehicle based goods transportation company",
-      "The Core Business Problem": "Extremely long trips significantly impacting time and distance metrics, indicating potential routing inefficiencies, resource misallocation, or cargo mismanagement issues."
-    },
-    "Research Objectives": {
-      "1. Identify root cause of extreme duration deviations": "Determine why a small percentage of trips exceed normal operational parameters by more than 500% in both time and distance",
-      "2. Quantify financial impact of outlier routes": "Calculate cost implications of extreme route deviations on operational efficiency metrics",
-      "3. Validate OSRM algorithm reliability": "Assess automated routing system accuracy versus actual route performance for long-distance trips"
-    },
-    "Data Diagnostics & Cleaning Strategy": {
-      "Data Quality Issues": "Severe outliers in distance/time metrics, empty strings in categorical fields, potential duplicate trips",
-      "Cleaning Steps": [
-        "Remove duplicate trips based on UUIDs",
-        "Validate time formats using ISO 8601 standards",
-        "Implement 99.9th percentile upper bound filters for time/distance columns",
-        "Replace empty strings in name fields with 'Unknown' placeholder",
-        "Cross-reference source/destination centers for consistency",
-        "Create derived metrics for time/distance variance analysis"
-      ]
-    },
-    "Targeted Business Analysis": {
-      "1. Statistical Tests": [
-        "Z-test for extreme value significance",
-        "t-test comparing actual vs OSRM routes",
-        "Distribution comparison using Kolmogorov-Smirnov test"
-      ],
-      "2. Comparative Splits": [
-        "Outlier vs normal trip performance analysis",
-        "Route type efficiency comparison",
-        "Source/destination center performance matrix"
-      ],
-      "3. Predictive Models": [
-        "Time-series analysis for route efficiency trends",
-        "Machine learning model for outlier prediction",
-        "Route optimization simulation models"
-      ],
-      "Key Variables": {
-        "Dependent": ["actual_time", "actual_distance_to_destination", "cutoff_factor"],
-        "Independent": ["osrm_time", "osrm_distance", "segment_factor", "route_type"]
-      }
-    },
-    "Strategic Action Plan": [
-      "Implement route optimization system with real-time adjustment",
-      "Introduce tiered pricing model based on route efficiency",
-      "Develop dynamic dispatch protocols for unexpected delays",
-      "Deploy IoT telematics for real-time route monitoring",
-      "Establish continuous route validation program with third-party auditors"
-    ]
-  }
-}
-```
+
+### 📊 1. Executive Summary & Reliability
+* **Data Reliability Score:** 70/100
+* **Confidence Level:** Medium
+* **System Warnings:** 
+  - [factor] Severe outlier: Max value significantly exceeds the 99th percentile
+  - [segment_osrm_distance] Severe outlier: Max value significantly exceeds the 99th percentile  
+  - [segment_factor] Severe outlier: Max value significantly exceeds the 99th percentile
+
+### 📈 2. Core Operational KPIs (The Facts)
+* **Total Records:** 144,867 trips across 24 data fields
+* **Average Trip Distance:** 284.77 units | **Maximum Trip Distance:** 2,326.20 units
+* **Average Start-to-End Scan Time:** 961.26 units
+* **Average Cutoff Factor:** 232.93 | **Maximum Cutoff Factor:** 1,927.00
+* **Route Type Distribution:** FTL = 99,660 trips | LTL = 45,207 trips
+* **Training vs Validation Split:** 104,858 training samples | ~40,000 validation samples
+
+### 🔍 3. Operational Interpretations (The "Why")
+* The extreme variance in trip distances (max 8x average) and flagged severe outliers in factor metrics suggest potential route deviations, incorrect data entry, or unusual operational exceptions that warrant investigation.
+* The large skew toward FTL shipments (69% of total) indicates this may be a full-truckload dominant operation, which may imply longer-distance routes and different efficiency optimization priorities.
+* The high maximum cutoff factor (1,927) vs average (233) may indicate occasional severe delays or scheduling disruptions impacting trip planning.
+* The datetime field anomalies (1970 timestamps appearing in segment data) suggest potential data capture or processing errors in the segment-level metrics.
+
+### 🚀 4. Practical Action Plan
+1. **Implement Route Deviation Review Process:** Filter and manually review the top 100 longest-distance trips (>1,500 units) to identify whether these represent legitimate long-haul operations, routing errors, or data capture issues. Create a weekly exception report for distances exceeding 3 standard deviations from the mean.
+
+2. **Standardize Data Capture Validation:** Add real-time validation rules to flag trips with segment factors >10 (current max flagged at 574) and negative time durations. This would prevent erroneous data from entering the system and affecting performance metrics.
+
+3. **Conduct Route Efficiency Baseline Analysis:** Compare actual distance vs OSRM (route optimization) distance for trips with normal factor values (0.5-5 range). Use this to establish efficiency benchmarks and identify routes requiring optimization, focusing on the 75% of trips with more predictable distance patterns.
