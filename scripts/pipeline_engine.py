@@ -14,6 +14,10 @@ if not or_key:
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=or_key,
+    default_headers={
+        "HTTP-Referer": "https://github.com", # Verification for OpenRouter
+        "X-Title": "MLOps Automated Pipeline" # Verification for OpenRouter
+    }
 )
 
 raw_dir = 'data/raw/'
@@ -64,16 +68,13 @@ Please provide a comprehensive analysis. Format your response clearly.
 print("🧠 Calling OpenRouter API to analyze the dataset...")
 try:
     completion = client.chat.completions.create(
-        model="meta-llama/llama-3.1-8b-instruct:free", # <-- You can change this to any OpenRouter model!
+        model="google/gemini-2.0-flash-lite-preview-02-05:free", # Extremely stable free endpoint
         messages=[
             {"role": "system", "content": "You are a Principal Enterprise Data Analyst."},
             {"role": "user", "content": prompt}
         ],
     )
     ai_text = completion.choices[0].message.content
-except Exception as e:
-    print(f"❌ API Call Failed: {e}")
-    sys.exit(1)
 
 # 5. SAVE THE REPORT
 report_name = f"AI_Analysis_{os.path.splitext(latest_file)[0]}.txt"
