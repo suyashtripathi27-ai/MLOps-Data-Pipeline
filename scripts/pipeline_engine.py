@@ -1,13 +1,17 @@
 import pandas as pd
 import os
 import sys
-import google.generativeai as genai
+from google import genai
 
 print("🚀 Starting Automated MLOps Pipeline...")
 
 api_key = os.getenv("GEMINI_API_KEY")
-genai.configure(api_key=api_key)
-model = genai.GenerativeModel('gemini-1.5-flash')
+if not api_key:
+    print("❌ ERROR: API Key missing!")
+    sys.exit(1)
+
+# NEW: Using the modern Google GenAI Client
+client = genai.Client(api_key=api_key)
 
 raw_dir = 'data/raw/'
 processed_dir = 'data/processed/'
@@ -25,7 +29,13 @@ df = pd.read_csv(file_path)
 
 columns_str = ", ".join(df.columns.tolist())
 prompt = f"Columns: {columns_str}. Does this belong to 'LOGISTICS' or 'RETAIL'? Reply with ONE WORD: LOGISTICS or RETAIL."
-response = model.generate_content(prompt)
+
+# NEW: Using the modern AI generation call and latest model
+response = client.models.generate_content(
+    model='gemini-2.0-flash',
+    contents=prompt
+)
+
 industry = response.text.strip().upper()
 print(f"🤖 AI Classification: {industry}")
 
