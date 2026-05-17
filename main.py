@@ -1,10 +1,10 @@
 import os
 import sys
-import pandas as pd
 from openai import OpenAI
 
-# 1. IMPORT OUR UTILITIES
-from utils.cleaner import load_and_clean
+# 1. IMPORT OUR UNIVERSAL UTILITIES
+from utils.cleaner import load_and_clean, universal_clean
+from utils.profiler import generate_payload
 
 # 2. SETUP OPENROUTER CLIENT
 or_key = os.getenv("OPENROUTER_API_KEY")
@@ -25,7 +25,7 @@ def detect_industry(columns_list):
     print(f"🔍 Sniffing data schema: {columns_list[:5]}...")
     
     # As you add more industries, just add them to this list!
-    supported_industries = ["logistics", "retail", "banking"]
+    supported_industries = ["logistics", "retail", "generic"]
     
     prompt = f"""
     Analyze these dataset columns: {columns_list}
@@ -51,15 +51,6 @@ def detect_industry(columns_list):
         print(f"⚠️ Industry detection failed. Defaulting to generic. Error: {e}")
         return "generic"
 
-def generate_payload(df):
-    """Creates the text snapshot of the data to send to the AI."""
-    print("📊 Generating statistical payload...")
-    return f"""
-    Total Rows: {df.shape[0]} | Total Columns: {df.shape[1]}
-    [COLUMN DATA TYPES]\n{df.dtypes.to_string()}
-    [STATISTICAL SUMMARY]\n{df.describe(include='all').to_string()}
-    """
-
 def main():
     print("🚀 Starting Universal Enterprise Pipeline...")
     
@@ -74,14 +65,17 @@ def main():
     file_path = os.path.join(raw_dir, latest_file)
     
     # --- B. INGEST & CLEAN (Using utils/) ---
+    # 1. Ingest the file (CSV, ZIP, Excel)
     df = load_and_clean(file_path)
+    # 2. Run the universal Data Engineering layer (medians, dupes, dates)
+    df = universal_clean(df)
     
     # --- C. DETECT INDUSTRY ---
     columns = df.columns.tolist()
     industry = detect_industry(columns)
     print(f"🎯 Agentic Router Classified Industry As: [{industry.upper()}]")
     
-    # --- D. GENERATE PAYLOAD ---
+    # --- D. GENERATE MATH PAYLOAD ---
     payload = generate_payload(df)
     
     # --- E. THE DYNAMIC SWITCHBOARD ---
@@ -89,17 +83,17 @@ def main():
     
     if industry == "logistics":
         from industries.logistics.logic import run_logistics_analysis
-        final_report = run_logistics_analysis(payload, client)
+        # We pass BOTH the text payload and the raw 'df' to the business layer!
+        final_report = run_logistics_analysis(payload, client, df)
         
     elif industry == "retail":
-        # When you build retail later, it automatically hooks in here!
+        # When you build retail, it plugs in right here
         # from industries.retail.logic import run_retail_analysis
-        # final_report = run_retail_analysis(payload, client)
+        # final_report = run_retail_analysis(payload, client, df)
         print("Retail module under construction. Using generic fallback.")
         final_report = "Retail analysis simulated..."
         
     else:
-        # Fallback for generic files
         final_report = "Generic analysis simulated..."
         
     # --- F. SAVE OUTPUT ---
