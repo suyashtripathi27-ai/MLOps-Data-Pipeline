@@ -64,7 +64,7 @@ Please provide a comprehensive analysis. Format your response clearly.
 print("🧠 Calling OpenRouter API to analyze the dataset...")
 try:
     completion = client.chat.completions.create(
-        model="deepseek/deepseek-chat:free", # <-- You can change this to any OpenRouter model!
+        model="meta-llama/llama-3.1-8b-instruct:free", # <-- You can change this to any OpenRouter model!
         messages=[
             {"role": "system", "content": "You are a Principal Enterprise Data Analyst."},
             {"role": "user", "content": prompt}
