@@ -39,6 +39,6 @@ jobs:
           mkdir -p data/outputs/reports/
           mkdir -p data/outputs/charts/
           mkdir -p data/outputs/logs/
-          git add data/outputs/
+          git add --force data/outputs/
           git commit -m "🤖 Auto-generated AI Strategy Report" || echo "No new reports to commit"
           git push
