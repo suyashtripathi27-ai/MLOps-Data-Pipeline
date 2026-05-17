@@ -1,0 +1,40 @@
+**1. INDUSTRY**  
+Ethical‑wear fashion retail (ethical‑wear clothing retailer).
+
+---
+
+### 2. DATA PROFILING  
+The dataset is a **daily operational log for an ethical‑wear retail outlet**.  
+For each calendar day it records:
+
+| Column | Meaning |
+|--------|---------|
+| **Date** | Calendar date of the transaction day |
+| **Day** | Day of the week (e.g., Saturday, Sunday) |
+| **Bills Issued** | Number of transactions (bills) generated that day |
+| **Footfall** | Number of customers who entered the store |
+| **Qty** | Number of units sold (units of apparel) |
+| **Sales** | Total revenue generated that day (currency) |
+| **Conversion Rate** | Percentage of visitors who made a purchase (Sales ÷ Footfall) |
+| **Average Transactional Value** | Average revenue per transaction (Sales ÷ Bills Issued) |
+| **Average Selling Price** | Average price of a single unit sold |
+| **Unit Per Transaction** | Average number of units sold per transaction (Qty ÷ Bills Issued) |
+
+The dataset is a **daily snapshot of sales‑ and foot‑traffic metrics for a single ethical‑wear retail outlet** (likely a single store or a single outlet within a chain).
+
+---
+
+### 2. TOP 3 KPIs a CEO should track  
+
+| Rank | KPI (column) | Why it matters for a CEO |
+|------|--------------|--------------------------|
+| **1** | **Sales (Revenue)** – total daily revenue. This is the primary measure of top‑line performance and directly impacts profitability and growth. |
+| 2. **Conversion Rate** (column *Conversion Rate*): Indicates how efficiently foot traffic is turned into sales. A trend upward signals effective sales processes, merchandising, and customer experience. |
+| **3** | **Footfall** (customer footfall) or **Qty** (units sold). For a CEO, **Footfall** (customer traffic) is the leading indicator of potential sales capacity; “Qty” (units sold) is the direct output. Tracking footfall lets the CEO gauge foot‑traffic drivers (marketing, location, events) and anticipate future sales. |
+
+These three metrics together give a CEO a clear view of revenue generation, conversion efficiency, and the customer traffic engine that drives future sales.
+
+---
+
+### 4. EXECUTIVE SUMMARY  
+The dataset is a **daily operational snapshot for a single ethical‑wear retail store**. It captures the core retail metrics—transactions (Bills Issued), foot traffic (Footfall), units sold (Qty), total revenue (Sales), conversion efficiency (Conversion Rate), average revenue per transaction (Average Transactional Value), average price per unit (Average Selling Price), and average units per transaction (Unit Per Transaction). Daily rows span from 02‑May‑2026 to 13‑May‑2026, covering a mix of weekdays and weekends, and contain occasional missing values (marked as “?”). The data enables monitoring of revenue performance, conversion efficiency, and foot traffic—key levers for driving growth in an ethical‑wear retail environment.
