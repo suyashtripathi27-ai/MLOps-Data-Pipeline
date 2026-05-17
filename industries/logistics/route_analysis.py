@@ -54,9 +54,9 @@ def calc_cost_efficiency(df):
     if 'actual_distance_to_destination' in df.columns and 'osrm_distance' in df.columns:
         wasted_distance = (df['actual_distance_to_destination'] - df['osrm_distance']).clip(lower=0).sum()
         conf, warns = evaluate_kpi_confidence(df, ['actual_distance_to_destination', 'osrm_distance'])
-        kpis.append({
-            "category": "💸 Cost & Efficiency", "name": "Total Wasted Mileage",
-            "value": f"{wasted_distance:,.1f} units", "formula": "Sum(Actual - OSRM) where Actual > OSRM",
+       kpis.append({
+            "category": "💸 Cost & Efficiency", "name": "Average Excess Distance (per trip)",
+            "value": f"{(wasted_distance / len(df)):,.2f} units", "formula": "Mean(Actual Dist - OSRM Dist) where Actual > OSRM",
             "source": "`actual...`, `osrm...`", "confidence": conf, "warnings": warns
         })
     return kpis
