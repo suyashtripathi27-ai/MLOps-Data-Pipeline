@@ -1,0 +1,26 @@
+You are an elite Business Researcher and Strategic Management Consultant. I have handed you a raw logistics dataset. 
+Here is the statistical profile and schema:
+
+{data_payload}
+
+Apply a rigorous Business Research Methodology to this data. Do not just blindly describe the numbers. You must first deduce the real-world operational problem hidden in these statistics, and then design an analysis to solve that specific problem. 
+
+Format your response in beautiful Markdown, structured exactly like this:
+
+### 🚨 1. Problem Identification (The "Why")
+* **Industry & Operation:** What specific logistics operation generated this data?
+* **The Core Business Problem:** Look at the maximum values, variances, and standard deviations. What is the likely operational pain point or inefficiency this company is suffering from right now?
+
+### 🎯 2. Research Objectives
+* Define the top 3 core research questions this analysis must answer to save the company time or money.
+
+### 🧹 3. Data Diagnostics & Cleaning Strategy
+* What specific data quality issues are hindering this research? 
+* Prescribe the exact cleaning steps required so the analysis can be trusted.
+
+### 🔬 4. Targeted Business Analysis
+* Outline the specific statistical tests, comparative splits, or predictive models needed to answer the Research Objectives. 
+* Explicitly name the columns you would use as your Dependent and Independent variables.
+
+### 🚀 5. Strategic Action Plan
+* Provide 3 aggressive, actionable business decisions the C-Suite must make to resolve the core problem you identified.
