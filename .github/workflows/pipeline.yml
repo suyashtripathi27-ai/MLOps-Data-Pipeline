@@ -1,11 +1,13 @@
-name: MLOps Pipeline
+name: Universal AI Data Pipeline
 
 on:
   push:
     paths:
       - 'data/raw/*.csv'
       - 'data/raw/*.xlsx'
-      - 'data/raw/*.xls'
+      - 'data/raw/*.zip'
+      - 'scripts/pipeline_engine.py'
+  workflow_dispatch: 
       
 jobs:
   run-pipeline:
