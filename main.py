@@ -82,14 +82,11 @@ def main():
     print(f"🔀 Routing to {industry} module...")
     
     if industry == "logistics":
-        from industries.logistics.logic import run_logistics_analysis
-        # We pass BOTH the text payload and the raw 'df' to the business layer!
+        # UPDATED TO USE pipeline
+        from industries.logistics.pipeline import run_logistics_analysis
         final_report = run_logistics_analysis(payload, client, df)
         
     elif industry == "retail":
-        # When you build retail, it plugs in right here
-        # from industries.retail.logic import run_retail_analysis
-        # final_report = run_retail_analysis(payload, client, df)
         print("Retail module under construction. Using generic fallback.")
         final_report = "Retail analysis simulated..."
         
@@ -97,15 +94,14 @@ def main():
         final_report = "Generic analysis simulated..."
         
     # --- F. SAVE OUTPUT ---
-    output_dir = 'data/outputs/'
+    # UPDATED FOLDER STRUCTURE
+    output_dir = 'data/outputs/reports/'
     os.makedirs(output_dir, exist_ok=True)
+    os.makedirs('data/outputs/charts/', exist_ok=True)
+    os.makedirs('data/outputs/logs/', exist_ok=True)
+    
     report_name = f"AI_{industry.capitalize()}_Report.md"
     output_path = os.path.join(output_dir, report_name)
     
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(final_report)
-        
-    print(f"✅ Pipeline Complete! Report saved to: {output_path}")
-
-if __name__ == "__main__":
-    main()
