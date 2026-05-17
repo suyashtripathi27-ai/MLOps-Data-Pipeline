@@ -44,6 +44,9 @@ try:
     elif file_ext in ['.xlsx', '.xls']:
         df = pd.read_excel(file_path)
         data_preview = df.head(15).to_string()
+    elif file_ext == '.zip':
+        # Pandas reads the CSV directly from inside the zip automatically!
+        df = pd.read_csv(file_path, compression='zip')
     else:
         data_preview = f"[Non-tabular file format: {file_ext}]"
 except Exception as e:
