@@ -19,12 +19,9 @@ client = OpenAI(
 )
 
 def detect_industry(columns_list):
-    """
-    THE AGENTIC ROUTER: Looks at the column names and guesses the industry.
-    """
+    """THE AGENTIC ROUTER: Looks at the column names and guesses the industry."""
     print(f"🔍 Sniffing data schema: {columns_list[:5]}...")
     
-    # As you add more industries, just add them to this list!
     supported_industries = ["logistics", "retail", "generic"]
     
     prompt = f"""
@@ -38,11 +35,10 @@ def detect_industry(columns_list):
         response = client.chat.completions.create(
             model="openrouter/free", 
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.0 # Keep it strict and deterministic
+            temperature=0.0 
         )
         detected = response.choices[0].message.content.strip().lower()
         
-        # Safety check: ensure the AI actually picked a supported industry
         if detected not in supported_industries:
             detected = "generic"
             
@@ -64,10 +60,8 @@ def main():
     latest_file = files[0]
     file_path = os.path.join(raw_dir, latest_file)
     
-    # --- B. INGEST & CLEAN (Using utils/) ---
-    # 1. Ingest the file (CSV, ZIP, Excel)
+    # --- B. INGEST & CLEAN ---
     df = load_and_clean(file_path)
-    # 2. Run the universal Data Engineering layer (medians, dupes, dates)
     df = universal_clean(df)
     
     # --- C. DETECT INDUSTRY ---
@@ -82,7 +76,6 @@ def main():
     print(f"🔀 Routing to {industry} module...")
     
     if industry == "logistics":
-        # UPDATED TO USE pipeline
         from industries.logistics.pipeline import run_logistics_analysis
         final_report = run_logistics_analysis(payload, client, df)
         
@@ -94,7 +87,6 @@ def main():
         final_report = "Generic analysis simulated..."
         
     # --- F. SAVE OUTPUT ---
-    # UPDATED FOLDER STRUCTURE
     output_dir = 'data/outputs/reports/'
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs('data/outputs/charts/', exist_ok=True)
@@ -105,3 +97,9 @@ def main():
     
     with open(output_path, "w", encoding="utf-8") as f:
         f.write(final_report)
+        
+    print(f"✅ Pipeline Complete! Report saved to: {output_path}")
+
+# THIS IS THE IGNITION SWITCH!
+if __name__ == "__main__":
+    main()
