@@ -4,9 +4,7 @@ on:
   push:
     paths:
       - 'data/raw/*.csv'
-      - 'data/raw/*.xlsx'
-      - 'data/raw/*.xls'
-
+      
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
