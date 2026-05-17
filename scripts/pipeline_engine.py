@@ -10,13 +10,13 @@ if not or_key:
     print("❌ ERROR: OPENROUTER_API_KEY missing! Did you add it to GitHub Secrets?")
     sys.exit(1)
 
-# 1. INITIALIZE OPENROUTER CLIENT
+# 1. INITIALIZE OPENROUTER CLIENT WITH HEADERS
 client = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=or_key,
     default_headers={
-        "HTTP-Referer": "https://github.com", # Verification for OpenRouter
-        "X-Title": "MLOps Automated Pipeline" # Verification for OpenRouter
+        "HTTP-Referer": "https://github.com", 
+        "X-Title": "MLOps Automated Pipeline" 
     }
 )
 
@@ -68,13 +68,16 @@ Please provide a comprehensive analysis. Format your response clearly.
 print("🧠 Calling OpenRouter API to analyze the dataset...")
 try:
     completion = client.chat.completions.create(
-        model="google/gemini-2.0-flash-lite-preview-02-05:free", # Extremely stable free endpoint
+        model="google/gemini-2.0-flash-lite-preview-02-05:free", 
         messages=[
             {"role": "system", "content": "You are a Principal Enterprise Data Analyst."},
             {"role": "user", "content": prompt}
         ],
     )
     ai_text = completion.choices[0].message.content
+except Exception as e:
+    print(f"❌ API Call Failed: {e}")
+    sys.exit(1)
 
 # 5. SAVE THE REPORT
 report_name = f"AI_Analysis_{os.path.splitext(latest_file)[0]}.txt"
