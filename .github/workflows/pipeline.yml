@@ -3,11 +3,11 @@ name: Universal Enterprise Pipeline
 on:
   push:
     paths:
-      - 'data/raw/**'       # Triggers when a new dataset is uploaded
-      - 'main.py'           # Triggers if you update the orchestrator
-      - 'utils/**'          # Triggers if you update data engineering
-      - 'industries/**'     # Triggers if you update business logic
-  workflow_dispatch:        # The magic manual "Run" button
+      - 'data/raw/**'
+      - 'main.py'
+      - 'utils/**'
+      - 'industries/**'
+  workflow_dispatch:        
 
 jobs:
   analyze_data:
@@ -32,7 +32,7 @@ jobs:
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
         run: python main.py
 
-      - - name: Save AI Strategy Report to GitHub
+      - name: Save AI Strategy Report to GitHub
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
