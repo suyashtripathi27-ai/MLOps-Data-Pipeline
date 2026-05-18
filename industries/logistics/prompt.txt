@@ -21,7 +21,10 @@ Format your response in professional Markdown, structured EXACTLY like this:
 
 ### 🔍 3. Operational Interpretations (The "Why")
 * Based on the facts and sanity flags, what are the *potential* root causes? 
-* Adhere strictly to the Causality and Semantic rules. Address the specific groupings (SLA vs Route Efficiency).
+* Adhere strictly to the Causality and Semantic rules. 
+* Address the specific KPI categories provided in the data (e.g., Fleet Economics, Hub Intelligence, Route Efficiency, etc.).
 
 ### 🚀 4. Practical Action Plan
 * Provide 3 realistic, explainable next steps for the operations team.
+
+YOU MUST INCLUDE THIS EXACT STRING IN YOUR RESPONSE SO THE SYSTEM CAN INJECT THE DATA TABLE: {{INSERT_KPIS_HERE}}
