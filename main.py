@@ -20,7 +20,7 @@ client = OpenAI(
 
 def detect_industry(columns_list):
     """THE AGENTIC ROUTER: Looks at the column names and guesses the industry."""
-    print(f"🔍 Sniffing data schema: {columns_list[:5]}...")
+    print(f"🔍 Sniffing data schema: {columns_list")
     
     supported_industries = ["logistics", "retail", "generic"]
     
