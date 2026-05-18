@@ -68,7 +68,7 @@ def load_and_clean(file_path):
     return df
 
 # ==========================================
-# 2. UNIVERSAL DATA ENGINEERING (The new math)
+# 2. UNIVERSAL DATA ENGINEERING
 # ==========================================
 def standardize_column_names(df):
     """Converts all columns to lowercase and replaces spaces with underscores."""
@@ -104,15 +104,10 @@ def fix_datetime_columns(df):
             except Exception:
                 pass # If it fails, leave it as is
     return df
-    
+
 def apply_schema_aliases(df):
     """Maps known messy column names to our standard internal schema."""
-    # The key is the Standard Name our math requires. 
-    # The list contains the messy aliases clients might send.
-   alias_dict = {
-        # ==========================================
-        # 💰 FINANCIALS (Heavy Fleet & Freight)
-        # ==========================================
+    alias_dict = {
         "revenue": [
             "rev", "total_revenue", "income", "sales", "trip_revenue", 
             "freight_revenue", "billed_amount", "gross_revenue", "stat_value"
@@ -121,10 +116,6 @@ def apply_schema_aliases(df):
             "cost", "total_expenses", "trip_cost", "overall_cost", 
             "freight_cost", "carrier_fee", "invoice_total"
         ],
-        
-        # ==========================================
-        # ⏳ TIME, DELAYS & DURATION
-        # ==========================================
         "detention_minutes": [
             "detention_time", "wait_time", "facility_delay", "dwell_time", 
             "delay_mins", "hold_time", "idle_time_hours", "detention_mins"
@@ -133,10 +124,6 @@ def apply_schema_aliases(df):
             "transit_days", "shipping_duration", "time_in_transit", 
             "lead_time", "actual_transit_time", "delivery_days"
         ],
-        
-        # ==========================================
-        # 🗺️ LOCATIONS & ROUTING
-        # ==========================================
         "source_name": [
             "origin_warehouse", "facility_name", "origin_hub", "warehouse", 
             "pickup_location", "dispatch_location", "shipper_facility"
@@ -148,10 +135,6 @@ def apply_schema_aliases(df):
         "actual_distance_miles": [
             "distance", "total_distance", "trip_miles", "route_distance", "miles_driven"
         ],
-        
-        # ==========================================
-        # 📦 IDENTIFIERS & CARRIERS
-        # ==========================================
         "shipment_id": [
             "pro_number", "bol_number", "tracking_number", "load_id", 
             "order_id", "sid", "reference_number", "docket_number"
@@ -159,10 +142,6 @@ def apply_schema_aliases(df):
         "carrier_name": [
             "carrier", "scac", "transport_company", "logistics_provider", "trucking_company"
         ],
-        
-        # ==========================================
-        # ⚖️ PHYSICAL SPECS
-        # ==========================================
         "total_weight": [
             "weight_kg", "weight", "payload_weight", "cargo_weight", 
             "gross_weight", "net_mass", "weight_lbs"
@@ -170,13 +149,12 @@ def apply_schema_aliases(df):
     }
     
     for standard_name, messy_aliases in alias_dict.items():
-        # Only map if the dataset doesn't ALREADY have the perfect column name
         if standard_name not in df.columns:
             for alias in messy_aliases:
                 if alias in df.columns:
                     df.rename(columns={alias: standard_name}, inplace=True)
                     print(f"🔄 Schema Mapper: Renamed `{alias}` to `{standard_name}`")
-                    break # Stop searching once we find a match
+                    break
                     
     return df
 
@@ -184,10 +162,7 @@ def universal_clean(df):
     """The master function to run all universal cleaning steps."""
     print("⚙️ Running universal data engineering layers...")
     df = standardize_column_names(df)
-    
-    # 🧠 THE NEW SCHEMA MAPPER 
     df = apply_schema_aliases(df)
-    
     df = remove_duplicates(df)
     df = fill_numeric_missing(df)
     df = fix_datetime_columns(df)
