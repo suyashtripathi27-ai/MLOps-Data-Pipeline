@@ -1,26 +1,40 @@
 import pandas as pd
 
-def fill_missing_by_mapping(df, source_col, target_col):
+def enrich_fact_table(fact_df, all_dfs):
     """
-    Universally detects 1-to-1 relationships to fill missing text values.
-    Example: If Store 123 is usually "Main St", it fills in missing "Main St" 
-    wherever Store 123 appears.
+    Intelligently left-joins dimension tables onto the primary fact table 
+    by hunting for matching foreign keys (columns ending in _id or _uuid).
     """
-    if source_col not in df.columns or target_col not in df.columns:
-        return df
+    print("\n🤝 Initializing Relationship Detector...")
+    enriched_df = fact_df.copy()
+    
+    # Step 1: Find potential foreign keys in the fact table
+    fk_columns = [col for col in enriched_df.columns if col.endswith(('_id', '_uuid'))]
+    
+    if not fk_columns:
+        print("ℹ️ No obvious foreign keys found in the fact table. Skipping enrichment.")
+        return enriched_df
         
-    print(f"🔗 Attempting to map relationships between {source_col} and {target_col}...")
+    print(f"🔍 Found potential foreign keys in Fact Table: {fk_columns}")
     
-    # Create a clean dictionary of known, non-null mappings
-    valid_mappings = df.dropna(subset=[source_col, target_col])
-    mapping_dict = valid_mappings.set_index(source_col)[target_col].to_dict()
-    
-    # Fill the missing values in the target column using the dictionary
-    missing_before = df[target_col].isnull().sum()
-    df[target_col] = df[target_col].fillna(df[source_col].map(mapping_dict))
-    missing_after = df[target_col].isnull().sum()
-    
-    if missing_before != missing_after:
-        print(f"✅ Successfully mapped and filled {missing_before - missing_after} missing values in {target_col}.")
+    # Step 2: Hunt through the other dimension tables for matches
+    for dim_name, dim_df in all_dfs.items():
+        # Look for matching columns
+        common_keys = list(set(fk_columns).intersection(set(dim_df.columns)))
         
-    return df
+        if common_keys:
+            join_key = common_keys[0] # Take the first matching key
+            print(f"🔗 Match found! Joining `{dim_name}` onto Fact Table using key: `{join_key}`")
+            
+            # Step 3: SAFE Left Join
+            # We drop columns from the dim table that already exist in the fact table (except the join key)
+            # This prevents pandas from creating ugly columns like 'name_x' and 'name_y'
+            cols_to_use = dim_df.columns.difference(enriched_df.columns).tolist() + [join_key]
+            
+            try:
+                enriched_df = pd.merge(enriched_df, dim_df[cols_to_use], on=join_key, how='left')
+            except Exception as e:
+                print(f"⚠️ Failed to join {dim_name}: {e}")
+                
+    print(f"✨ Enrichment complete. New Fact Table Shape: {enriched_df.shape}\n")
+    return enriched_df
