@@ -118,11 +118,15 @@ def apply_schema_aliases(df):
         ],
         "detention_minutes": [
             "detention_time", "wait_time", "facility_delay", "dwell_time", 
-            "delay_mins", "hold_time", "idle_time_hours", "detention_mins"
+            "delay_mins", "hold_time", "idle_time_hours", "detention_mins", "waiting_time"
         ],
         "actual_duration_hours": [
             "transit_days", "shipping_duration", "time_in_transit", 
             "lead_time", "actual_transit_time", "delivery_days"
+        ],
+        "temperature_celsius": ["temperature", "ambient_temp", "temp_c"],
+        "asset_utilization_pct": ["asset_utilization", "utilization_rate", "capacity_used"],
+        "delay_flag": ["logistics_delay", "delay_occurred", "is_delayed"
         ],
         "source_name": [
             "origin_warehouse", "facility_name", "origin_hub", "warehouse", 
