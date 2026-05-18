@@ -1,75 +1,59 @@
-
 ### 📊 1. Executive Summary & Reliability
-* **Data Reliability Score:** 70/100  
-* **Confidence Level:** Medium  
-* **System Warnings:**  
-  - High missing data detected (Some columns > 20% empty).  
-  - `[cargo_damage_cost]` Extreme variance: Standard deviation is heavily distorted relative to the mean.  
+* **Data Reliability Score**: 70/100
+* **Confidence Level**: Medium — High missing data in several columns (>20% empty) and extreme variance in `cargo_damage_cost` reduce confidence in aggregate financial figures.
+* **System Warnings**:
+  - High missing data detected (some columns > 20% empty).
+  - `cargo_damage_cost` extreme variance: standard deviation heavily distorted relative to the mean.
 
-### 📈 2. Observed KPIs & Descriptive Statistics  
-*Based on the provided statistical summary, the following metrics are derived from the available data. Note that some columns have significant missing values, which may affect representativeness.*  
+### 📈 2. Key Performance Indicators
 
-| KPI Category | Metric | Observed Value | Notes |
-|--------------|--------|----------------|-------|
-| **Service Reliability** | On-time delivery rate | 55.6% (227,881 / 409,826) | `on_time_flag` top category is `True`. |
-| | Average detention time | 91.6 minutes | `detention_minutes` mean. |
-| **Financials** | Average revenue per load | $351,324 | `revenue` mean (units unspecified). |
-| | Average cargo damage cost | $14,001 | `cargo_damage_cost` mean (high variance: max $49,744, min $0). |
-| | Claim frequency | 0.19% (796 / 409,826) | `claim_amount` non-null count is 796. |
-| **Operational Efficiency** | Average fuel cost per gallon | $3.90 | `price_per_gallon` mean. |
-| | Average MPG | 6.50 | `average_mpg` mean. |
-| | Average load weight | 27,473 lbs | `weight_lbs` mean. |
-| **Network & Assets** | Average actual distance | 1,430.9 miles | `actual_distance_miles` mean. |
-| | Average trip duration | 25.0 hours | `actual_duration_hours` mean. |
+{INSERT_KPIS_HERE}
 
-### 🔍 3. Operational Interpretations (The "Why")  
-*Based on observed facts and system warnings, potential root causes are explored below. All statements adhere to causality rules and separate fact from interpretation.*  
+| KPI Category | Metric | Observed Value | Note |
+|---|---|---|---|
+| **Schedule Compliance** | On-Time Flag (True) | 227,881 / 409,826 (55.6%) | ~44% of events recorded as late |
+| **Schedule Compliance** | Average Detention (min) | 91.60 min (std 68.65) | Wide spread; max 239 min |
+| **Schedule Compliance** | avg delay (scheduled → actual) | ~1 hour 15 min | Derived from mean datetime difference |
+| **Fleet Utilization** | Idle Time (hours) | Mean 14.0 (std 68.34) | Extreme outlier distortion flagged |
+| **Fleet Utilization** | Fuel Gallons Used (trip) | Mean 221.92 gal (std 126.68) | High variance; max 611.9 gal |
+| **Fleet Utilization** | Fuel Purchased (gal) | Mean 124.81 gal (std 42.44) | Max 200 gal |
+| **Fleet Utilization** | Avg MPG | 6.50 (std 0.58) | Narrow range 5.5–7.5 |
+| **Fleet Utilization** | Actual Distance (mi) | Mean 9,156.84 mi (std 677.99) | Max 24,614 mi |
+| **Fleet Utilization** | Actual Duration (hrs) | Mean 1,430.92 (std 802.49) | Likely minutes converted; ~24 hrs avg |
+| **Revenue & Cost** | Revenue (per load) | Mean $27,473 (std $10,096) | Max $45,000 |
+| **Revenue & Cost** | Total Fuel Cost | Mean $486.38 (std $174.89) | Max $997.90 |
+| **Revenue & Cost** | Accessorial Charges | Mean $351.32 (std $218.44) | Max $891.82 |
+| **Revenue & Cost** | Fuel Surcharge | Mean $14.00 (std 0) | Fixed surcharge |
+| **Cargo Integrity** | Cargo Damage Cost | Mean $27,473 (std $10,096) | Only 796 non-null records (0.19%) |
+| **Cargo Integrity** | Claim Amount | Mean $14.00 (std NaN) | Only 796 non-null records |
+| **Cargo Integrity** | Vehicle Damage Cost | Mean $14.75 (std NaN) | Only 796 non-null records |
+| **Weight** | Average Weight (lbs) | 14,758 lbs (std 6,837) | Max 62,245 lbs |
+| **Event Mix** | Pickup events | 204,913 (50.0%) | Other event type is Delivery |
+| **Event Mix** | Facility type (top) | Cross-Dock: 163,801 occurrences | 40% of all events |
+| **Booking** | Dedicated loads | 203,538 (49.7%) | Other booking types present |
+| **Load Type** | Refrigerated (top) | 248,6 occurrences | Second most common |
 
-**A. Data Quality & Missing Values**  
-- **Observed Fact:** Several critical columns (e.g., `facility_id`, `latitude`, `longitude`, `incident_type`) have >20% missing data.  
-- **Potential Contributing Factors:**  
-  - Inconsistent data entry practices across facilities or drivers.  
-  - Systemic gaps in incident reporting (only 796 out of 409,826 rows have `claim_amount` or `incident_id`).  
-  - This may lead to underreporting of damage events or delays, skewing analysis of true operational performance.  
+### 🔍 3. Operational Interpretations (The "Why")
 
-**B. Extreme Variance in Cargo Damage Cost**  
-- **Observed Fact:** `cargo_damage_cost` has a mean of $14,001 but a maximum of $49,744 and a minimum of $0, indicating heavy right-skew.  
-- **Potential Contributing Factors:**  
-  - A small number of high-severity claims (e.g., weather-related incidents, major accidents) dominate the average.  
-  - Possible data entry errors or misclassification of damage types (e.g., conflating repair costs with total loss).  
-  - This variance suggests potential anomalies in how damage costs are recorded or categorized.  
+**Detention & On-Time Performance**
+- With an average detention of ~92 minutes and an on-time rate of only 55.6%, drivers are spending significant time at facilities. Possible contributing factors may include high cross-dock volumes (163,801 events at cross-dock facilities), dock door congestion, or appointment scheduling gaps. The standard deviation of 68.65 minutes indicates detention is inconsistent across trips — some stops are very quick while others are prolonged.
 
-**C. On-Time Performance & Detention**  
-- **Observed Fact:** On-time rate is 55.6%, with average detention of 91.6 minutes per event.  
-- **Potential Contributing Factors:**  
-  - Facility-specific inefficiencies (e.g., understaffing, poor scheduling) may cause delays.  
-  - Route planning or dispatch timing issues could contribute to cumulative detention.  
-  - The moderate correlation between high detention and low on-time rates warrants deeper analysis by facility or city.  
+**Fuel Economics & Idle Time**
+- Fuel purchased (124.8 gal) is roughly half of fuel used per trip (221.9 gal), which suggests either external fuel sources (other cards/facilities) or a data capture gap. The idle time mean of 14 hours with a standard deviation of 68 hours is heavily skewed by outliers; this extreme variance suggests potential anomalies in how idle time is recorded (e.g., a small number of trips with days of idle time). Possible contributing factors may include long layovers, mechanical delays, or metering inconsistencies.
 
-**D. Financial & Efficiency Metrics**  
-- **Observed Fact:** Average revenue per load is $351,324, while average weight is 27,473 lbs.  
-- **Potential Contributing Factors:**  
-  - This revenue figure may include accessorial charges (e.g., fuel surcharge, detention pay) bundled into the `revenue` field.  
-  - High revenue could reflect dedicated contract rates rather than spot market volatility.  
-  - Without clear definitions, `revenue` should be treated as a derived metric requiring validation against booking records.  
+**Cargo Damage & Claims**
+- Only 796 of 409,826 records (0.19%) have a `cargo_damage_cost` value. The mean of ~$27,473 with a standard deviation of ~$10,096 indicates that when damage occurs, it is costly. This extreme variance (as flagged by the system) means the average is heavily influenced by a few large-loss events. The fact that `claim_amount`, `incident_type`, `incident_id`, and `vehicle_damage_cost` also have only 796 non-null values confirms these are tied to the same incident records. Possible contributing factors may include specific routes, equipment types, or seasonal conditions associated with those incidents — but without incident-level detail, this remains speculative.
 
-### 🚀 4. Practical Action Plan  
-*Three realistic, explainable next steps for the operations team:*  
+**Revenue vs. Cost Structure**
+- Average revenue per load (~$27,473) is substantially higher than average total fuel cost (~$486) and accessorial charges (~$351), suggesting the business is fundamentally load-revenue driven rather than fuel-cost driven. The narrow fuel price range ($3.15–$5.00/gal) provides limited arbitrage opportunity. Possible contributing factors to margin pressure may include the high accessorial charge variance and detention-related soft costs not captured in fuel metrics.
 
-1. **Data Quality Audit**  
-   - Investigate missing data patterns, especially for incident and damage-related columns.  
-   - Engage facility managers and drivers to understand barriers to complete data entry.  
-   - Implement automated validation rules (e.g., mandatory fields for high-value loads).  
+### 🚀 4. Practical Action Plan
 
-2. **Outlier Analysis for Cargo Damage**  
-   - Isolate the top 5% highest `cargo_damage_cost` values and cross-reference with `incident_type` and `description`.  
-   - Determine if extreme costs are driven by specific events (e.g., severe weather) or data errors.  
-   - Consider segmenting damage costs by preventable vs. non-preventable flags to prioritize risk mitigation.  
+1. **Investigate Detention Root Causes** — Segment detention minutes by facility type, facility name, and dock door to identify which locations are driving the 92-minute average. Cross-dock facilities (163,801 events) are a natural first focus since they handle the highest volume and often have different dwell dynamics than standard docks.
 
-3. **Detention & On-Time Root Cause Analysis**  
-   - Slice detention minutes and on-time flags by `facility_id`, `location_city`, and `route_id`.  
-   - Identify facilities with consistently high detention (>120 minutes) and low on-time rates.  
-   - Collaborate with those facilities to adjust scheduling, staffing, or compensation policies for delays.
+2. **Clean and Validate the Damage/Cost Outliers** — With only 796 incident records but extreme variance, the operations team should audit those records to confirm they are correctly classified and attributed. A small number of misattributed high-cost records could be distorting the entire damage-cost KPI. Until validated, treat the mean damage cost figure as unreliable.
+
+3. **Reconcile Fuel Purchased vs. Fuel Used** — The gap between 124.8 gal purchased and 221.9 gal used per trip is a clear data-quality signal. The team should cross-reference fuel card data with onboard fuel monitoring to determine whether the discrepancy reflects external fuel sources, missing transactions, or measurement methodology differences. This reconciliation is a prerequisite for any fuel-efficiency improvement initiative.
 
 ### Traceable KPIs
 | Category | KPI Name | Value | Formula | Source | Confidence | Warnings |
