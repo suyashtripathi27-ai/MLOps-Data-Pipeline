@@ -4,6 +4,7 @@ from .route_analysis import calc_route_efficiency, calc_cost_efficiency
 from .hub_analysis import calc_hub_intelligence
 from .fleet_analysis import calc_fleet_economics 
 from .freight_analysis import calc_freight_metrics
+from .iot_analysis import calc_iot_sensor_metrics
 from .charts import generate_logistics_charts
 
 def generate_dynamic_kpis(df):
@@ -13,6 +14,7 @@ def generate_dynamic_kpis(df):
     all_kpis.extend(calc_cost_efficiency(df))
     all_kpis.extend(calc_hub_intelligence(df))
     all_kpis.extend(calc_fleet_economics(df))
+    all_kpis.extend(calc_iot_sensor_metrics(df))
     all_kpis.extend(calc_freight_metrics(df))
     
     if not all_kpis:
