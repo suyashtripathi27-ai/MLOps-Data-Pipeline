@@ -61,10 +61,13 @@ def run_logistics_analysis(payload, client, df=None):
         return "ERROR: AI failed to generate response."
     
     if "{{INSERT_KPIS_HERE}}" in ai_raw_report:
-        print("🔗 DEBUG: Placeholder found! Injecting KPIs...")
+        print("🔗 DEBUG: Double-brace placeholder found! Injecting KPIs...")
         final_stitched_report = ai_raw_report.replace("{{INSERT_KPIS_HERE}}", kpi_table)
+    elif "{INSERT_KPIS_HERE}" in ai_raw_report:
+        print("🔗 DEBUG: Single-brace placeholder found! Injecting KPIs...")
+        final_stitched_report = ai_raw_report.replace("{INSERT_KPIS_HERE}", kpi_table)
     else:
-        print("⚠️ DEBUG: AI forgot the placeholder. Forcing KPIs to the bottom of the report.")
+        print("⚠️ DEBUG: AI completely forgot the placeholder. Forcing KPIs to the bottom of the report.")
         final_stitched_report = ai_raw_report + "\n\n### Traceable KPIs\n" + kpi_table
         
     return final_stitched_report
