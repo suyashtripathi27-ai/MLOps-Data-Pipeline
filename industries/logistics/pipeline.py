@@ -2,7 +2,8 @@ import os
 from .kpis import calc_sla_performance
 from .route_analysis import calc_route_efficiency, calc_cost_efficiency
 from .hub_analysis import calc_hub_intelligence
-from .fleet_analysis import calc_fleet_economics  
+from .fleet_analysis import calc_fleet_economics 
+from .freight_analysis import calc_freight_metrics
 from .charts import generate_logistics_charts
 
 def generate_dynamic_kpis(df):
