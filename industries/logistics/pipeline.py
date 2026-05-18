@@ -2,20 +2,17 @@ import os
 from .kpis import calc_sla_performance
 from .route_analysis import calc_route_efficiency, calc_cost_efficiency
 from .hub_analysis import calc_hub_intelligence
-from .fleet_analysis import calc_fleet_economics  # <-- NEW FLEET IMPORT
+from .fleet_analysis import calc_fleet_economics  
 from .charts import generate_logistics_charts
 
 def generate_dynamic_kpis(df):
-    all_kpis = []
-    
-    # Run Last-Mile KPIs (Safe to run: will skip if columns are missing)
+    all_kpis = [] 
     all_kpis.extend(calc_sla_performance(df))
     all_kpis.extend(calc_route_efficiency(df))
     all_kpis.extend(calc_cost_efficiency(df))
     all_kpis.extend(calc_hub_intelligence(df))
-    
-    # Run Heavy Fleet KPIs (NEW)
     all_kpis.extend(calc_fleet_economics(df))
+    all_kpis.extend(calc_freight_metrics(df))
     
     if not all_kpis:
         return "*Insufficient columns to generate advanced logistics KPIs.*"
