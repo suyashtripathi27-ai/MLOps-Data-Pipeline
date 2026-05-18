@@ -1,41 +1,71 @@
 import pandas as pd
-import sys
 import os
+import zipfile
+import io
+from .relationship_detector import enrich_fact_table
 
-# ==========================================
-# 1. DATA INGESTION (The part that went missing)
-# ==========================================
 def load_and_clean(file_path):
-    """
-    Ingests the raw file (CSV, ZIP, or Excel) and drops 100% empty rows/columns.
-    """
+    """Loads files, handles massive database ZIPs, and enriches fact tables."""
     print(f"📥 Attempting to load: {file_path}")
     
-    if not os.path.exists(file_path):
-        print(f"❌ Error: File not found at {file_path}")
-        sys.exit(1)
+    if file_path.endswith('.csv'):
+        df = pd.read_csv(file_path)
         
-    try:
-        if file_path.endswith('.csv'):
-            df = pd.read_csv(file_path)
-        elif file_path.endswith('.zip'):
-            df = pd.read_csv(file_path, compression='zip')
-        elif file_path.endswith(('.xlsx', '.xls')):
-            df = pd.read_excel(file_path)
-        else:
-            print("⚠️ Error: Unsupported file format.")
-            sys.exit(1)
-
-        # Drop columns/rows that are 100% empty (NaN)
-        df.dropna(how='all', axis=1, inplace=True)
-        df.dropna(how='all', axis=0, inplace=True)
+    elif file_path.endswith('.zip'):
+        print(f"📦 Inspecting ZIP archive for Star Schema...")
+        with zipfile.ZipFile(file_path, 'r') as z:
+            csv_files = [f for f in z.namelist() if f.endswith('.csv') and not f.startswith('__MACOSX')]
+            
+            if not csv_files:
+                raise ValueError("No CSV files found in the ZIP archive.")
+                
+            if len(csv_files) == 1:
+                target_file = csv_files[0]
+                with z.open(target_file) as f:
+                    df = pd.read_csv(f)
+            else:
+                print(f"⚠️ Multiple CSVs detected ({len(csv_files)}). Scanning for primary fact table...")
+                core_keywords = ['trip', 'load', 'delivery', 'order', 'sales']
+                target_file = None
+                for f in csv_files:
+                    if any(k in f.lower() for k in core_keywords):
+                        target_file = f
+                        break
+                        
+                if not target_file:
+                    file_sizes = {f: z.getinfo(f).file_size for f in csv_files}
+                    target_file = max(file_sizes, key=file_sizes.get)
+                    
+                print(f"🎯 Fact Table Selected: {target_file}")
+                
+                # 1. Load the Fact Table
+                with z.open(target_file) as f:
+                    fact_df = pd.read_csv(f)
+                    
+                # 2. Safely load Dimension Tables (Memory Guardrail: Skip if > 50MB)
+                dim_dfs = {}
+                for f_name in csv_files:
+                    if f_name != target_file:
+                        file_size_mb = z.getinfo(f_name).file_size / (1024 * 1024)
+                        if file_size_mb < 50.0:
+                            with z.open(f_name) as f:
+                                # Store it in the dictionary using the filename without '.csv'
+                                table_name = f_name.replace('.csv', '').split('/')[-1]
+                                dim_dfs[table_name] = pd.read_csv(f)
+                        else:
+                            print(f"⏭️ Skipping `{f_name}` (Size: {file_size_mb:.1f}MB exceeds dimension limit)")
+                            
+                # 3. 🧠 THE MAGIC: Enrich the Fact Table
+                df = enrich_fact_table(fact_df, dim_dfs)
+                
+    elif file_path.endswith(('.xls', '.xlsx')):
+        df = pd.read_excel(file_path)
+    else:
+        raise ValueError("❌ Unsupported file format.")
         
-        print(f"🧹 Data loaded and empty rows dropped. Shape: {df.shape}")
-        return df
-
-    except Exception as e:
-        print(f"❌ Critical failure while loading data: {e}")
-        sys.exit(1)
+    df = df.dropna(how='all', axis=0).dropna(how='all', axis=1)
+    print(f"🧹 Base load complete. Initial Shape: {df.shape}")
+    return df
 
 # ==========================================
 # 2. UNIVERSAL DATA ENGINEERING (The new math)
