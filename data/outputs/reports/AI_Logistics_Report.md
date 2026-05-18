@@ -1,50 +1,74 @@
 ### 📊 1. Executive Summary & Reliability
-* **Data Reliability Score:** 70/100  
-* **Confidence Level:** **Medium** – the score is above a neutral threshold but several severe outlier warnings reduce certainty.  
-* **System Warnings:**  
-  1. **[factor]** – Max value (1927) far exceeds the 99th‑percentile (≈286).  
-  2. **[segment_osrm_distance]** – Max value (2191.4) far exceeds the 99th‑percentile (≈27.8).  
-  3. **[segment_factor]** – Max value (574.25) far exceeds the 99th‑percentile (≈2.25).  
+* **Data Reliability Score:** 70/100
+* **Confidence Level:** Medium (based on the reliability score and multiple system warnings)
+* **System Warnings:** 
+  - Severe outlier in [factor] metric: Max value significantly exceeds the 99th percentile
+  - Severe outlier in [segment_osrm_distance] metric: Max value significantly exceeds the 99th percentile
+  - Severe outlier in [segment_factor] metric: Max value significantly exceeds the 99th percentile
 
----  
+### 📊 2. Key Performance Indicators (KPIs)
 
-#### Core KPIs (as reported in the statistical summary)
+**Trip Volume & Coverage:**
+* Total Trips Analyzed: 144,867
+* Dataset Period: September 12 - October 3, 2018
+* Training Data Ratio: 72.4% (104,858/144,867)
 
-| KPI | Mean | Median (50 %) | 75 % | Max | Std Dev |
-|-----|------|---------------|------|-----|---------|
-| **Actual Distance to Destination** (units?) | 961.26 | 449 | 1 634 | 7 898 | 1 037.01 |
-| **Factor** (ratio of actual vs. planned?) | 2.12 | 1.86 | 2.21 | 1 927 | 344.76 |
-| **Segment Factor** (segment‑level ratio) | 2.22 | 1.68 | 2.25 | 574.25 | 4.85 |
-| **Segment OSRM Distance** (planned distance) | 22.83 | 23.51 | 27.81 | 2 191.40 | 17.86 |
-| **Segment OSRM Time** (planned time) | 0.144 h (≈8.6 min) | 0.136 h | 0.173 h | 0.003 h (≈0.18 s) | 1.72 h |
-| **Actual Time** (total trip duration) | 234.07 h | 66.13 h | 286.71 h | 1 927.45 h | 344.99 h |
-| **OSRM Time** (planned total time) | 284.77 h | 78.53 h | 343.19 h | 2 326.20 h | 421.12 h |
+**Time Performance:**
+* Mean Actual Trip Time: 234 seconds (approx. 3.9 minutes)
+* Median Actual Trip Time: 66 seconds (approx. 1.1 minutes)
+* Mean Time Factor (Actual/Estimated): 2.12
+* Median Time Factor: 1.86
 
-*Note: Units are taken directly from the payload; interpretation (km, minutes, etc.) is not assumed.*
+**Distance Performance:**
+* Mean Estimated Distance (OSRM): 285 km
+* Median Estimated Distance (OSRM): 79 km
 
----  
+**Segment-Level Performance:**
+* Mean Segment Actual Time: 23 seconds
+* Mean Segment Distance: 23 km
+* Mean Segment Factor (Actual/Estimated): 2.22
 
-### 🔍 3. Operational Interpretations (The “Why”)
+**Cutoff Operations:**
+* Trips with Cutoff: 82% (118,749/144,867)
+* Mean Cutoff Factor: 233
 
-| Observation | Possible Contributing Factors (cautious language) |
-|-------------|----------------------------------------------------|
-| **Factor mean = 2.12, median ≈ 1.86, max = 1 927** | Possible contributing factors may include data entry errors, extreme route deviations, or occasional use of atypical transport modes that dramatically inflate the ratio. The presence of severe outliers suggests occasional trips where the actual distance or time is far larger than the OSRM‑planned benchmark. |
-| **Segment OSRM Distance median ≈ 23.5 but max = 2 191** | This variance suggests potential anomalies in segment segmentation logic (e.g., splitting a long haul into a single “segment” rather than multiple). It may also reflect rare, very long cross‑regional legs that are not typical of the majority of routes. |
-| **Segment Factor median ≈ 1.68, max = 574.25** | A very high segment factor could be driven by traffic incidents, road closures, or inaccurate OSRM estimates for certain road classes. It may also point to data quality issues where the planned distance was recorded incorrectly. |
-| **Actual vs. OSRM Time disparity (mean ≈ 234 h vs. 285 h)** | The lower mean actual time relative to OSRM time could indicate that the routing engine is conservative (over‑estimating travel time) or that drivers are achieving higher speeds on average. Conversely, the large standard deviation implies that some trips experience far longer durations, possibly due to cut‑off handling (“is_cutoff” flag) or SLA pressures. |
-| **High frequency of “training” in `trip_creation_time` column** | The dominant value (≈ 72 % of rows) labelled “training” may indicate that a large portion of the dataset represents simulated or test trips rather than live operations, which could skew the distributions of distance and factor. |
+**Route Distribution:**
+* Full Truck Load (FTL) Routes: 68.8% (99,660/144,867)
+* Other Route Types: 31.2% (45,207/144,867)
 
----  
+**Top Corridor:**
+* Most Active Route: IND000000ACB to Gurgaon_Bilaspur_HB (Haryana)
+
+### 🔍 3. Operational Interpretations (The "Why")
+
+* Based on the mean factor of 2.12, trips are taking, on average, more than double the estimated time. This variance suggests potential anomalies in the estimation algorithm or consistent operational challenges not accounted for in the routing models.
+
+* The significant difference between mean actual time (234 seconds) and median actual time (66 seconds) indicates a right-skewed distribution with some very long trips affecting the average. Possible contributing factors may include traffic congestion, route deviations, or unexpected stops for certain shipments.
+
+* The severe outlier in the factor metric (max value of 77.39) indicates that some trips experienced extreme delays compared to estimates. These extreme cases may warrant individual investigation to identify root causes.
+
+* The segment factor (2.22) closely aligns with the overall trip factor (2.12), suggesting the delays are consistent across both segment and trip levels. This pattern may indicate systemic issues rather than isolated segment problems.
+
+* The high cutoff rate (82%) combined with a mean cutoff factor of 233 suggests that many trips are experiencing significant delays relative to their planned schedules. Possible contributing factors may include insufficient buffer time in planning or unexpected operational challenges.
+
+* The discrepancy between segment actual time (23 seconds) and segment OSRM time (2 seconds) may indicate that the OSRM model underestimates travel time for certain segments, particularly for longer routes.
 
 ### 🚀 4. Practical Action Plan
 
-| Step | Action | Rationale (plain language) |
-|------|--------|----------------------------|
-| 1️⃣ | **Validate extreme outliers** – extract records where `factor` > 100, `segment_osrm_distance` > 500, or `segment_factor` > 50 and run a manual audit (check route logs, GPS traces, and data entry). | Removing or correcting a few erroneous rows will dramatically tighten the distributions and improve the reliability of any downstream analysis. |
-| 2️⃣ | **Separate “training” trips from operational trips** – create a flag based on `trip_creation_time` or another identifier, and analyse the two subsets independently. | If the “training” subset is synthetic, mixing it with live data can mask true performance patterns and lead to misleading KPI baselines. |
-| 3️⃣ | **Refine segment generation logic** – review how `segment_osrm_distance` and `segment_factor` are calculated, especially for long‑haul routes that currently appear as single segments with extreme values. Consider splitting routes longer than a configurable threshold (e.g., > 500 km) into multiple segments. | More granular segmentation will reduce the frequency of extreme segment‑level ratios and provide a clearer view of where inefficiencies occur. |
+1. **Investigate Outlier Segments:**
+   - Focus analysis on the specific routes and segments showing extreme factor values
+   - Review GPS/telematics data for outlier trips to identify common patterns
+   - Implement targeted monitoring for frequently problematic corridors
 
-These steps are designed to be executable with existing data pipelines and to yield measurable improvements in KPI stability without requiring sophisticated modelling.
+2. **Refine Estimation Models:**
+   - Audit the OSRM algorithm's performance, particularly for routes with high factor discrepancies
+   - Incorporate historical performance data to improve time estimates
+   - Consider implementing adaptive estimation that accounts for time-of-day, day-of-week, and seasonal factors
+
+3. **Improve Operational Controls:**
+   - Review and potentially adjust cutoff thresholds based on actual performance data
+   - Implement real-time monitoring for trips exceeding certain factor thresholds
+   - Develop contingency plans for routes with historically poor on-time performance
 
 ### 📊 2. Core Operational KPIs (Traceable & Explainable)
 
