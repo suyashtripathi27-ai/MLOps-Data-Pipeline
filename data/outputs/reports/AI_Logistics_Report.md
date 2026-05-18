@@ -1,27 +1,23 @@
+
 ### 📊 1. Executive Summary & Reliability
-* **Data Reliability Score:** 70/100  
-* **Confidence Level:** Medium – the score is moderate and there are several system warnings that may affect downstream analysis.  
-* **System Warnings:**  
-  * High missing data detected (Some columns > 20% empty).  
-  * [cargo_damage_cost] Extreme variance: Standard deviation is heavily distorted relative to the mean.
+* **Data Reliability Score:** 70/100
+* **Confidence Level:** Medium
+* **System Warnings:** 
+  * High missing data detected (Some columns > 20% empty).
+  * `[cargo_damage_cost]` Extreme variance: Standard deviation is heavily distorted relative to the mean.
 
 {INSERT_KPIS_HERE}
 
 ### 🔍 3. Operational Interpretations (The "Why")
-* **Missing Data Impact** – The presence of >20 % missing values in key columns (e.g., `scheduled_datetime`, `actual_datetime`, `fuel_purchase_id`) suggests that any KPI relying on those fields may be under‑reported or biased.  
-* **Cargo Damage Cost Variability** – The extreme spread in `cargo_damage_cost` indicates that a small subset of incidents may be inflating the average cost. Possible contributing factors may include:  
-  * Inconsistent reporting of damage severity across facilities.  
-  * Occasional large‑value claims that are not representative of typical operations.  
-* **Detention Minutes Distribution** – The mean detention time (~91 min) with a standard deviation of ~69 min shows that while most detentions are moderate, a tail of long detentions exists. This variance suggests potential anomalies in scheduling or gate‑handling processes at specific hubs.  
-* **Fuel Cost and Usage** – The mean fuel purchase price (~$3.90/gal) and gallons used (~221 gal) are within expected ranges, but the high standard deviation in `fuel_surcharge` and `total_cost` may reflect irregular fuel pricing or billing errors.  
-* **Route & Load Characteristics** – The median load weight (~125 lbs) and pieces (~14) are typical for refrigerated loads, yet the wide range in `actual_distance_miles` (min 0 to max 45 k miles) indicates that some trips are outliers, possibly due to mis‑entered data or exceptional long‑haul assignments.
+* **Data Quality & Missing Values:** The high rate of missing data (>20% in several columns) suggests potential issues with data capture processes, system integration gaps, or inconsistent reporting protocols across facilities or carriers. This limits the reliability of any derived insights for those fields.
+* **Cargo Damage Cost Anomaly:** The extreme variance in `[cargo_damage_cost]` (mean ~$14,759, but max ~$49,744 and a non-zero minimum) indicates a heavily right-skewed distribution. This *suggests potential anomalies in* claims processing, data entry errors for large claims, or a small number of very high-severity incidents driving the average. The presence of a `claim_amount` column with similar count issues (796 non-null vs 409,826 total rows) further supports that damage claims are a rare but highly variable event.
+* **Detention Patterns:** The `[on_time_flag]` shows ~55.7% of records are `True` (227,881 out of 409,826). The mean detention time is ~91.6 minutes with a median of 88 minutes. This relatively high median detention, combined with a 44.3% "not on time" rate, *may indicate* systemic delays at facilities, potentially due to inefficient scheduling, yard congestion, or prolonged loading/unloading processes.
+* **Route & Distance Metrics:** The `[actual_distance_miles]` has a mean of ~1,430 miles and a median of ~1,299 miles, suggesting a distribution with some very long-haul trips inflating the average. The `[actual_duration_hours]` mean is ~25 hours vs. a median of ~23 hours, consistent with this skew. The `[average_mpg]` is tightly distributed (mean 6.50, std 0.58), indicating relatively consistent vehicle fuel efficiency across the fleet.
 
 ### 🚀 4. Practical Action Plan
-1. **Data Quality Audit** – Conduct a focused review of columns with >20 % missingness (e.g., `scheduled_datetime`, `actual_datetime`, `fuel_purchase_id`). Validate source feeds and implement automated checks to flag incomplete records before KPI calculation.  
-2. **Damage Cost Standardization** – Create a standardized damage classification schema and enforce mandatory fields for incident reporting. Use this schema to re‑calculate `cargo_damage_cost` so that outliers are identified and investigated separately.  
-3. **Detention Process Review** – Map detention events to specific hubs and drivers. For hubs with detention times >2 × the median, schedule a process walk‑through to identify bottlenecks (e.g., gate clearance, paperwork delays) and implement corrective actions such as pre‑arrival notifications or dedicated gate staff.
-
----
+1.  **Prioritize Data Hygiene:** Immediately investigate the root cause of the >20% missing data in key operational columns (e.g., `facility_id`, `driver_id`, `truck_id`). This could involve auditing data entry interfaces, EDI feeds, or API integrations with carriers and facilities.
+2.  **Deep-Dive on Cargo Damage:** Isolate the 796 records with non-null `[cargo_damage_cost]` and `[claim_amount]`. Analyze these by `facility_id`, `incident_type`, and `route_id` to identify if specific locations, routes, or cargo types are disproportionately responsible for the extreme variance. Validate the accuracy of the largest claims.
+3.  **Analyze Detention Hotspots:** Segment `[detention_minutes]` and `[on_time_flag]` by `facility_id` and `facility_type` (e.g., Cross-Dock vs. Distribution Center). Identify facilities with consistently high median detention and low on-time performance to target for process review or operational improvements.
 
 ### Traceable KPIs
 | Category | KPI Name | Value | Formula | Source | Confidence | Warnings |
