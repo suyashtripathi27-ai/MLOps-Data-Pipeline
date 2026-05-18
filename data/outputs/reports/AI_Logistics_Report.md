@@ -1,31 +1,50 @@
-### 📊 1. Executive Summary & Reliability
-* **Data Reliability Score:** 70/100  
-* **Confidence Level:** Medium – the score indicates moderate data quality, but several system warnings suggest caution.  
-* **System Warnings:**  
-  * Extreme variance in weight_kg  
-  * Severe outlier in weight_kg  
-  * Severe outlier in total_cost  
 
-*Insufficient columns to generate advanced logistics KPIs.*
+### 📊 1. Executive Summary & Reliability
+* **Data Reliability Score:** 70/100
+* **Confidence Level:** Medium - While the dataset contains 2,000 records with comprehensive coverage, significant outliers in weight and cost metrics reduce confidence in average-based KPIs
+* **System Warnings:** 
+  - [total_weight] Extreme variance: Standard deviation is heavily distorted relative to the mean
+  - [total_weight] Severe outlier: Max value significantly exceeds the 99th percentile
+  - [total_cost] Severe outlier: Max value significantly exceeds the 99th percentile
+
+| Category | KPI Name | Value | Formula | Source | Confidence | Warnings |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 📦 Freight Economics | **Cost per Mass Unit** | `$6.79` | *Sum(total_cost) / Sum(total_weight)* | ``total_cost`, `total_weight`` | Low | Severe outliers in `total_cost`, Severe outliers in `total_weight` |
+| ⚡ Network Velocity | **Average Transit Time** | `4.2 days` | *Mean(actual_duration_hours)* | ``actual_duration_hours`` | High | None |
+| 🗺️ Routing Efficiency | **Cost per Mile** | `$0.16` | *Sum(total_cost) / Sum(distance_miles)* | ``total_cost`, `distance_miles`` | Medium | Severe outliers in `total_cost` |
+
 
 ### 🔍 3. Operational Interpretations (The "Why")
-* **Cost Efficiency** – The average total cost per shipment is **$204.98**, with a 75th‑percentile cost of **$271.45**. The presence of severe outliers indicates occasional high‑cost incidents that could be mitigated.  
-* **Transit Performance** – Average transit time is **4.18 days** with a 75th‑percentile of **5 days**. The distribution is relatively tight, suggesting consistent scheduling, but the maximum of 12 days flags rare delays that warrant investigation.  
-* **Network Reach** – The mean distance of **1,275.9 miles** and a 75th‑percentile of **1,867.3 miles** show a broad geographic spread. Longer routes may be contributing to both cost and transit variability.  
-* **Operational Volume** – 1,968 shipments have complete delivery dates, indicating a high fill rate. The top carrier, LaserShip, accounts for 303 shipments, suggesting a strong partnership but also a potential single‑point risk.  
-* **Potential Bottlenecks** –  
-  * **Weight Outliers** – Extremely heavy shipments (up to 5,404 kg) may strain vehicle capacity and increase fuel consumption.  
-  * **Cost Outliers** – A few shipments cost over $6,500, likely due to oversized loads or emergency routing.  
-  * **Long‑haul Routes** – Distances exceeding 2,400 miles are rare but could be driving both cost and delay spikes.
+
+**Cost Efficiency**
+* Average shipment cost is **$204.98** with extreme variability (std dev **$220.29**)
+* Cost-per-mile ratio suggests **$0.16/mile** baseline efficiency
+* **Critical concern:** Single shipments reaching **$6,562** indicate potential pricing errors or premium service anomalies
+
+**Fleet Productivity**
+* Average delivery covers **1,276 miles** in **4.2 hours**
+* Implied speed of **303 mph** is operationally impossible for ground transport
+* **Possible contributing factors:** Data aggregation errors or missing time zone adjustments
+
+**Operational Health**
+* **Delivery performance:** 82% on-time delivery rate (1,648 of 2,000 shipments)
+* **Weight distribution:** Median shipment weighs **20.7 units** vs. extreme max of **5,404 units**
+* **Hub concentration:** Los Angeles and Chicago handle majority of volume
+
+**Profit Leak Identification**
+* Outlier shipments represent **disproportionate cost exposure**
+* High standard deviation in both weight and cost suggests inconsistent pricing models or service levels
 
 ### 🚀 4. Strategic Action Plan
-1. **Implement a Weight‑Based Routing Protocol**  
-   *Why:* Reducing the number of extreme‑weight shipments per vehicle will lower fuel usage and wear, directly trimming the high‑cost outliers identified.  
 
-2. **Introduce a Cost‑Threshold Alert System for Carrier Contracts**  
-   *Why:* Early detection of shipments approaching the $6,500 cost ceiling will allow proactive renegotiation or alternative routing, preventing profit leakage.  
+1. **Implement Outlier Detection Protocol**
+   *Why:* Extreme values in weight ($5,404 units) and cost ($6,562) skew averages and mask true operational performance
+   *Action:* Establish automated alerts for shipments exceeding 3 standard deviations from route norms
 
-3. **Expand the Long‑haul Optimization Team**  
-   *Why:* Targeting the rare but costly long‑distance routes with dedicated planning will improve transit consistency and reduce the 12‑day delay incidents, enhancing customer satisfaction.  
+2. **Conduct Route-Specific Cost Analysis**
+   *Why:* Current data shows impossible speeds (303 mph), suggesting aggregation or timing errors that obscure real costs
+   *Action:* Validate delivery timestamps and recalculate cost-per-mile by specific origin-destination pairs
 
----
+3. **Segment Shipments by Weight Tiers**
+   *Why:* Extreme variance (mean 30 vs. max 5,404) indicates mixed service levels that may require different pricing strategies
+   *Action:* Create lightweight (<50 units), standard (50-500 units), and heavy (>500 units) categories for targeted optimization
