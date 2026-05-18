@@ -109,10 +109,64 @@ def apply_schema_aliases(df):
     """Maps known messy column names to our standard internal schema."""
     # The key is the Standard Name our math requires. 
     # The list contains the messy aliases clients might send.
-    alias_dict = {
-        "detention_minutes": ["detention_time", "wait_time", "facility_delay", "dwell_time", "delay_mins"],
-        "revenue": ["rev", "total_revenue", "income", "sales", "trip_revenue"],
-        "total_cost": ["cost", "total_expenses", "trip_cost", "overall_cost"]
+   alias_dict = {
+        # ==========================================
+        # 💰 FINANCIALS (Heavy Fleet & Freight)
+        # ==========================================
+        "revenue": [
+            "rev", "total_revenue", "income", "sales", "trip_revenue", 
+            "freight_revenue", "billed_amount", "gross_revenue", "stat_value"
+        ],
+        "total_cost": [
+            "cost", "total_expenses", "trip_cost", "overall_cost", 
+            "freight_cost", "carrier_fee", "invoice_total"
+        ],
+        
+        # ==========================================
+        # ⏳ TIME, DELAYS & DURATION
+        # ==========================================
+        "detention_minutes": [
+            "detention_time", "wait_time", "facility_delay", "dwell_time", 
+            "delay_mins", "hold_time", "idle_time_hours", "detention_mins"
+        ],
+        "actual_duration_hours": [
+            "transit_days", "shipping_duration", "time_in_transit", 
+            "lead_time", "actual_transit_time", "delivery_days"
+        ],
+        
+        # ==========================================
+        # 🗺️ LOCATIONS & ROUTING
+        # ==========================================
+        "source_name": [
+            "origin_warehouse", "facility_name", "origin_hub", "warehouse", 
+            "pickup_location", "dispatch_location", "shipper_facility"
+        ],
+        "destination_name": [
+            "destination", "delivery_location", "consignee_facility", 
+            "drop_off", "final_destination", "receiving_hub"
+        ],
+        "actual_distance_miles": [
+            "distance", "total_distance", "trip_miles", "route_distance", "miles_driven"
+        ],
+        
+        # ==========================================
+        # 📦 IDENTIFIERS & CARRIERS
+        # ==========================================
+        "shipment_id": [
+            "pro_number", "bol_number", "tracking_number", "load_id", 
+            "order_id", "sid", "reference_number", "docket_number"
+        ],
+        "carrier_name": [
+            "carrier", "scac", "transport_company", "logistics_provider", "trucking_company"
+        ],
+        
+        # ==========================================
+        # ⚖️ PHYSICAL SPECS
+        # ==========================================
+        "total_weight": [
+            "weight_kg", "weight", "payload_weight", "cargo_weight", 
+            "gross_weight", "net_mass", "weight_lbs"
+        ]
     }
     
     for standard_name, messy_aliases in alias_dict.items():
