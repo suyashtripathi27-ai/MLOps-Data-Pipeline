@@ -104,11 +104,36 @@ def fix_datetime_columns(df):
             except Exception:
                 pass # If it fails, leave it as is
     return df
+    
+def apply_schema_aliases(df):
+    """Maps known messy column names to our standard internal schema."""
+    # The key is the Standard Name our math requires. 
+    # The list contains the messy aliases clients might send.
+    alias_dict = {
+        "detention_minutes": ["detention_time", "wait_time", "facility_delay", "dwell_time", "delay_mins"],
+        "revenue": ["rev", "total_revenue", "income", "sales", "trip_revenue"],
+        "total_cost": ["cost", "total_expenses", "trip_cost", "overall_cost"]
+    }
+    
+    for standard_name, messy_aliases in alias_dict.items():
+        # Only map if the dataset doesn't ALREADY have the perfect column name
+        if standard_name not in df.columns:
+            for alias in messy_aliases:
+                if alias in df.columns:
+                    df.rename(columns={alias: standard_name}, inplace=True)
+                    print(f"🔄 Schema Mapper: Renamed `{alias}` to `{standard_name}`")
+                    break # Stop searching once we find a match
+                    
+    return df
 
 def universal_clean(df):
     """The master function to run all universal cleaning steps."""
     print("⚙️ Running universal data engineering layers...")
     df = standardize_column_names(df)
+    
+    # 🧠 THE NEW SCHEMA MAPPER 
+    df = apply_schema_aliases(df)
+    
     df = remove_duplicates(df)
     df = fill_numeric_missing(df)
     df = fix_datetime_columns(df)
