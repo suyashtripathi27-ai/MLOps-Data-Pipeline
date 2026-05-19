@@ -1,4 +1,4 @@
-❌ CRITICAL API ERROR: RetryError[<Future at 0x7f00e3db8be0 state=finished raised RateLimitError>]
+❌ CRITICAL API ERROR: RetryError[<Future at 0x7fecdf067100 state=finished raised RateLimitError>]
 
 ### Backup Data Table
 | Category | Metric | Value | Confidence | Warnings |
