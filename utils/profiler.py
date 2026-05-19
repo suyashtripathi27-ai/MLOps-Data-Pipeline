@@ -31,6 +31,35 @@ def generate_payload(df, industry_context="generic"):
         std_val = df[col].std()
         max_val = df[col].max()
         
+        # PHARMA-SPECIFIC: Check dosage columns (must be positive)
+        if any(keyword in col.lower() for keyword in ["dosage", "dose", "medication_amount"]):
+            negative_count = (df[col] < 0).sum()
+            if negative_count > 0:
+                reliability_score -= 15
+                sanity_flags.append(f"[{col}] ❌ PHARMA CRITICAL: {negative_count} negative dosage values detected!")
+            if mean_val > 0 and max_val > (mean_val * 500):
+                reliability_score -= 10
+                sanity_flags.append(f"[{col}] PHARMA WARNING: Extreme dosage outlier detected ({max_val} >> mean {mean_val})")
+        
+        # PHARMA-SPECIFIC: Check adverse events (non-negative integers)
+        if any(keyword in col.lower() for keyword in ["adverse_event", "ae_count", "severity"]):
+            if (df[col] < 0).any():
+                reliability_score -= 15
+                sanity_flags.append(f"[{col}] ❌ PHARMA CRITICAL: Negative adverse event counts!")
+        
+        # PHARMA-SPECIFIC: Check GMP compliance metrics
+        if any(keyword in col.lower() for keyword in ["defect", "gmp", "compliance", "batch_quality"]):
+            defect_ratio = (df[col] > 0).mean()
+            if defect_ratio > 0.5:
+                reliability_score -= 10
+                sanity_flags.append(f"[{col}] ⚠️ PHARMA: >50% of batches have defects - investigate quality issues")
+        
+        # PHARMA-SPECIFIC: Check temperature/storage conditions
+        if any(keyword in col.lower() for keyword in ["temperature", "temp", "storage"]):
+            if ((df[col] < 2) | (df[col] > 8)).sum() > 0:
+                reliability_score -= 20
+                sanity_flags.append(f"[{col}] ❌ PHARMA CRITICAL: Cold chain violation detected (must be 2-8°C)")
+                
         # Flag Extreme Variance (StdDev is 3x higher than Mean)
         if pd.notnull(std_val) and pd.notnull(mean_val) and mean_val > 0:
             if std_val > (mean_val * 3):
