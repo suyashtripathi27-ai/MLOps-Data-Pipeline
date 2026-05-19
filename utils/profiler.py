@@ -1,9 +1,10 @@
 import pandas as pd
 import numpy as np
 
-def generate_payload(df):
+def generate_payload(df, industry_context="generic"):
     """
     Calculates statistics, scores data reliability, and flags extreme outliers.
+    Returns a dictionary for flawless LLM API JSON integration.
     """
     print("📊 Generating statistical payload & sanity checks...")
     
@@ -19,7 +20,7 @@ def generate_payload(df):
     missing_percent = (df.isnull().sum() / total_rows) * 100
     if missing_percent.max() > 20:
         reliability_score -= 20
-        warnings.append(f"High missing data detected (Some columns > 20% empty).")
+        warnings.append("High missing data detected (Some columns > 20% empty).")
         
     # 3. Statistical Sanity Validator
     numeric_cols = df.select_dtypes(include=['number']).columns
@@ -45,18 +46,25 @@ def generate_payload(df):
                 
     # Format the warnings
     all_warnings = warnings + sanity_flags
-    warning_text = "\n".join([f"- {w}" for w in all_warnings]) if all_warnings else "- None. Data looks statistically stable."
+    if not all_warnings:
+        all_warnings = ["None. Data looks statistically stable."]
+        
+    # 4. Bundle into the Enterprise JSON Payload
+    # We convert describe() to a dictionary so the pipeline can parse it cleanly
+    stats_dict = df.describe().to_dict()
+    clean_stats = {}
+    for col, metrics in stats_dict.items():
+        clean_stats[col] = {k: round(v, 2) if pd.notnull(v) else None for k, v in metrics.items()}
+        
+    payload = {
+        "dataset_context": industry_context,
+        "data_reliability_score": max(0, reliability_score),
+        "system_warnings": all_warnings,
+        "dataset_shape": {
+            "total_rows": total_rows,
+            "total_columns": total_cols
+        },
+        "statistical_summary": clean_stats
+    }
     
-    # 4. Bundle into the Enterprise Payload
-    return f"""
-    [DATA RELIABILITY SCORE]: {max(0, reliability_score)}/100
-    
-    [SYSTEM WARNINGS & SANITY FLAGS]
-    {warning_text}
-    
-    [DATASET SHAPE]
-    Total Rows: {total_rows} | Total Columns: {total_cols}
-    
-    [STATISTICAL SUMMARY]
-    {df.describe(include='all').to_string()}
-    """
+    return payload
