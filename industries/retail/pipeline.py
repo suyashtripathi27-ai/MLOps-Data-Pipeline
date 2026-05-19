@@ -58,7 +58,7 @@ def run_retail_analysis(payload, client, df):
     print("🧠 Consulting AI Retail Analyst...")
     try:
         response = client.chat.completions.create(
-            model="google/gemini-2.5-flash", 
+            model="gemini-2.5-flash", 
             messages=[{"role": "user", "content": final_prompt}]
         )
         
