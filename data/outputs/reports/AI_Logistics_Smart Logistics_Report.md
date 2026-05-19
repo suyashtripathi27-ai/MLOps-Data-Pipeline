@@ -1,98 +1,69 @@
+### 📑1. Executive Summary
+The system shows a **70 / 100 reliability score**, indicating moderate confidence in the data. The most pressing operational issue is **excessive detention time** combined with a **high delay‑flag rate** (~56 %). Overall business conditions are stable but vulnerable to bottlenecks that could erode service quality. **Immediate focus should be on validating detention and delay patterns** to prevent cost overruns.
 
-### 📑 1. Executive Summary
+### 🛡️ 2. Reliability & Data Quality  | Metric | Value |
+|--------|-------|
+| Reliability Score | 70 / 100 |
+| Confidence Level | Medium |
+| Notable Outliers | Extreme longitude variance |
 
-The logistics system operates with **70% data reliability**, indicating moderate confidence in current operational insights. **Shipment delays affect 56.6% of deliveries**, with weather cited as the primary delay reason. Business operations face **significant inefficiencies due to data quality gaps and recurring delays**, risking customer satisfaction and cost optimization. **Immediate action is required to validate data pipelines and address weather-related bottlenecks.**
+- **High missing data detected** across several fields.  
+- **Extreme variance in Longitude** distorting statistical measures.  
 
----
+### 📊 3. KPI Snapshot  
 
-### 🛡️ 2. Reliability & Data Quality
+- **Average Inventory Level:** 298 units  
+- **Average Detention Minutes:** 35 min  
+- **Average Asset Utilization:** 79.6 %  
+- **Average Temperature:** 23.9 °C  
+- **Delay Flag Rate:** 56.6 %  
 
-| Metric               | Value         | Confidence Level | Outliers Detected |
-|----------------------|---------------|------------------|-------------------|
-| Data Reliability     | 70/100        | Moderate         | Yes               |
-| Missing Data         | >20% in some columns | High Risk      | Yes               |
-| Geolocation Variance | Extreme (Std: 104.8) | High Risk      | Yes               |
+### 🔍 4. Key Operational Findings  - **Observation:** Detention minutes average **35 min**, with peaks reaching **60 min**.  
+  **Possible Reason:** Possible contributing factors may include traffic congestion or hub inefficiencies.  
+  **Business Impact:** Extended detention raises operational costs and reduces asset turnover.  
 
-**Top System Warnings:**
-- **High missing data detected** in critical columns exceeding 20% emptiness.
-- **Extreme variance in Longitude** distorts geospatial analysis accuracy.
-- **Asset utilization and delay flags** show significant variability, suggesting inconsistent tracking.
+- **Observation:** **Delay flag** appears on **56.6 %** of records.  
+  **Possible Reason:** Possible contributing factors may involve scheduling conflicts or sudden demand spikes.  
+  **Business Impact:** Frequent delays can weaken service levels and customer satisfaction.  
 
----
+- **Observation:** Inventory level varies widely, **min = 100 units**, **max = 500 units**.  
+  **Possible Reason:** Possible contributing factors may involve seasonal demand swings or replenishment lags.  
+  **Business Impact:** Imbalances can lead to stockouts in some locations and excess inventory in others.  
 
-### 📊 3. KPI Snapshot
+### 🚨 5. Operational Risk Areas  
 
-| KPI                          | Value               |
-|------------------------------|---------------------|
-| **Average Inventory Level**  | 297.92 units        |
-| **Shipment Status**          | 350 Delayed / 1000  |
-| **Average Temperature**      | 23.89°C             |
-| **Average Humidity**         | 65.04%              |
-| **Average Detention Time**   | 35.06 minutes       |
-| **Average Transaction Amount** | $299.06          |
-| **Delay Flag Rate**          | 56.6%               |
-| **Top Delay Reason**         | Weather (267 cases) |
+| Risk Area | Severity |
+|-----------|----------|
+| Detention duration | **High** |
+| Delay flag frequency | **High** |
+| Inventory level volatility | **Medium** |
 
----
+### 🚀 6. Recommended Actions  
 
-### 🔍 4. Key Operational Findings
+- Validate detention‑time logging at the **top three congested hubs**.  
+- Cross‑check delay‑flag triggers against **scheduling and load‑planning data**.  
+- Track inventory deviations for the **five highest‑volume assets**.  
+- Review temperature sensor calibration where product stability is critical.  
+- Implement an automated alert for **extreme longitude variance** to catch data‑quality issues early.  
 
-#### **Finding 1: High Shipment Delay Rate**
-* **Observation:** 56.6% of shipments are flagged as delayed, with 350 out of 1000 explicitly marked "Delayed."
-* **Possible Reason:** Weather conditions (267 cases) and potential asset underutilization (avg 79.6% utilization) may contribute.
-* **Business Impact:** Delays risk SLA breaches, increased customer churn, and higher operational costs from extended detention times.
+### 📈 7. Supporting Charts  
 
-#### **Finding 2: Extreme Geolocation Variance**
-* **Observation:** Longitude shows extreme variance (std: 104.8), far exceeding the mean (0.84).
-* **Possible Reason:** Inconsistent GPS logging or data entry errors may distort route optimization.
-* **Business Impact:** Poor geospatial data undermines delivery planning, increasing fuel costs and delivery times.
+- **Hub congestion heat map** – highlights locations where delays concentrate.  
+- **SLA breach trend line** – tracks the evolution of delay flags over time.  
+- **Asset utilization gauge** – monitors real‑time capacity usage across the network.  
+- **Temperature & humidity scatter** – surfaces environmental outliers that may affect operations.  Each chart provides a quick visual cue for where corrective focus will deliver the greatest impact.  ### ⚙️ 8. Technical Appendix  
 
-#### **Finding 3: Moderate Asset Utilization**
-* **Observation:** Average asset utilization is 79.6%, below optimal levels.
-* **Possible Reason:** Possible scheduling inefficiencies or uneven demand distribution.
-* **Business Impact:** Underutilized assets increase per-unit costs and reduce scalability.
+**[System Warnings]**  
+- High missing data detected (Some columns > 20 % empty).  
+- Longitude extreme variance: Standard deviation heavily distorted relative to the mean.  
 
----
+**[Schema Anomalies]**  
+- Timestamp present for all records, but Latitude and Longitude show NaN in unique/value columns.  
+- Asset_ID shows 10 distinct values; top entry is “Truck_8”.  
+- Inventory_Level, Shipment_Status, temperature_celsius, Humidity, Traffic_Status, detention_minutes, User_Transaction_Amount, User_Purchase_Frequency, Logistics_Delay_Reason, asset_utilization_pct, Demand_Forecast, delay_flag each have NaN in unique/value columns.  
+- Frequency values for Asset_ID and detention_minutes indicate repeated entries (e.g., 109, 345).  
 
-### 🚨 5. Operational Risk Areas
-
-| Risk Area                     | Severity |
-|-------------------------------|----------|
-| **High Shipment Delays**      | High     |
-| **Geolocation Data Inaccuracy** | High   |
-| **Low Asset Utilization**     | Medium   |
-| **Missing Data in Critical Fields** | Medium |
-
----
-
-### 🚀 6. Recommended Actions
-
-1. **Validate Data Pipelines:** Investigate and resolve missing data in critical fields (e.g., Longitude, Delay Flags) to improve analytical accuracy.
-2. **Monitor Weather-Affected Hubs:** Deploy real-time weather tracking at top 5 high-delay locations to preemptively reroute shipments.
-3. **Optimize Asset Scheduling:** Analyze asset utilization patterns to identify underused resources and rebalance workloads.
-4. **Review Detention Policies:** Assess detention time drivers (avg 35 mins) and renegotiate carrier agreements if necessary.
-5. **Implement Geospatial QA Checks:** Add automated validation for GPS coordinates to flag outliers before analysis.
-
----
-
-### 📈 7. Supporting Charts
-
-- **Delay Trend by Weather Conditions:** Highlights seasonal or regional patterns to optimize routing.
-- **Asset Utilization Heatmap:** Identifies underutilized assets for redeployment.
-- **Geolocation Scatter Plot:** Visualizes delivery point distribution and flags anomalous coordinates.
-
----
-
-### ⚙️ 8. Technical Appendix
-
-**System Warnings:**
-- High missing data detected (Some columns > 20% empty).
-- [Longitude] Extreme variance: Standard deviation is heavily distorted relative to the mean.
-
-**Schema Anomalies:**
-- 16 columns with mixed data types; 10 unique assets tracked across 1000 records.
-- Delay reason and status fields show categorical clustering (e.g., "Weather," "Detour").
-
+*End of report.*
 
 ### Traceable KPIs
 | Category | KPI Name | Value | Formula | Source | Confidence | Warnings |
