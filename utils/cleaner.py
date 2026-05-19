@@ -49,8 +49,6 @@ def load_and_clean(file_path):
 # ==========================================
 # 🧠 THE EVIDENCE-BASED SEMANTIC ENGINE
 # ==========================================
-
-# Notice: All aliases are pre-normalized (no underscores or spaces) for pure matching
 UNIVERSAL_SCHEMA = {
     "revenue": ["rev", "totalrevenue", "income", "sales", "triprevenue", "freightrevenue", "billedamount", "grossrevenue", "statvalue", "amt", "amount"],
     "total_cost": ["cost", "totalexpenses", "tripcost", "overallcost", "freightcost", "carrierfee", "invoicetotal"],
@@ -68,30 +66,24 @@ UNIVERSAL_SCHEMA = {
 }
 
 def normalize_string(s):
-    """ISSUE 2 FIX: True Column Normalization stripping all special characters."""
     return re.sub(r'[^a-z0-9]', '', str(s).lower())
 
 def infer_data_profile(series):
-    """Statistical guardrails."""
     if pd.api.types.is_numeric_dtype(series): return "numeric"
     if pd.api.types.is_datetime64_any_dtype(series) or "date" in str(series.name).lower(): return "datetime"
     if series.nunique() < 50: return "categorical"
     return "text"
 
 def infer_from_values(series):
-    """ISSUE 3 FIX: Value Pattern Inference."""
     if series.dtype == 'object' or series.dtype.name == 'category':
         sample = series.dropna().astype(str).head(100)
         if not sample.empty:
-            # If 40%+ of values contain HUB, DC, WH, or WAREHOUSE
             if sample.str.contains(r"HUB|DC|WH|WAREHOUSE|CENTER", case=False, regex=True).mean() > 0.4:
                 return "logistics_location"
     return "unknown"
 
 def run_schema_inference(df):
-    """ISSUE 1 & 5 FIX: Evidence logging, Confidence Scoring, and Delayed Batch Renaming."""
     print("🧠 Initiating Evidence-Based Semantic Schema Inference...")
-    
     schema_mapping = {}
     evidence_log = []
     
@@ -101,9 +93,7 @@ def run_schema_inference(df):
         confidence = 0.0
         evidence = []
 
-        # ---------------------------------------------------------
-        # LAYER 1: Exact Normalized Alias Match (Confidence: 1.0)
-        # ---------------------------------------------------------
+        # Layer 1: Exact Match
         for standard_name, aliases in UNIVERSAL_SCHEMA.items():
             if norm_col == normalize_string(standard_name) or norm_col in aliases:
                 mapped_to = standard_name
@@ -111,9 +101,7 @@ def run_schema_inference(df):
                 evidence.append("Exact normalized alias match")
                 break
         
-        # ---------------------------------------------------------
-        # LAYER 2: Value Pattern Inference (Confidence: 0.95)
-        # ---------------------------------------------------------
+        # Layer 2: Value Pattern
         if not mapped_to:
             val_pattern = infer_from_values(df[original_col])
             if val_pattern == "logistics_location":
@@ -126,16 +114,12 @@ def run_schema_inference(df):
                     confidence = 0.95
                     evidence.extend(["Value Pattern: Logistics Location", "Name Context: Destination indicator"])
 
-        # ---------------------------------------------------------
-        # LAYER 3: Fuzzy Matching with Guardrails (Confidence: 0.85 - 0.99)
-        # ---------------------------------------------------------
+        # Layer 3: Fuzzy Match
         if not mapped_to:
             all_known_terms = {alias: std for std, aliases in UNIVERSAL_SCHEMA.items() for alias in aliases}
-            for std in UNIVERSAL_SCHEMA.keys():
-                all_known_terms[normalize_string(std)] = std
+            for std in UNIVERSAL_SCHEMA.keys(): all_known_terms[normalize_string(std)] = std
             
             matches = difflib.get_close_matches(norm_col, all_known_terms.keys(), n=1, cutoff=0.85)
-            
             if matches:
                 matched_alias = matches[0]
                 proposed_std = all_known_terms[matched_alias]
@@ -144,7 +128,6 @@ def run_schema_inference(df):
                 col_profile = infer_data_profile(df[original_col])
                 numeric_metrics = ['revenue', 'total_cost', 'actual_duration_hours', 'total_weight', 'detention_minutes', 'temperature_celsius', 'asset_utilization_pct', 'actual_distance_miles']
                 
-                # Semantic Guardrail: Don't map strings to numeric math columns
                 if proposed_std in numeric_metrics and col_profile != "numeric":
                     evidence.append(f"Fuzzy match rejected: `{original_col}` is {col_profile}, requires numeric.")
                 else:
@@ -152,21 +135,10 @@ def run_schema_inference(df):
                     confidence = round(ratio, 2)
                     evidence.extend([f"Fuzzy Match: '{matched_alias}'", f"Profile Verified: {col_profile}"])
 
-        # ---------------------------------------------------------
-        # FINAL DECISION: Commit to Schema Mapping Dictionary
-        # ---------------------------------------------------------
         if mapped_to and confidence >= 0.85:
             schema_mapping[original_col] = mapped_to
-            evidence_log.append({
-                "column": original_col,
-                "mapped_to": mapped_to,
-                "confidence": confidence,
-                "evidence": evidence
-            })
-        elif mapped_to:
-            print(f"⚠️ Warning: Ignored mapping `{original_col}` -> `{mapped_to}` (Confidence {confidence} below 0.85 safe threshold)")
+            evidence_log.append({"column": original_col, "mapped_to": mapped_to, "confidence": confidence, "evidence": evidence})
 
-    # ISSUE 5 FIX: Output the explainable log, THEN batch rename.
     for log in evidence_log:
         print(f"🎯 AI Mapped: `{log['column']}` -> `{log['mapped_to']}` | Conf: {log['confidence']} | Evidence: {log['evidence']}")
         
@@ -174,22 +146,16 @@ def run_schema_inference(df):
     return df
 
 def universal_clean(df):
-    """The master function to run all universal data engineering layers."""
     print("⚙️ Running universal data engineering layers...")
-    
-    # 🧠 Semantic Inference Engine
     df = run_schema_inference(df)
     
-    # Standard Quality Checks
     initial_shape = df.shape[0]
     df = df.drop_duplicates()
-    if initial_shape != df.shape[0]:
-        print(f"🧹 Dropped {initial_shape - df.shape[0]} duplicate rows.")
+    if initial_shape != df.shape[0]: print(f"🧹 Dropped {initial_shape - df.shape[0]} duplicate rows.")
         
     numeric_cols = df.select_dtypes(include=['number']).columns
     for col in numeric_cols:
-        if df[col].isnull().sum() > 0:
-            df[col] = df[col].fillna(df[col].median())
+        if df[col].isnull().sum() > 0: df[col] = df[col].fillna(df[col].median())
             
     for col in df.columns:
         if 'date' in col.lower() or 'time' in col.lower() or 'timestamp' in col.lower():
