@@ -1,47 +1,52 @@
 import pandas as pd
-from .reliability import evaluate_kpi_confidence
+from utils.validator import SemanticValidator
 
 def calc_freight_metrics(df):
-    """Calculates KPIs specifically for Freight Forwarding and Shipments."""
+    """Calculates KPIs specifically for Freight Forwarding and Shipments with strict validation."""
     kpis = []
     
-    # 1. Cost Efficiency (Cost per Weight Unit)
-    if 'total_cost' in df.columns and 'total_weight' in df.columns:
-        valid_data = df.dropna(subset=['total_cost', 'total_weight'])
-        if not valid_data.empty and valid_data['total_weight'].sum() > 0:
-            cost_per_unit = valid_data['total_cost'].sum() / valid_data['total_weight'].sum()
-            
-            conf, warns = evaluate_kpi_confidence(df, ['total_cost', 'total_weight'])
-            kpis.append({
-                "category": "📦 Freight Economics", "name": "Cost per Mass Unit",
-                "value": f"${cost_per_unit:.2f}", "formula": "Sum(total_cost) / Sum(total_weight)",
-                "source": "`total_cost`, `total_weight`", "confidence": conf, "warnings": warns
-            })
-
-    # 2. Network Speed (Average Transit Days)
+    # 1. Network Speed (Average Transit Time)
     if 'actual_duration_hours' in df.columns:
-        valid_duration = df['actual_duration_hours'].dropna()
-        if not valid_duration.empty:
-            avg_transit = valid_duration.mean()
-            
-            conf, warns = evaluate_kpi_confidence(df, ['actual_duration_hours'])
+        # 🛡️ GATEKEEPER CHECK: Is this duration valid?
+        is_valid, reason = SemanticValidator.is_valid_duration(df['actual_duration_hours'])
+        
+        if is_valid:
+            valid_duration = df['actual_duration_hours'].dropna()
+            if not valid_duration.empty:
+                avg_transit = valid_duration.mean()
+                kpis.append({
+                    "category": "⚡ Network Velocity", "name": "Average Transit Time",
+                    "value": f"{avg_transit:.1f} days",
+                    "source": "`actual_duration_hours`"
+                })
+        else:
+            # 🚨 REJECTED: Send warning to Technical Appendix
             kpis.append({
                 "category": "⚡ Network Velocity", "name": "Average Transit Time",
-                "value": f"{avg_transit:.1f} days", "formula": "Mean(actual_duration_hours)",
-                "source": "`actual_duration_hours`", "confidence": conf, "warnings": warns
+                "value": "EXCLUDED",
+                "source": f"Data rejected: {reason}"
             })
 
-    # 3. Carrier Distance Economics
-    if 'total_cost' in df.columns and 'distance_miles' in df.columns:
-        valid_dist = df.dropna(subset=['total_cost', 'distance_miles'])
-        if not valid_dist.empty and valid_dist['distance_miles'].sum() > 0:
-            cost_per_mile = valid_dist['total_cost'].sum() / valid_dist['distance_miles'].sum()
-            
-            conf, warns = evaluate_kpi_confidence(df, ['total_cost', 'distance_miles'])
+    # 2. Cost Efficiency (Cost per Weight Unit)
+    if 'total_cost' in df.columns and 'total_weight' in df.columns:
+        # 🛡️ GATEKEEPER CHECK: Are costs and weights valid (no negatives)?
+        cost_valid, cost_reason = SemanticValidator.is_valid_duration(df['total_cost'])
+        weight_valid, weight_reason = SemanticValidator.is_valid_duration(df['total_weight'])
+        
+        if cost_valid and weight_valid:
+            valid_data = df.dropna(subset=['total_cost', 'total_weight'])
+            if not valid_data.empty and valid_data['total_weight'].sum() > 0:
+                cost_per_unit = valid_data['total_cost'].sum() / valid_data['total_weight'].sum()
+                kpis.append({
+                    "category": "📦 Freight Economics", "name": "Cost per Mass Unit",
+                    "value": f"${cost_per_unit:.2f}",
+                    "source": "`total_cost`, `total_weight`"
+                })
+        else:
             kpis.append({
-                "category": "🗺️ Routing Efficiency", "name": "Cost per Mile",
-                "value": f"${cost_per_mile:.2f}", "formula": "Sum(total_cost) / Sum(distance_miles)",
-                "source": "`total_cost`, `distance_miles`", "confidence": conf, "warnings": warns
+                "category": "📦 Freight Economics", "name": "Cost per Mass Unit",
+                "value": "EXCLUDED",
+                "source": f"Cost: {cost_reason} | Weight: {weight_reason}"
             })
-            
+
     return kpis
