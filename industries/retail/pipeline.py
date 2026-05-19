@@ -29,23 +29,48 @@ def run_retail_analysis(payload, client, df):
     kpi_markdown = build_markdown_table(kpi_list)
     
     # 2. Append the Technical Diagnostics to the Payload
+    # 🛠️ THE FIX: Convert payload to dictionary if it's currently a string
+    if isinstance(payload, str):
+        try:
+            payload = json.loads(payload)
+        except json.JSONDecodeError:
+            # Fallback just in case it's a raw text string, not JSON
+            payload = {"raw_data": payload} 
+            
     payload['kpi_results'] = kpi_list
     
     # 3. Load the Retail Prompt
     prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
+    
+    # Guardrail: Check if prompt file actually exists
+    if not os.path.exists(prompt_path):
+        return "❌ ERROR: `prompt.txt` file missing from industries/retail/ directory."
+        
     with open(prompt_path, 'r', encoding='utf-8') as file:
         prompt_template = file.read()
         
+    if not prompt_template.strip():
+        return "❌ ERROR: `prompt.txt` is completely empty."
+        
     final_prompt = prompt_template.replace('{data_payload}', json.dumps(payload, indent=2))
     
-    # 4. Call the LLM
+    # 4. Call the LLM with a Safety Net
     print("🧠 Consulting AI Retail Analyst...")
-    response = client.chat.completions.create(
-        model="openrouter/auto", 
-        messages=[{"role": "user", "content": final_prompt}]
-    )
-    
-    report_content = response.choices[0].message.content
+    try:
+        response = client.chat.completions.create(
+            model="google/gemini-2.5-flash", 
+            messages=[{"role": "user", "content": final_prompt}]
+        )
+        
+        report_content = response.choices[0].message.content
+        
+        if not report_content:
+            print("⚠️ API returned an empty response!")
+            return "❌ API ERROR: OpenRouter returned a blank response."
+            
+    except Exception as e:
+        print(f"❌ API Call Failed: {e}")
+        return f"❌ CRITICAL API ERROR: {str(e)}"
     
     # 5. Inject the strict Markdown table
     final_report = report_content.replace('{{INSERT_KPIS_HERE}}', kpi_markdown)
