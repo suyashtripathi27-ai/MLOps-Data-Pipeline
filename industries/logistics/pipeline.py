@@ -47,7 +47,7 @@ def run_logistics_analysis(payload, client, df=None):
     print("🧠 Requesting Governed Strategic Insights...")
     try:
         response = client.chat.completions.create(
-            model="openrouter/free", 
+            model="gemini-2.5-flash", 
             messages=[
                 {"role": "system", "content": "You are a pragmatic, highly experienced Operations Analytics Consultant. Focus only on the provided data context."},
                 {"role": "user", "content": final_prompt}
