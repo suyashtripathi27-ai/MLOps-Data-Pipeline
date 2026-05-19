@@ -72,6 +72,14 @@ UNIVERSAL_SCHEMA = {
     "outstanding_balance": ["loan_balance", "remaining_balance", "principal_remaining"],
     "fees_charged": ["fee_amount", "charges", "fee", "service_charge"],
     "aml_flag": ["aml_alert", "suspicious_flag", "fraud_flag", "is_suspicious"],
+    "batch_id": ["batch_no", "lot_number", "lot_id", "production_batch"],
+    "product_name": ["drug_name", "medication", "compound", "asset"],
+    "therapeutic_area": ["category", "drug_class", "indication", "disease_area"],
+    "manufacturing_date": ["mfg_date", "production_date", "date_of_manufacture"],
+    "expiry_date": ["exp_date", "expiration", "valid_until", "use_by"],
+    "quantity_produced": ["yield", "batch_size", "units_manufactured"],
+    "quality_pass_rate": ["purity_score", "qa_rate", "yield_percent", "qc_score"],
+    "regulatory_status": ["status", "fda_status", "approval_status", "qa_status"],
     "kyc_status": ["kyc_verified", "verification_status", "is_verified"]
 }
 
