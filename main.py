@@ -50,56 +50,80 @@ def detect_industry(columns_list):
 def main():
     print("🚀 Starting Universal Enterprise Pipeline...")
     
-    # --- A. FIND THE FILE ---
     raw_dir = 'data/raw/'
-    files = [f for f in os.listdir(raw_dir) if f != '.gitkeep' and not f.startswith('.')]
-    if not files:
-        print("⏸️ No data files found in data/raw/. Pipeline sleeping.")
-        sys.exit(0)
-    
-    latest_file = files[0]
-    file_path = os.path.join(raw_dir, latest_file)
-    
-    # --- B. INGEST & CLEAN ---
-    df = load_and_clean(file_path)
-    df = universal_clean(df)
-    
-    # --- C. DETECT INDUSTRY ---
-    columns = df.columns.tolist()
-    industry = detect_industry(columns)
-    print(f"🎯 Agentic Router Classified Industry As: [{industry.upper()}]")
-    
-    # --- D. GENERATE MATH PAYLOAD ---
-    payload = generate_payload(df)
-    
-    # --- E. THE DYNAMIC SWITCHBOARD ---
-    print(f"🔀 Routing to {industry} module...")
-    
-    if industry == "logistics":
-        from industries.logistics.pipeline import run_logistics_analysis
-        final_report = run_logistics_analysis(payload, client, df)
-        
-    elif industry == "retail":
-        print("Retail module under construction. Using generic fallback.")
-        final_report = "Retail analysis simulated..."
-        
-    else:
-        final_report = "Generic analysis simulated..."
-        
-    # --- F. SAVE OUTPUT ---
+    if not os.path.exists(raw_dir):
+        print(f"❌ Error: Directory '{raw_dir}' not found.")
+        sys.exit(1)
+
+    # Make sure output directories exist before we start
     output_dir = 'data/outputs/reports/'
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs('data/outputs/charts/', exist_ok=True)
     os.makedirs('data/outputs/logs/', exist_ok=True)
-    
-    report_name = f"AI_{industry.capitalize()}_Report.md"
-    output_path = os.path.join(output_dir, report_name)
-    
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write(final_report)
-        
-    print(f"✅ Pipeline Complete! Report saved to: {output_path}")
 
-# THIS IS THE IGNITION SWITCH!
+    processed_any_file = False
+
+    # --- A. LOOP & GUARDRAIL ---
+    for file_name in os.listdir(raw_dir):
+        
+        # 🛡️ THE GUARDRAIL: Skip placeholders, hidden files, and unsupported formats
+        if file_name.startswith('.') or file_name.lower() == 'process':
+            print(f"⏭️ Skipping placeholder file: {file_name}")
+            continue
+            
+        if not file_name.endswith(('.csv', '.zip', '.xls', '.xlsx')):
+            print(f"⏭️ Skipping unsupported file type: {file_name}")
+            continue
+
+        file_path = os.path.join(raw_dir, file_name)
+        print(f"\n🚀 Processing dataset: {file_name}")
+        processed_any_file = True
+        
+        # --- B. INGEST & CLEAN ---
+        try:
+            df = load_and_clean(file_path)
+            df = universal_clean(df)
+        except Exception as e:
+            print(f"❌ Error processing {file_name}: {e}")
+            continue # Skip to the next file if this one crashes
+        
+        # --- C. DETECT INDUSTRY ---
+        columns = df.columns.tolist()
+        industry = detect_industry(columns)
+        print(f"🎯 Agentic Router Classified Industry As: [{industry.upper()}]")
+        
+        # --- D. GENERATE MATH PAYLOAD ---
+        payload = generate_payload(df)
+        
+        # --- E. THE DYNAMIC SWITCHBOARD ---
+        print(f"🔀 Routing to {industry} module...")
+        
+        if industry == "logistics":
+            from industries.logistics.pipeline import run_logistics_analysis
+            final_report = run_logistics_analysis(payload, client, df)
+            
+        elif industry == "retail":
+            print("Retail module under construction. Using generic fallback.")
+            final_report = "Retail analysis simulated..."
+            
+        else:
+            final_report = "Generic analysis simulated..."
+            
+        # --- F. SAVE OUTPUT ---
+        # Append the original filename to the report name to avoid overwriting 
+        # if multiple datasets are uploaded at the same time.
+        base_name = os.path.splitext(file_name)[0]
+        report_name = f"AI_{industry.capitalize()}_{base_name}_Report.md"
+        output_path = os.path.join(output_dir, report_name)
+        
+        with open(output_path, "w", encoding="utf-8") as f:
+            f.write(final_report)
+            
+        print(f"✅ Report saved to: {output_path}")
+
+    # --- G. GRACEFUL EXIT ---
+    if not processed_any_file:
+        print("\n⏸️ No valid data files found in data/raw/. Pipeline sleeping safely.")
+
 if __name__ == "__main__":
     main()
