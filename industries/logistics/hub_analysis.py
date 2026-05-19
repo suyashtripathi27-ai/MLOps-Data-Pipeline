@@ -1,28 +1,68 @@
 import pandas as pd
+from .reliability import evaluate_kpi_confidence
 from utils.validator import SemanticValidator
 
-def calc_hub_metrics(df):
-    """Calculates KPIs for warehousing and distribution centers with validation."""
+def calc_hub_intelligence(df):
     kpis = []
     
-    # 1. Facility Bottlenecks (Average Detention Time)
-    if 'detention_minutes' in df.columns:
-        is_valid, reason = SemanticValidator.is_valid_duration(df['detention_minutes'])
+    # 1. Hub Congestion & Validation Gate
+    if 'source_name' in df.columns and 'actual_time' in df.columns and 'osrm_time' in df.columns:
         
-        if is_valid:
-            valid_detention = df['detention_minutes'].dropna()
-            if not valid_detention.empty:
-                avg_detention = valid_detention.mean()
+        # 🛡️ GATEKEEPER CHECK: Ensure timestamps don't have 1970 Epoch Corruption
+        actual_valid, actual_reason = SemanticValidator.is_valid_datetime(df['actual_time'])
+        osrm_valid, osrm_reason = SemanticValidator.is_valid_datetime(df['osrm_time'])
+        
+        if actual_valid and osrm_valid:
+            df['delay_minutes'] = df['actual_time'] - df['osrm_time']
+            
+            if pd.api.types.is_timedelta64_dtype(df['delay_minutes']):
+                df['delay_minutes'] = df['delay_minutes'].dt.total_seconds() / 60.0
+                
+            # Your original custom validation gate (brilliant for this specific use case)
+            valid_delays = df[df['delay_minutes'] > 0.1]
+            
+            if not valid_delays.empty:
+                bad_hubs = valid_delays.groupby('source_name')['delay_minutes'].mean()
+                worst_hub = bad_hubs.idxmax()
+                worst_delay = bad_hubs.max()
+                conf, warns = evaluate_kpi_confidence(df, ['source_name', 'actual_time', 'osrm_time'])
+                
                 kpis.append({
-                    "category": "🏢 Hub Operations", "name": "Average Detention Time",
-                    "value": f"{avg_detention:.1f} mins",
-                    "source": "`detention_minutes`"
+                    "category": "🏢 Hub Intelligence", "name": "Most Congested Hub",
+                    "value": f"{worst_hub} ({worst_delay:.1f} min avg)", "formula": "Max Avg Delay (>0.1m) by Source",
+                    "source": "`source_name`", "confidence": conf, "warnings": warns
+                })
+            else:
+                kpis.append({
+                    "category": "🏢 Hub Intelligence", "name": "Most Congested Hub",
+                    "value": "EXCLUDED", "formula": "N/A",
+                    "source": "Multiple", "confidence": "Low", 
+                    "warnings": "Valid delays > 0.1 minutes not found."
                 })
         else:
+            # 🚨 REJECTED BY SEMANTIC VALIDATOR
             kpis.append({
-                "category": "🏢 Hub Operations", "name": "Average Detention Time",
-                "value": "EXCLUDED",
-                "source": f"Data rejected: {reason}"
+                "category": "🏢 Hub Intelligence", "name": "Most Congested Hub",
+                "value": "EXCLUDED", "formula": "N/A",
+                "source": "Multiple", "confidence": "Low", 
+                "warnings": f"Timestamp corruption. Actual: {actual_reason} | OSRM: {osrm_reason}"
+            })
+            
+    # 2. Hub Cutoff Concentration (Kept exactly as you wrote it)
+    if 'source_name' in df.columns and 'is_cutoff' in df.columns:
+        valid_cutoff = df[['source_name', 'is_cutoff']].dropna()
+        if not valid_cutoff.empty:
+            is_true = valid_cutoff['is_cutoff'].astype(str).str.lower().isin(['true', '1', 't', 'yes'])
+            valid_cutoff['failed_trip'] = is_true
+            
+            worst_failure_hub = valid_cutoff.groupby('source_name')['failed_trip'].sum().idxmax()
+            failure_count = valid_cutoff.groupby('source_name')['failed_trip'].sum().max()
+            
+            conf, warns = evaluate_kpi_confidence(df, ['source_name', 'is_cutoff'])
+            kpis.append({
+                "category": "🏢 Hub Intelligence", "name": "Highest Cutoff Concentration",
+                "value": f"{worst_failure_hub} ({failure_count} failures)", "formula": "Count(Cutoff=True) by Source",
+                "source": "`source_name`, `is_cutoff`", "confidence": conf, "warnings": warns
             })
 
     return kpis
