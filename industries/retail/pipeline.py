@@ -1,48 +1,42 @@
 import os
 import json
-from .inventory_analysis import calc_inventory_metrics
-from .sales_analysis import calc_sales_metrics
+from .kpis import generate_retail_kpis
+from .reliability import run_retail_governance_checks
 
 def generate_dynamic_kpis(df):
-    """Executes all Retail KPI modules dynamically."""
-    all_kpis = []
-    all_kpis.extend(calc_inventory_metrics(df))
-    all_kpis.extend(calc_sales_metrics(df))
-    return all_kpis
+    """Executes all retail KPI modules dynamically."""
+    return generate_retail_kpis(df)
 
 def build_markdown_table(kpis):
-    """Formats the KPI JSON list into a Markdown table."""
+    """Formats KPI dictionaries into a traceable markdown table."""
     if not kpis:
-        return "No valid KPIs could be calculated from this dataset."
+        return "*Insufficient columns to generate advanced retail KPIs.*"
         
-    md_table = "| Category | Metric | Value | Source |\n"
-    md_table += "|---|---|---|---|\n"
+    md_table = "| Category | KPI Name | Value | Formula | Source | Confidence | Warnings |\n"
+    md_table += "| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
     for kpi in kpis:
-        md_table += f"| {kpi.get('category','')} | **{kpi.get('name','')}** | {kpi.get('value','')} | {kpi.get('source','')} |\n"
+        md_table += f"| {kpi.get('category', '')} | **{kpi.get('name', '')}** | `{kpi.get('value', '')}` | *{kpi.get('formula', '')}* | `{kpi.get('source', '')}` | {kpi.get('confidence', 'N/A')} | {kpi.get('warnings', 'None')} |\n"
     return md_table
 
 def run_retail_analysis(payload, client, df):
-    """The main orchestrator for the Retail module."""
-    
-    # 1. Run the Python Math layer
+    """Main orchestrator for the retail analytics module."""
+
     kpi_list = generate_dynamic_kpis(df)
     kpi_markdown = build_markdown_table(kpi_list)
-    
-    # 2. Append the Technical Diagnostics to the Payload
-    # 🛠️ THE FIX: Convert payload to dictionary if it's currently a string
+    governance_warnings = run_retail_governance_checks(df)
+
     if isinstance(payload, str):
         try:
             payload = json.loads(payload)
         except json.JSONDecodeError:
             # Fallback just in case it's a raw text string, not JSON
             payload = {"raw_data": payload} 
-            
+
     payload['kpi_results'] = kpi_list
-    
-    # 3. Load the Retail Prompt
+    payload['retail_governance_warnings'] = governance_warnings
+
     prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
     
-    # Guardrail: Check if prompt file actually exists
     if not os.path.exists(prompt_path):
         return "❌ ERROR: `prompt.txt` file missing from industries/retail/ directory."
         
@@ -54,12 +48,15 @@ def run_retail_analysis(payload, client, df):
         
     final_prompt = prompt_template.replace('{data_payload}', json.dumps(payload, indent=2))
     
-    # 4. Call the LLM with a Safety Net
     print("🧠 Consulting AI Retail Analyst...")
     try:
         response = client.chat.completions.create(
             model="gemini-2.5-flash", 
-            messages=[{"role": "user", "content": final_prompt}]
+            messages=[
+                {"role": "system", "content": "You are a pragmatic retail analytics consultant. Focus only on the provided data context."},
+                {"role": "user", "content": final_prompt}
+            ],
+            temperature=0.2
         )
         
         report_content = response.choices[0].message.content
@@ -72,7 +69,8 @@ def run_retail_analysis(payload, client, df):
         print(f"❌ API Call Failed: {e}")
         return f"❌ CRITICAL API ERROR: {str(e)}"
     
-    # 5. Inject the strict Markdown table
-    final_report = report_content.replace('{{INSERT_KPIS_HERE}}', kpi_markdown)
-    
-    return final_report
+    if "{{INSERT_KPIS_HERE}}" in report_content:
+        return report_content.replace("{{INSERT_KPIS_HERE}}", kpi_markdown)
+    if "{INSERT_KPIS_HERE}" in report_content:
+        return report_content.replace("{INSERT_KPIS_HERE}", kpi_markdown)
+    return report_content + "\n\n### Traceable KPIs\n" + kpi_markdown
