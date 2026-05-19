@@ -6,16 +6,15 @@ from openai import OpenAI
 from utils.cleaner import load_and_clean, universal_clean
 from utils.profiler import generate_payload
 
-# 2. SETUP OPENROUTER CLIENT
-or_key = os.getenv("OPENROUTER_API_KEY")
-if not or_key:
-    print("❌ ERROR: OPENROUTER_API_KEY missing from environment variables.")
+# 2. SETUP GEMINI CLIENT (Via OpenAI Compatibility Layer)
+gemini_key = os.getenv("GEMINI_API_KEY")
+if not gemini_key:
+    print("❌ ERROR: GEMINI_API_KEY missing from environment variables.")
     sys.exit(1)
 
 client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=or_key,
-    default_headers={"HTTP-Referer": "https://github.com", "X-Title": "Universal AI Pipeline"}
+    api_key=gemini_key,
+    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
 )
 
 def detect_industry(columns_list):
