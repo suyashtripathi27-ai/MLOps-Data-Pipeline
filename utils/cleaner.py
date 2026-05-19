@@ -63,6 +63,16 @@ UNIVERSAL_SCHEMA = {
     "shipment_id": ["pronumber", "bolnumber", "trackingnumber", "loadid", "orderid", "sid", "referencenumber", "docketnumber"],
     "carrier_name": ["carrier", "scac", "transportcompany", "logisticsprovider", "truckingcompany"],
     "total_weight": ["weightkg", "weight", "payloadweight", "cargoweight", "grossweight", "netmass", "weightlbs"]
+    "account_id": ["account_number", "acct_id", "acct_num", "account id", "Account No"],
+    "transaction_date": ["date", "posting_date", "txn_date", "transaction date"],
+    "amount": ["transaction_amount", "txn_amt", "value", "withdrawal", "deposit_amount"],
+    "balance": ["account_balance", "ending_balance", "available_balance", "ledger_balance"],
+    "customer_id": ["customer_code", "cust_id", "client_id"],
+    "loan_status": ["status", "payment_status", "loan_state"],
+    "outstanding_balance": ["loan_balance", "remaining_balance", "principal_remaining"],
+    "fees_charged": ["fee_amount", "charges", "fee", "service_charge"],
+    "aml_flag": ["aml_alert", "suspicious_flag", "fraud_flag", "is_suspicious"],
+    "kyc_status": ["kyc_verified", "verification_status", "is_verified"]
 }
 
 def normalize_string(s):
