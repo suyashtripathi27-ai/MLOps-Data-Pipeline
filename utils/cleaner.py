@@ -2,6 +2,8 @@ import pandas as pd
 import os
 import zipfile
 import io
+import difflib
+import re
 from .relationship_detector import enrich_fact_table
 
 def load_and_clean(file_path):
@@ -10,54 +12,31 @@ def load_and_clean(file_path):
     
     if file_path.endswith('.csv'):
         df = pd.read_csv(file_path)
-        
     elif file_path.endswith('.zip'):
         print(f"📦 Inspecting ZIP archive for Star Schema...")
         with zipfile.ZipFile(file_path, 'r') as z:
             csv_files = [f for f in z.namelist() if f.endswith('.csv') and not f.startswith('__MACOSX')]
+            if not csv_files: raise ValueError("No CSV files found in ZIP.")
             
-            if not csv_files:
-                raise ValueError("No CSV files found in the ZIP archive.")
-                
             if len(csv_files) == 1:
                 target_file = csv_files[0]
-                with z.open(target_file) as f:
-                    df = pd.read_csv(f)
+                with z.open(target_file) as f: df = pd.read_csv(f)
             else:
-                print(f"⚠️ Multiple CSVs detected ({len(csv_files)}). Scanning for primary fact table...")
                 core_keywords = ['trip', 'load', 'delivery', 'order', 'sales']
-                target_file = None
-                for f in csv_files:
-                    if any(k in f.lower() for k in core_keywords):
-                        target_file = f
-                        break
-                        
+                target_file = next((f for f in csv_files if any(k in f.lower() for k in core_keywords)), None)
                 if not target_file:
                     file_sizes = {f: z.getinfo(f).file_size for f in csv_files}
                     target_file = max(file_sizes, key=file_sizes.get)
-                    
-                print(f"🎯 Fact Table Selected: {target_file}")
                 
-                # 1. Load the Fact Table
-                with z.open(target_file) as f:
-                    fact_df = pd.read_csv(f)
-                    
-                # 2. Safely load Dimension Tables (Memory Guardrail: Skip if > 50MB)
+                with z.open(target_file) as f: fact_df = pd.read_csv(f)
+                
                 dim_dfs = {}
                 for f_name in csv_files:
-                    if f_name != target_file:
-                        file_size_mb = z.getinfo(f_name).file_size / (1024 * 1024)
-                        if file_size_mb < 50.0:
-                            with z.open(f_name) as f:
-                                # Store it in the dictionary using the filename without '.csv'
-                                table_name = f_name.replace('.csv', '').split('/')[-1]
-                                dim_dfs[table_name] = pd.read_csv(f)
-                        else:
-                            print(f"⏭️ Skipping `{f_name}` (Size: {file_size_mb:.1f}MB exceeds dimension limit)")
+                    if f_name != target_file and (z.getinfo(f_name).file_size / (1024 * 1024)) < 50.0:
+                        with z.open(f_name) as f:
+                            dim_dfs[f_name.replace('.csv', '').split('/')[-1]] = pd.read_csv(f)
                             
-                # 3. 🧠 THE MAGIC: Enrich the Fact Table
                 df = enrich_fact_table(fact_df, dim_dfs)
-                
     elif file_path.endswith(('.xls', '.xlsx')):
         df = pd.read_excel(file_path)
     else:
@@ -68,106 +47,153 @@ def load_and_clean(file_path):
     return df
 
 # ==========================================
-# 2. UNIVERSAL DATA ENGINEERING
+# 🧠 THE EVIDENCE-BASED SEMANTIC ENGINE
 # ==========================================
-def standardize_column_names(df):
-    """Converts all columns to lowercase and replaces spaces with underscores."""
-    df.columns = df.columns.str.lower().str.replace(' ', '_')
-    return df
 
-def remove_duplicates(df):
-    """Drops exact duplicate rows and returns the cleaned dataframe."""
-    initial_shape = df.shape[0]
-    df = df.drop_duplicates()
-    final_shape = df.shape[0]
-    if initial_shape != final_shape:
-        print(f"🧹 Dropped {initial_shape - final_shape} duplicate rows.")
-    return df
+# Notice: All aliases are pre-normalized (no underscores or spaces) for pure matching
+UNIVERSAL_SCHEMA = {
+    "revenue": ["rev", "totalrevenue", "income", "sales", "triprevenue", "freightrevenue", "billedamount", "grossrevenue", "statvalue", "amt", "amount"],
+    "total_cost": ["cost", "totalexpenses", "tripcost", "overallcost", "freightcost", "carrierfee", "invoicetotal"],
+    "detention_minutes": ["detentiontime", "waittime", "facilitydelay", "dwelltime", "delaymins", "holdtime", "idletimehours", "detentionmins", "waitingtime"],
+    "actual_duration_hours": ["transitdays", "shippingduration", "timeintransit", "leadtime", "actualtransittime", "deliverydays", "triptm"],
+    "temperature_celsius": ["temperature", "ambienttemp", "tempc"],
+    "asset_utilization_pct": ["assetutilization", "utilizationrate", "capacityused"],
+    "delay_flag": ["logisticsdelay", "delayoccurred", "isdelayed"],
+    "source_name": ["originwarehouse", "facilityname", "originhub", "warehouse", "pickuplocation", "dispatchlocation", "shipperfacility", "srcwh"],
+    "destination_name": ["destination", "deliverylocation", "consigneefacility", "dropoff", "finaldestination", "receivinghub", "destctr"],
+    "actual_distance_miles": ["distance", "totaldistance", "tripmiles", "routedistance", "milesdriven"],
+    "shipment_id": ["pronumber", "bolnumber", "trackingnumber", "loadid", "orderid", "sid", "referencenumber", "docketnumber"],
+    "carrier_name": ["carrier", "scac", "transportcompany", "logisticsprovider", "truckingcompany"],
+    "total_weight": ["weightkg", "weight", "payloadweight", "cargoweight", "grossweight", "netmass", "weightlbs"]
+}
 
-def fill_numeric_missing(df, strategy='median'):
-    """Fills missing numeric values universally."""
-    numeric_cols = df.select_dtypes(include=['number']).columns
-    for col in numeric_cols:
-        if df[col].isnull().sum() > 0:
-            if strategy == 'median':
-                df[col] = df[col].fillna(df[col].median())
-            elif strategy == 'mean':
-                df[col] = df[col].fillna(df[col].mean())
-    return df
+def normalize_string(s):
+    """ISSUE 2 FIX: True Column Normalization stripping all special characters."""
+    return re.sub(r'[^a-z0-9]', '', str(s).lower())
 
-def fix_datetime_columns(df):
-    """Attempts to auto-detect and fix datetime columns."""
-    for col in df.columns:
-        if 'date' in col.lower() or 'time' in col.lower():
-            try:
-                df[col] = pd.to_datetime(df[col])
-            except Exception:
-                pass # If it fails, leave it as is
-    return df
+def infer_data_profile(series):
+    """Statistical guardrails."""
+    if pd.api.types.is_numeric_dtype(series): return "numeric"
+    if pd.api.types.is_datetime64_any_dtype(series) or "date" in str(series.name).lower(): return "datetime"
+    if series.nunique() < 50: return "categorical"
+    return "text"
 
-def apply_schema_aliases(df):
-    """Maps known messy column names to our standard internal schema."""
-    alias_dict = {
-        "revenue": [
-            "rev", "total_revenue", "income", "sales", "trip_revenue", 
-            "freight_revenue", "billed_amount", "gross_revenue", "stat_value"
-        ],
-        "total_cost": [
-            "cost", "total_expenses", "trip_cost", "overall_cost", 
-            "freight_cost", "carrier_fee", "invoice_total"
-        ],
-        "detention_minutes": [
-            "detention_time", "wait_time", "facility_delay", "dwell_time", 
-            "delay_mins", "hold_time", "idle_time_hours", "detention_mins", "waiting_time"
-        ],
-        "actual_duration_hours": [
-            "transit_days", "shipping_duration", "time_in_transit", 
-            "lead_time", "actual_transit_time", "delivery_days"
-        ],
-        "temperature_celsius": ["temperature", "ambient_temp", "temp_c"],
-        "asset_utilization_pct": ["asset_utilization", "utilization_rate", "capacity_used"],
-        "delay_flag": ["logistics_delay", "delay_occurred", "is_delayed"
-        ],
-        "source_name": [
-            "origin_warehouse", "facility_name", "origin_hub", "warehouse", 
-            "pickup_location", "dispatch_location", "shipper_facility"
-        ],
-        "destination_name": [
-            "destination", "delivery_location", "consignee_facility", 
-            "drop_off", "final_destination", "receiving_hub"
-        ],
-        "actual_distance_miles": [
-            "distance", "total_distance", "trip_miles", "route_distance", "miles_driven"
-        ],
-        "shipment_id": [
-            "pro_number", "bol_number", "tracking_number", "load_id", 
-            "order_id", "sid", "reference_number", "docket_number"
-        ],
-        "carrier_name": [
-            "carrier", "scac", "transport_company", "logistics_provider", "trucking_company"
-        ],
-        "total_weight": [
-            "weight_kg", "weight", "payload_weight", "cargo_weight", 
-            "gross_weight", "net_mass", "weight_lbs"
-        ]
-    }
+def infer_from_values(series):
+    """ISSUE 3 FIX: Value Pattern Inference."""
+    if series.dtype == 'object' or series.dtype.name == 'category':
+        sample = series.dropna().astype(str).head(100)
+        if not sample.empty:
+            # If 40%+ of values contain HUB, DC, WH, or WAREHOUSE
+            if sample.str.contains(r"HUB|DC|WH|WAREHOUSE|CENTER", case=False, regex=True).mean() > 0.4:
+                return "logistics_location"
+    return "unknown"
+
+def run_schema_inference(df):
+    """ISSUE 1 & 5 FIX: Evidence logging, Confidence Scoring, and Delayed Batch Renaming."""
+    print("🧠 Initiating Evidence-Based Semantic Schema Inference...")
     
-    for standard_name, messy_aliases in alias_dict.items():
-        if standard_name not in df.columns:
-            for alias in messy_aliases:
-                if alias in df.columns:
-                    df.rename(columns={alias: standard_name}, inplace=True)
-                    print(f"🔄 Schema Mapper: Renamed `{alias}` to `{standard_name}`")
-                    break
-                    
+    schema_mapping = {}
+    evidence_log = []
+    
+    for original_col in df.columns:
+        norm_col = normalize_string(original_col)
+        mapped_to = None
+        confidence = 0.0
+        evidence = []
+
+        # ---------------------------------------------------------
+        # LAYER 1: Exact Normalized Alias Match (Confidence: 1.0)
+        # ---------------------------------------------------------
+        for standard_name, aliases in UNIVERSAL_SCHEMA.items():
+            if norm_col == normalize_string(standard_name) or norm_col in aliases:
+                mapped_to = standard_name
+                confidence = 1.0
+                evidence.append("Exact normalized alias match")
+                break
+        
+        # ---------------------------------------------------------
+        # LAYER 2: Value Pattern Inference (Confidence: 0.95)
+        # ---------------------------------------------------------
+        if not mapped_to:
+            val_pattern = infer_from_values(df[original_col])
+            if val_pattern == "logistics_location":
+                if any(x in norm_col for x in ["src", "orig", "from", "start"]):
+                    mapped_to = "source_name"
+                    confidence = 0.95
+                    evidence.extend(["Value Pattern: Logistics Location", "Name Context: Origin indicator"])
+                elif any(x in norm_col for x in ["dest", "to", "end"]):
+                    mapped_to = "destination_name"
+                    confidence = 0.95
+                    evidence.extend(["Value Pattern: Logistics Location", "Name Context: Destination indicator"])
+
+        # ---------------------------------------------------------
+        # LAYER 3: Fuzzy Matching with Guardrails (Confidence: 0.85 - 0.99)
+        # ---------------------------------------------------------
+        if not mapped_to:
+            all_known_terms = {alias: std for std, aliases in UNIVERSAL_SCHEMA.items() for alias in aliases}
+            for std in UNIVERSAL_SCHEMA.keys():
+                all_known_terms[normalize_string(std)] = std
+            
+            matches = difflib.get_close_matches(norm_col, all_known_terms.keys(), n=1, cutoff=0.85)
+            
+            if matches:
+                matched_alias = matches[0]
+                proposed_std = all_known_terms[matched_alias]
+                ratio = difflib.SequenceMatcher(None, norm_col, matched_alias).ratio()
+                
+                col_profile = infer_data_profile(df[original_col])
+                numeric_metrics = ['revenue', 'total_cost', 'actual_duration_hours', 'total_weight', 'detention_minutes', 'temperature_celsius', 'asset_utilization_pct', 'actual_distance_miles']
+                
+                # Semantic Guardrail: Don't map strings to numeric math columns
+                if proposed_std in numeric_metrics and col_profile != "numeric":
+                    evidence.append(f"Fuzzy match rejected: `{original_col}` is {col_profile}, requires numeric.")
+                else:
+                    mapped_to = proposed_std
+                    confidence = round(ratio, 2)
+                    evidence.extend([f"Fuzzy Match: '{matched_alias}'", f"Profile Verified: {col_profile}"])
+
+        # ---------------------------------------------------------
+        # FINAL DECISION: Commit to Schema Mapping Dictionary
+        # ---------------------------------------------------------
+        if mapped_to and confidence >= 0.85:
+            schema_mapping[original_col] = mapped_to
+            evidence_log.append({
+                "column": original_col,
+                "mapped_to": mapped_to,
+                "confidence": confidence,
+                "evidence": evidence
+            })
+        elif mapped_to:
+            print(f"⚠️ Warning: Ignored mapping `{original_col}` -> `{mapped_to}` (Confidence {confidence} below 0.85 safe threshold)")
+
+    # ISSUE 5 FIX: Output the explainable log, THEN batch rename.
+    for log in evidence_log:
+        print(f"🎯 AI Mapped: `{log['column']}` -> `{log['mapped_to']}` | Conf: {log['confidence']} | Evidence: {log['evidence']}")
+        
+    df.rename(columns=schema_mapping, inplace=True)
     return df
 
 def universal_clean(df):
-    """The master function to run all universal cleaning steps."""
+    """The master function to run all universal data engineering layers."""
     print("⚙️ Running universal data engineering layers...")
-    df = standardize_column_names(df)
-    df = apply_schema_aliases(df)
-    df = remove_duplicates(df)
-    df = fill_numeric_missing(df)
-    df = fix_datetime_columns(df)
+    
+    # 🧠 Semantic Inference Engine
+    df = run_schema_inference(df)
+    
+    # Standard Quality Checks
+    initial_shape = df.shape[0]
+    df = df.drop_duplicates()
+    if initial_shape != df.shape[0]:
+        print(f"🧹 Dropped {initial_shape - df.shape[0]} duplicate rows.")
+        
+    numeric_cols = df.select_dtypes(include=['number']).columns
+    for col in numeric_cols:
+        if df[col].isnull().sum() > 0:
+            df[col] = df[col].fillna(df[col].median())
+            
+    for col in df.columns:
+        if 'date' in col.lower() or 'time' in col.lower() or 'timestamp' in col.lower():
+            try: df[col] = pd.to_datetime(df[col])
+            except: pass
+            
     return df
