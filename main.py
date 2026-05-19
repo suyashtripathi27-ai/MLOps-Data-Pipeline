@@ -32,7 +32,7 @@ def detect_industry(columns_list):
     
     try:
         response = client.chat.completions.create(
-            model="openrouter/free", 
+            model="gemini-2.5-flash", 
             messages=[{"role": "user", "content": prompt}],
             temperature=0.0 
         )
