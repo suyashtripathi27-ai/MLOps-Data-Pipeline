@@ -62,7 +62,7 @@ UNIVERSAL_SCHEMA = {
     "actual_distance_miles": ["distance", "totaldistance", "tripmiles", "routedistance", "milesdriven"],
     "shipment_id": ["pronumber", "bolnumber", "trackingnumber", "loadid", "orderid", "sid", "referencenumber", "docketnumber"],
     "carrier_name": ["carrier", "scac", "transportcompany", "logisticsprovider", "truckingcompany"],
-    "total_weight": ["weightkg", "weight", "payloadweight", "cargoweight", "grossweight", "netmass", "weightlbs"]
+    "total_weight": ["weightkg", "weight", "payloadweight", "cargoweight", "grossweight", "netmass", "weightlbs"],
     "account_id": ["account_number", "acct_id", "acct_num", "account id", "Account No"],
     "transaction_date": ["date", "posting_date", "txn_date", "transaction date"],
     "amount": ["transaction_amount", "txn_amt", "value", "withdrawal", "deposit_amount"],
