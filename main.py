@@ -115,8 +115,8 @@ def main():
         industry = detect_industry(columns)
         print(f"🎯 Agentic Router Classified Industry As: [{industry.upper()}]")
         
-        # --- D. GENERATE MATH PAYLOAD ---
-        payload = generate_payload(df)
+        # --- D. PROFILE DATA & GENERATE PAYLOAD ---
+        payload = generate_payload(df, industry_context=industry)
         
         # --- E. THE DYNAMIC SWITCHBOARD ---
         print(f"🔀 Routing to {industry} module...")
