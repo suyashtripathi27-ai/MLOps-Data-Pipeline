@@ -1,5 +1,6 @@
 import pandas as pd
 from .reliability import evaluate_kpi_confidence
+from utils.validator import SemanticValidator
 
 def calc_iot_sensor_metrics(df):
     """Calculates KPIs for IoT-enabled smart logistics and cold chain tracking."""
@@ -7,30 +8,41 @@ def calc_iot_sensor_metrics(df):
     
     # 1. Cold Chain Risk (Spikes in Temperature)
     if 'temperature_celsius' in df.columns:
-        valid_temp = df['temperature_celsius'].dropna()
-        if not valid_temp.empty:
-            # Assuming cargo requiring climate control shouldn't exceed 25C or go below 0C
-            excursions = len(valid_temp[(valid_temp > 25) | (valid_temp < 0)])
-            excursion_rate = (excursions / len(valid_temp)) * 100
-            
-            conf, warns = evaluate_kpi_confidence(df, ['temperature_celsius'])
-            kpis.append({
-                "category": "🌡️ Cold Chain Quality", "name": "Thermal Excursion Rate",
-                "value": f"{excursion_rate:.2f}%", "formula": "(Out-of-Bounds Temp Records / Total Records) * 100",
-                "source": "`temperature_celsius`", "confidence": conf, "warnings": warns
-            })
+        if pd.api.types.is_numeric_dtype(df['temperature_celsius']):
+            valid_temp = df['temperature_celsius'].dropna()
+            if not valid_temp.empty:
+                # Assuming cargo requiring climate control shouldn't exceed 25C or go below 0C
+                excursions = len(valid_temp[(valid_temp > 25) | (valid_temp < 0)])
+                excursion_rate = (excursions / len(valid_temp)) * 100
+                
+                conf, warns = evaluate_kpi_confidence(df, ['temperature_celsius'])
+                kpis.append({
+                    "category": "🌡️ Cold Chain Quality", "name": "Thermal Excursion Rate",
+                    "value": f"{excursion_rate:.2f}%", "formula": "(Out-of-Bounds Temp Records / Total Records) * 100",
+                    "source": "`temperature_celsius`", "confidence": conf, "warnings": warns
+                })
 
     # 2. Asset Capacity Efficiency
     if 'asset_utilization_pct' in df.columns:
-        valid_util = df['asset_utilization_pct'].dropna()
-        if not valid_util.empty:
-            avg_utilization = valid_util.mean()
-            
-            conf, warns = evaluate_kpi_confidence(df, ['asset_utilization_pct'])
+        # 🛡️ GATEKEEPER CHECK
+        is_valid, reason = SemanticValidator.is_valid_percentage(df['asset_utilization_pct'])
+        
+        if is_valid:
+            valid_util = df['asset_utilization_pct'].dropna()
+            if not valid_util.empty:
+                avg_utilization = valid_util.mean()
+                
+                conf, warns = evaluate_kpi_confidence(df, ['asset_utilization_pct'])
+                kpis.append({
+                    "category": "🚛 Asset Optimization", "name": "Avg Asset Utilization",
+                    "value": f"{avg_utilization:.1f}%", "formula": "Mean(asset_utilization_pct)",
+                    "source": "`asset_utilization_pct`", "confidence": conf, "warnings": warns
+                })
+        else:
             kpis.append({
                 "category": "🚛 Asset Optimization", "name": "Avg Asset Utilization",
-                "value": f"{avg_utilization:.1f}%", "formula": "Mean(asset_utilization_pct)",
-                "source": "`asset_utilization_pct`", "confidence": conf, "warnings": warns
+                "value": "EXCLUDED", "formula": "N/A",
+                "source": "Multiple", "confidence": "Low", "warnings": reason
             })
 
     # 3. Network Friction (Incident-Based Delay Rate)
