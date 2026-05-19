@@ -5,6 +5,7 @@ from openai import OpenAI
 # 1. IMPORT OUR UNIVERSAL UTILITIES
 from utils.cleaner import load_and_clean, universal_clean
 from utils.profiler import generate_payload
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 # 2. SETUP GEMINI CLIENT (Via OpenAI Compatibility Layer)
 gemini_key = os.getenv("GEMINI_API_KEY")
@@ -17,35 +18,58 @@ client = OpenAI(
     base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
 )
 
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+def call_router_llm(client, prompt):
+    """Calls Gemini API with automatic retries if rate limit is hit."""
+    response = client.chat.completions.create(
+        model="gemini-2.5-flash",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.0
+    )
+    return response.choices[0].message.content.strip().lower()
+
 def detect_industry(columns_list):
     """THE AGENTIC ROUTER: Looks at the column names and guesses the industry."""
     print(f"🔍 Sniffing data schema: {columns_list}")
+   # ⚡ STEP 1: HEURISTIC FAST-TRACK (Saves API Quota)
+    cols_str = str(columns_list).lower()
     
-    supported_industries = ["logistics", "retail", "generic"]
+    if any(word in cols_str for word in ['store', 'dept', 'weekly_sales', 'retail']):
+        print("🎯 Fast Route: Classified as [RETAIL] via Heuristics")
+        return "retail"
+    elif any(word in cols_str for word in ['hub', 'actual_time', 'fleet', 'osrm_time']):
+        print("🎯 Fast Route: Classified as [LOGISTICS] via Heuristics")
+        return "logistics"
+    elif any(word in cols_str for word in ['account', 'balance', 'transaction', 'loan', 'deposit']):
+        print("🎯 Fast Route: Classified as [BANKING] via Heuristics")
+        return "banking"
+        
+    # 🧠 STEP 2: AI ROUTING (If heuristics fail to identify it)
+    supported_industries = ["logistics", "retail", "banking", "generic"]
     
     prompt = f"""
     Analyze these dataset columns: {columns_list}
     Classify the industry of this dataset. 
     You MUST reply with EXACTLY ONE WORD from this list in all lowercase: {supported_industries}.
-    If it doesn't clearly match logistics or retail, reply with 'generic'.
+    If it doesn't clearly match logistics, retail, or banking, reply with 'generic'.
     """
     
     try:
-        response = client.chat.completions.create(
-            model="gemini-2.5-flash", 
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.0 
-        )
-        detected = response.choices[0].message.content.strip().lower()
+        # Calls the retry-wrapped function to prevent 429 crashes
+        raw_response = call_router_llm(client, prompt)
         
-        if detected not in supported_industries:
-            detected = "generic"
-            
-        return detected
-    except Exception as e:
-        print(f"⚠️ Industry detection failed. Defaulting to generic. Error: {e}")
+        # Cleanup loop (Ensures we get a clean word even if AI adds a period)
+        for valid_industry in supported_industries:
+            if valid_industry in raw_response:
+                print(f"🎯 AI Router Classified Industry As: [{valid_industry.upper()}]")
+                return valid_industry
+                
         return "generic"
-
+        
+    except Exception as e:
+        print(f"⚠️ AI Routing failed (Rate Limit/Connection). Defaulting to generic. Error: {e}")
+        return "generic"
+        
 def main():
     print("🚀 Starting Universal Enterprise Pipeline...")
     
@@ -104,6 +128,10 @@ def main():
         elif industry == "retail":
             from industries.retail.pipeline import run_retail_analysis
             final_report = run_retail_analysis(payload, client, df)
+            
+        elif industry == "banking": 
+            from industries.banking.pipeline import run_banking_analysis
+            final_report = run_banking_analysis(payload, client, df)
 
         else:
             final_report = "Generic analysis simulated..."
