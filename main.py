@@ -43,9 +43,12 @@ def detect_industry(columns_list):
     elif any(word in cols_str for word in ['account', 'balance', 'transaction', 'loan', 'deposit']):
         print("🎯 Fast Route: Classified as [BANKING] via Heuristics")
         return "banking"
+    elif any(word in cols_str for word in ['batch', 'expiry', 'purity', 'therapeutic', 'drug', 'fda']):
+        print("🎯 Fast Route: Classified as [PHARMA] via Heuristics")
+        return "pharma"
         
     # 🧠 STEP 2: AI ROUTING (If heuristics fail to identify it)
-    supported_industries = ["logistics", "retail", "banking", "generic"]
+    supported_industries = ["logistics", "retail", "banking", "pharma", "generic"]
     
     prompt = f"""
     Analyze these dataset columns: {columns_list}
@@ -132,6 +135,10 @@ def main():
         elif industry == "banking": 
             from industries.banking.pipeline import run_banking_analysis
             final_report = run_banking_analysis(payload, client, df)
+
+        elif industry == "pharma": 
+            from industries.pharma.pipeline import run_pharma_analysis
+            final_report = run_pharma_analysis(payload, client, df)
 
         else:
             final_report = "Generic analysis simulated..."
