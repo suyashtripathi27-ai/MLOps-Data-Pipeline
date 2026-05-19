@@ -66,3 +66,45 @@ class SemanticValidator:
             return False, f"Out of bounds percentage: min={series.min():.1f}, max={series.max():.1f}."
             
         return True, "Valid"
+
+
+    @staticmethod
+    def is_valid_dosage(series):
+        """Pharma: Validates medical dosage (must be positive numbers)."""
+        if not pd.api.types.is_numeric_dtype(series):
+            return False, "Not numeric."
+        
+        # Dosages must always be positive
+        if series.min() <= 0:
+            return False, f"Invalid dosage detected: minimum value is {series.min():.2f} (must be > 0)."
+            
+        # Flag extremely high outliers (e.g., > 1000x the median)
+        median_dosage = series.median()
+        if median_dosage > 0 and series.max() > (median_dosage * 1000):
+            return False, f"Extreme dosage outlier detected: {series.max():.2f} (>{1000}x median)."
+            
+        return True, "Valid"
+
+    @staticmethod
+    def is_valid_adverse_event_count(series):
+        """Pharma: Validates adverse event tracking (must be non-negative integers)."""
+        if not pd.api.types.is_numeric_dtype(series):
+            return False, "Not numeric."
+        
+        # Event counts must be non-negative integers
+        if series.min() < 0 or (series != series.astype(int)).any():
+            return False, "Adverse event counts must be non-negative integers."
+            
+        return True, "Valid"
+
+    @staticmethod
+    def is_valid_gmp_compliance(series):
+        """Pharma: Validates GMP inspection results (0 = compliant, >0 = defects)."""
+        if not pd.api.types.is_numeric_dtype(series):
+            return False, "Not numeric."
+        
+        # GMP defect counts must be non-negative
+        if series.min() < 0:
+            return False, "GMP defect counts cannot be negative."
+            
+        return True, "Valid"
