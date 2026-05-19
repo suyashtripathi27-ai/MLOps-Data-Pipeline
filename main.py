@@ -101,11 +101,11 @@ def main():
         if industry == "logistics":
             from industries.logistics.pipeline import run_logistics_analysis
             final_report = run_logistics_analysis(payload, client, df)
-            
-       elif industry == "retail":
+
+        elif industry == "retail":
             from industries.retail.pipeline import run_retail_analysis
             final_report = run_retail_analysis(payload, client, df)
-            
+
         else:
             final_report = "Generic analysis simulated..."
             
