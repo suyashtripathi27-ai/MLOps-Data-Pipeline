@@ -6,7 +6,6 @@ on:
       - main
   workflow_dispatch:
 
-# 🧠 NEW: Explicitly grant the runner permission to push code
 permissions:
   contents: write
 
@@ -28,7 +27,7 @@ jobs:
     - name: Install System Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pandas numpy openpyxl openrouter openai matplotlib seaborn
+        pip install pandas numpy openpyxl openrouter openai matplotlib seaborn rapidfuzz
 
     - name: Execute Master Orchestrator
       env:
@@ -44,10 +43,8 @@ jobs:
         mkdir -p data/outputs/charts/
         mkdir -p data/outputs/logs/
         
-        # Force add the outputs folder
         git add --force data/outputs/
         
-        # Check if there are actually changes before committing
         if git diff-index --quiet HEAD --; then
           echo "⚠️ No new reports generated. Check Python execution logs."
         else
