@@ -1,10 +1,6 @@
-"""
-Branch-level KPIs: performance, load, efficiency.
-"""
 import pandas as pd
 from .reliability import evaluate_kpi_confidence
 from utils.validator import SemanticValidator
-
 
 def _first_column(df, candidates):
     for col in candidates:
@@ -12,13 +8,11 @@ def _first_column(df, candidates):
             return col
     return None
 
-
 def calc_branch_metrics(df):
     """Calculates branch performance and efficiency KPIs."""
     kpis = []
-    branch_col = _first_column(df, ["branch_id", "branch_code", "location"])
+    branch_col = _first_column(df, ["branch_id", "branch_code", "location", "Geography"])
     amount_col = _first_column(df, ["amount", "balance", "transaction_amount"])
-    customer_col = _first_column(df, ["customer_id"])
 
     if not branch_col or not amount_col:
         return kpis
@@ -37,6 +31,7 @@ def calc_branch_metrics(df):
         "confidence": conf,
         "warnings": warns,
     })
+    
     kpis.append({
         "category": "🏢 Branch Analysis",
         "name": "Avg Branch Revenue",
@@ -47,4 +42,17 @@ def calc_branch_metrics(df):
         "warnings": warns,
     })
 
-    top_10_share = (
+    # This was the section that got cut off!
+    if total_revenue > 0:
+        top_10_share = (branch_revenue.head(10).sum() / total_revenue) * 100
+        kpis.append({
+            "category": "🏢 Branch Analysis",
+            "name": "Top 10 Branch Share",
+            "value": f"{top_10_share:.1f}%",
+            "formula": "(Sum of Top 10 / Total) * 100",
+            "source": f"`{branch_col}`, `{amount_col}`",
+            "confidence": conf,
+            "warnings": warns,
+        })
+
+    return kpis
