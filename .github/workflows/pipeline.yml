@@ -4,14 +4,26 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "data/raw/**"
+      - ".github/workflows/pipeline.yml"
+      - "main.py"
+      - "utils/**"
+      - "requirements.txt"
   workflow_dispatch:
 
 permissions:
   contents: write
+  actions: read
+
+concurrency:
+  group: pipeline-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
     - name: Checkout Repository Code
@@ -23,11 +35,12 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: '3.10'
+        cache: 'pip'
 
-    - name: Install System Dependencies
+    - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install pandas numpy openpyxl openrouter openai matplotlib seaborn rapidfuzz
+        pip install -r requirements.txt
 
     - name: Execute Master Orchestrator
       env:
@@ -35,7 +48,17 @@ jobs:
       run: |
         python main.py
 
-    - name: Save AI Strategy Report to GitHub
+    - name: Upload Artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pipeline-outputs
+        path: |
+          data/outputs/
+        retention-days: 30
+
+    - name: Commit & Push Generated Reports
+      if: success() && github.actor != 'dependabot[bot]'
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
@@ -43,12 +66,13 @@ jobs:
         mkdir -p data/outputs/charts/
         mkdir -p data/outputs/logs/
         
-        git add --force data/outputs/
+        # Only stage intended output files, not directory contents
+        git add data/outputs/reports/ data/outputs/charts/ data/outputs/logs/ || true
         
-        if git diff-index --quiet HEAD --; then
-          echo "⚠️ No new reports generated. Check Python execution logs."
-        else
-          git commit -m "🤖 Auto-generated AI Strategy Report"
+        if ! git diff-index --quiet HEAD --; then
+          git commit -m "🤖 Auto-generated AI Strategy Report [skip ci]"
           git pull --rebase origin main
           git push origin main
+        else
+          echo "✓ No new reports to commit"
         fi
