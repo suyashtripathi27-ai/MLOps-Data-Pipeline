@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+# 🧠 NEW: Explicitly grant the runner permission to push code
+permissions:
+  contents: write
+
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
@@ -39,11 +43,15 @@ jobs:
         mkdir -p data/outputs/reports/
         mkdir -p data/outputs/charts/
         mkdir -p data/outputs/logs/
+        
+        # Force add the outputs folder
         git add --force data/outputs/
-        git commit -m "🤖 Auto-generated AI Strategy Report" || echo "No new reports to commit"
         
-        # Pull down remote changes with a rebase to avoid push rejections
-        git pull --rebase origin main
-        
-        # Securely push the unified changes
-        git push origin main
+        # Check if there are actually changes before committing
+        if git diff-index --quiet HEAD --; then
+          echo "⚠️ No new reports generated. Check Python execution logs."
+        else
+          git commit -m "🤖 Auto-generated AI Strategy Report"
+          git pull --rebase origin main
+          git push origin main
+        fi
