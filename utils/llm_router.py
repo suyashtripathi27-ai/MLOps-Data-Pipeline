@@ -1,4 +1,6 @@
 import pandas as pd
+import os
+os.makedirs("data/outputs/reports/", exist_ok=True)
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 @retry(stop=stop_after_attempt(2), wait=wait_exponential(multiplier=2, min=2, max=5))
