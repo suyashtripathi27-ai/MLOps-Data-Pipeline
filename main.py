@@ -49,9 +49,12 @@ def detect_industry(clients, columns_list):
     elif any(word in cols_str for word in ['batch', 'expiry', 'purity', 'therapeutic', 'drug', 'fda']):
         print("🎯 Fast Route: Classified as [PHARMA] via Heuristics")
         return "pharma"
+     elif any(word in cols_str for word in ['revenue', 'profit', 'expense', 'cashflow', 'liquidity', 'investment', 'roi', 'forecast', 'assets', 'equity']):
+        print("🎯 Fast Route: Classified as [FINANCE] via Heuristics")
+        return "finance"
         
     # 🧠 STEP 2: AI ROUTING (If heuristics fail to identify it)
-    supported_industries = ["logistics", "retail", "banking", "pharma", "generic"]
+    supported_industries = ["logistics", "retail", "banking", "pharma", "banking", "generic"]
     system_prompt = "You are a data schema router. Follow instructions exactly."
     
     user_prompt = f"""
@@ -144,6 +147,10 @@ def main():
         elif industry == "pharma": 
             from industries.pharma.pipeline import run_pharma_analysis
             final_report = run_pharma_analysis(payload, clients, df)
+
+        elif industry == "finance":
+            from industries.finance.pipeline import run_finance_analysis
+            final_report = run_finance_analysis(payload, clients, df)
 
         else:
             final_report = "Generic analysis simulated..."
