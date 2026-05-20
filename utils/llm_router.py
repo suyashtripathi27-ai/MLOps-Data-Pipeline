@@ -55,3 +55,22 @@ def execute_with_fallback(clients, system_prompt, user_prompt):
             print(f"⚠️ Rate limit hit. Backing off for {2**i} seconds...")
             time.sleep(2**i) # Exponential backoff
     raise Exception("❌ All retries failed due to rate limits.")
+
+    # 3. Add the Hugging Face Fallback
+    hf_token = os.getenv("HUGGINGFACE_API_KEY")
+    if hf_token:
+        try:
+            print("-> 🟢 Routing to HUGGINGFACE...")
+            headers = {"Authorization": f"Bearer {hf_token}"}
+            payload = {
+                "inputs": f"{system_prompt}\n\n{final_prompt}",
+                "parameters": {"max_new_tokens": 500}
+            }
+            # Using a popular free model like Mistral-7B-Instruct
+            url = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+            response = requests.post(url, headers=headers, json=payload)
+            return response.json()[0]['generated_text']
+        except Exception as e:
+            print(f"⚠️ HuggingFace API Failed: {e}")
+            
+    return "### ⚠️ Pipeline Warning\nAI analysis could not be completed."
