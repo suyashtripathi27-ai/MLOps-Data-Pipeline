@@ -80,7 +80,20 @@ UNIVERSAL_SCHEMA = {
     "quantity_produced": ["yield", "batch_size", "units_manufactured"],
     "quality_pass_rate": ["purity_score", "qa_rate", "yield_percent", "qc_score"],
     "regulatory_status": ["status", "fda_status", "approval_status", "qa_status"],
-    "kyc_status": ["kyc_verified", "verification_status", "is_verified"]
+    "kyc_status": ["kyc_verified", "verification_status", "is_verified"],
+    "enrolled": ["participants", "enrollment_count", "subjects"],
+    "dropouts": ["dropout_count", "withdrawn", "lost_to_followup"],
+    "sae_count": ["serious_adverse_events", "adverse_events", "ae_count"],
+    "batch_yield": ["yield_percentage", "production_yield", "yield_rate"],
+    "oos_rate": ["out_of_spec_rate", "deviations", "oos_count"],
+    "rft_rate": ["right_first_time", "first_pass_yield", "rft"],
+    "capa_count": ["corrective_actions", "preventive_actions", "capas"],
+    "cold_chain_breaches": ["temp_excursions", "cold_chain_events", "temperature_breach"],
+    "submission_date": ["nda_submission", "filing_date"],
+    "approval_date": ["fda_approval", "ema_approval"],
+    "complaints": ["complaint_count", "adverse_reports", "customer_complaints"],
+    "forecast_demand": ["predicted_demand", "demand_forecast", "projected_sales"],
+    "actual_demand": ["quantity_sold", "actual_sales"],
 }
 
 def normalize_string(s):
