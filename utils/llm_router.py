@@ -38,15 +38,17 @@ def execute_with_fallback(clients, system_prompt, user_prompt):
     # 1. Try Primary (Gemini)
     if clients.get("gemini"):
         try:
-            return _call_gemini(clients["gemini"], system_prompt, user_prompt)
-        except Exception as e:
-            print(f"   ⚠️ Primary API Failed ({e}). Initiating Fallback Protocol...")
+            return response
+        except RateLimitError:
+            print(f"⚠️ Rate limit hit. Backing off for {2**i} seconds...")
+            time.sleep(2**i) # Exponential backoff
+    raise Exception("❌ All retries failed due to rate limits.")
             
     # 2. Try Secondary (OpenRouter)
     if clients.get("openrouter"):
         try:
-            return _call_openrouter(clients["openrouter"], system_prompt, user_prompt)
-        except Exception as e:
-            print(f"   ⚠️ Secondary API Failed ({e}).")
-            
-    raise Exception("❌ ALL LLM APIs EXHAUSTED. Rate limits reached across all providers.")
+            return response
+        except RateLimitError:
+            print(f"⚠️ Rate limit hit. Backing off for {2**i} seconds...")
+            time.sleep(2**i) # Exponential backoff
+    raise Exception("❌ All retries failed due to rate limits.")
