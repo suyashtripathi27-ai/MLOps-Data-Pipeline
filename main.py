@@ -128,44 +128,31 @@ def main():
         # --- D. PROFILE DATA & GENERATE PAYLOAD ---
         payload = generate_payload(df, industry_context=industry)
         
-        # --- E. THE DYNAMIC SWITCHBOARD ---
+       # --- E. THE DYNAMIC SWITCHBOARD ---
         print(f"🔀 Routing to {industry} module...")
         
-        # 🛡️ NOTE: We are now passing 'clients' (plural) to all pipelines!
-        if industry == "logistics":
-            from industries.logistics.pipeline import run_logistics_analysis
-            final_report = run_logistics_analysis(payload, clients, df)
+        # Define the routing map
+        ROUTER_MAP = {
+            "logistics": ("industries.logistics.pipeline", "run_logistics_analysis"),
+            "retail":    ("industries.retail.pipeline",    "run_retail_analysis"),
+            "banking":   ("industries.banking.pipeline",   "run_banking_analysis"),
+            "pharma":    ("industries.pharma.pipeline",    "run_pharma_analysis"),
+            "finance":   ("industries.finance.pipeline",   "run_finance_analysis")
+        }
 
-        elif industry == "retail":
-            from industries.retail.pipeline import run_retail_analysis
-            final_report = run_retail_analysis(payload, clients, df)
-            
-        elif industry == "banking": 
-            from industries.banking.pipeline import run_banking_analysis
-            final_report = run_banking_analysis(payload, clients, df)
-
-        elif industry == "pharma": 
-            from industries.pharma.pipeline import run_pharma_analysis
-            final_report = run_pharma_analysis(payload, clients, df)
-
-        elif industry == "finance":
-            from industries.finance.pipeline import run_finance_analysis
-            final_report = run_finance_analysis(payload, clients, df)
-
+        if industry in ROUTER_MAP:
+            mod_path, func_name = ROUTER_MAP[industry]
+            # Use importlib for safe, dynamic imports
+            import importlib
+            module = importlib.import_module(mod_path)
+            analysis_func = getattr(module, func_name)
+            final_report = analysis_func(payload, clients, df)
         else:
-            final_report = "Generic analysis simulated..."
-            
-        # --- F. SAVE OUTPUT ---
-        base_name = os.path.splitext(file_name)[0]
-        report_name = f"AI_{industry.capitalize()}_{base_name}_Report.md"
-        output_path = os.path.join(output_dir, report_name)
-        
-        with open(output_path, "w", encoding="utf-8") as f:
-            f.write(final_report)
+            final_report = f"# Generic Analysis\n\nNo industry-specific pipeline detected for: {industry}."
             
         print(f"✅ Report saved to: {output_path}")
 
-    # --- G. GRACEFUL EXIT ---
+    # --- F. GRACEFUL EXIT ---
     if not processed_any_file:
         print("\n⏸️ No valid data files found in data/raw/. Pipeline sleeping safely.")
 
