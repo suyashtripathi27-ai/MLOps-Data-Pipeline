@@ -99,6 +99,20 @@ UNIVERSAL_SCHEMA = {
     "complaints": ["complaint_count", "adverse_reports", "customer_complaints"],
     "forecast_demand": ["predicted_demand", "demand_forecast", "projected_sales"],
     "actual_demand": ["quantity_sold", "actual_sales"],
+    "profit": ["netprofit", "netincome", "earnings", "netearnings", "profitamount"],
+    "expense": ["expenses", "opex", "operatingexpense", "operating_expense", "operatingexpenses"],
+    "assets": ["totalassets", "assettotal", "asset_value", "assetvalue"],
+    "equity": ["shareholders_equity", "shareholderequity", "owner_equity", "ownersequity"],
+    "current_assets": ["currentassets", "currassets", "currentasset", "currentassetstotal"],
+    "current_liabilities": ["currentliabilities", "currliabilities", "currentliab", "currentliabs"],
+    "cash": ["cashbalance", "cashamount", "cashonhand"],
+    "inventory": ["stock_value", "stock", "inventory_value"],
+    "operating_cashflow": ["cashfromoperations", "opcf", "operatingcf"],
+    "investing_cashflow": ["cashfrominvesting", "invcf", "investingcf"],
+    "financing_cashflow": ["cashfromfinancing", "fincf", "financingcf"],
+    "investment_value": ["portfolio_value", "market_value", "investmentamount"],
+    "return": ["roi", "pct_return", "investment_return"],
+    "default_flag": ["defaulted", "is_default", "loan_default"],
 }
 
 def normalize_string(s):
