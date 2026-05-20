@@ -1,12 +1,15 @@
 import os
 import json
-from .kpis import generate_retail_kpis
-from .reliability import run_retail_governance_checks
 from utils.llm_router import execute_with_fallback
+from .kpis import generate_retail_kpis 
 
 def generate_dynamic_kpis(df):
-    """Executes all retail KPI modules dynamically."""
-    return generate_retail_kpis(df)
+    """Executes all KPI modules dynamically and returns a list of dictionaries."""
+    try:
+        return generate_retail_kpis(df)
+    except Exception as e:
+        print(f"⚠️ Warning: Retail KPI generation failed: {e}")
+        return []
 
 def build_markdown_table(kpis):
     """Formats KPI dictionaries into a traceable markdown table."""
@@ -19,7 +22,7 @@ def build_markdown_table(kpis):
         md_table += f"| {kpi.get('category', '')} | **{kpi.get('name', '')}** | `{kpi.get('value', '')}` | *{kpi.get('formula', '')}* | `{kpi.get('source', '')}` | {kpi.get('confidence', 'N/A')} | {kpi.get('warnings', 'None')} |\n"
     return md_table
 
-def run_retail_analysis(payload, clients, df):
+def run_retail_analysis(payload, clients, df): 
     """The central orchestration layer for Retail."""
     kpi_list = generate_dynamic_kpis(df)
     kpi_markdown = build_markdown_table(kpi_list)
@@ -31,7 +34,8 @@ def run_retail_analysis(payload, clients, df):
     payload['kpi_results'] = kpi_list
     
     prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
-    if not os.path.exists(prompt_path): return kpi_markdown
+    if not os.path.exists(prompt_path): 
+        return f"⚠️ Warning: prompt.txt missing.\n\n{kpi_markdown}"
         
     with open(prompt_path, 'r', encoding='utf-8') as file:
         prompt_template = file.read()
