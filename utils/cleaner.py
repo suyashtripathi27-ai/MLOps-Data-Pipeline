@@ -11,7 +11,9 @@ def load_and_clean(file_path):
     print(f"📥 Attempting to load: {file_path}")
     
     if file_path.endswith('.csv'):
+        # FIXED: Removed the stray z.open line that was accidentally placed here
         df = pd.read_csv(file_path, sep=None, engine='python', encoding='utf-8-sig')
+        
     elif file_path.endswith('.zip'):
         print(f"📦 Inspecting ZIP archive for Star Schema...")
         with zipfile.ZipFile(file_path, 'r') as z:
@@ -20,7 +22,8 @@ def load_and_clean(file_path):
             
             if len(csv_files) == 1:
                 target_file = csv_files[0]
-                with z.open(target_file) as f: df = pd.read_csv(f)
+                # FIXED: Added the sniffer here
+                with z.open(target_file) as f: df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8-sig')
             else:
                 core_keywords = ['trip', 'load', 'delivery', 'order', 'sales']
                 target_file = next((f for f in csv_files if any(k in f.lower() for k in core_keywords)), None)
@@ -28,15 +31,18 @@ def load_and_clean(file_path):
                     file_sizes = {f: z.getinfo(f).file_size for f in csv_files}
                     target_file = max(file_sizes, key=file_sizes.get)
                 
-                with z.open(target_file) as f: fact_df = pd.read_csv(f)
+                with z.open(target_file) as f: 
+                    fact_df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8-sig')
                 
                 dim_dfs = {}
                 for f_name in csv_files:
                     if f_name != target_file and (z.getinfo(f_name).file_size / (1024 * 1024)) < 50.0:
                         with z.open(f_name) as f:
-                            dim_dfs[f_name.replace('.csv', '').split('/')[-1]] = pd.read_csv(f)
+                            # FIXED: Added the sniffer here as well
+                            dim_dfs[f_name.replace('.csv', '').split('/')[-1]] = pd.read_csv(f, sep=None, engine='python', encoding='utf-8-sig')
                             
                 df = enrich_fact_table(fact_df, dim_dfs)
+                
     elif file_path.endswith(('.xls', '.xlsx')):
         df = pd.read_excel(file_path)
     else:
@@ -45,7 +51,6 @@ def load_and_clean(file_path):
     df = df.dropna(how='all', axis=0).dropna(how='all', axis=1)
     print(f"🧹 Base load complete. Initial Shape: {df.shape}")
     return df
-
 # ==========================================
 # 🧠 THE EVIDENCE-BASED SEMANTIC ENGINE
 # ==========================================
