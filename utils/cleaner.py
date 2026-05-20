@@ -11,7 +11,7 @@ def load_and_clean(file_path):
     print(f"📥 Attempting to load: {file_path}")
     
     if file_path.endswith('.csv'):
-        df = pd.read_csv(file_path)
+        df = pd.read_csv(file_path, sep=None, engine='python', encoding='utf-8-sig')
     elif file_path.endswith('.zip'):
         print(f"📦 Inspecting ZIP archive for Star Schema...")
         with zipfile.ZipFile(file_path, 'r') as z:
