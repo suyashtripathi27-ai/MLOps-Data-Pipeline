@@ -5,6 +5,7 @@ import os
 import json
 from .kpis import generate_pharma_kpis
 from .reliability import run_pharma_governance_checks
+from utils.llm_router import execute_with_fallback
 
 def generate_dynamic_kpis(df):
     """Executes all pharma KPI modules dynamically."""
@@ -21,45 +22,36 @@ def build_markdown_table(kpis):
         md_table += f"| {kpi.get('category', '')} | **{kpi.get('name', '')}** | `{kpi.get('value', '')}` | *{kpi.get('formula', '')}* | `{kpi.get('source', '')}` | {kpi.get('confidence', 'N/A')} | {kpi.get('warnings', 'None')} |\n"
     return md_table
 
-def run_pharma_analysis(payload, client, df):
-    """Main orchestrator for the pharma analytics module."""
-    
+def run_pharma_analysis(payload, clients, df): # Notice we pass 'clients' plural
+    """The central orchestration layer for the Pharma pipeline module."""
     kpi_list = generate_dynamic_kpis(df)
     kpi_markdown = build_markdown_table(kpi_list)
-    governance_warnings = run_pharma_governance_checks(df)
-
-    if isinstance(payload, str):
-        try:
-            payload = json.loads(payload)
-        except json.JSONDecodeError:
-            payload = {"raw_data": payload}
-
-    payload['kpi_results'] = kpi_list
-    payload['pharma_governance_warnings'] = governance_warnings
-
-    prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
     
+    if isinstance(payload, str):
+        try: payload = json.loads(payload)
+        except json.JSONDecodeError: payload = {"raw_data": payload} 
+            
+    payload['kpi_results'] = kpi_list
+    
+    prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
     if not os.path.exists(prompt_path):
-        return "❌ ERROR: `prompt.txt` file missing from industries/pharma/ directory."
+        return kpi_markdown
         
     with open(prompt_path, 'r', encoding='utf-8') as file:
         prompt_template = file.read()
         
-    if not prompt_template.strip():
-        return "❌ ERROR: `prompt.txt` is completely empty."
-        
     final_prompt = prompt_template.replace('{data_payload}', json.dumps(payload, indent=2))
+    system_prompt = "You are a world-class Life Sciences, Pharmaceutical Operations, and FDA Compliance Consultant."
     
-    print("🧬 Requesting Pharma-Specific AI Analysis...")
+    print("🧠 Consulting AI Pharma Operations Analyst...")
     try:
-        response = client.chat.completions.create(
-            model="gemini-2.5-flash",
-            messages=[{"role": "user", "content": final_prompt}],
-            temperature=0.3
-        )
-        ai_analysis = response.choices[0].message.content
+        # 🛡️ THE MAGIC HAPPENS HERE: We use the fallback engine!
+        report_content = execute_with_fallback(clients, system_prompt, final_prompt)
     except Exception as e:
-        ai_analysis = f"⚠️ AI analysis failed: {str(e)}"
+        print(f"❌ API Call Failed: {e}")
+        return f"❌ CRITICAL API ERROR: {str(e)}\n\n### Backup Data Table\n{kpi_markdown}"
+    
+    return report_content.replace('{{INSERT_KPIS_HERE}}', kpi_markdown)
     
     # Build comprehensive report
     final_report = f"""
