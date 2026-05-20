@@ -49,7 +49,7 @@ def detect_industry(clients, columns_list):
     elif any(word in cols_str for word in ['batch', 'expiry', 'purity', 'therapeutic', 'drug', 'fda']):
         print("🎯 Fast Route: Classified as [PHARMA] via Heuristics")
         return "pharma"
-     elif any(word in cols_str for word in ['revenue', 'profit', 'expense', 'cashflow', 'liquidity', 'investment', 'roi', 'forecast', 'assets', 'equity']):
+    elif any(word in cols_str for word in ['revenue', 'profit', 'expense', 'cashflow', 'liquidity', 'investment', 'roi', 'forecast', 'assets', 'equity']):
         print("🎯 Fast Route: Classified as [FINANCE] via Heuristics")
         return "finance"
         
