@@ -6,6 +6,7 @@ from .fleet_analysis import calc_fleet_economics
 from .freight_analysis import calc_freight_metrics
 from .iot_analysis import calc_iot_sensor_metrics
 from .charts import generate_logistics_charts
+from utils.llm_router import execute_with_fallback
 
 def generate_dynamic_kpis(df):
     all_kpis = [] 
@@ -26,48 +27,31 @@ def generate_dynamic_kpis(df):
         markdown_table += f"| {kpi['category']} | **{kpi['name']}** | `{kpi['value']}` | *{kpi['formula']}* | `{kpi['source']}` | {kpi['confidence']} | {kpi['warnings']} |\n"
     return markdown_table
 
-def run_logistics_analysis(payload, client, df=None):
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    prompt_path = os.path.join(current_dir, "prompt.txt")
+def run_logistics_analysis(payload, clients, df): 
+    """The central orchestration layer for Logistics."""
+    kpi_list = generate_dynamic_kpis(df) # Assuming this function is above
+    kpi_markdown = build_markdown_table(kpi_list) # Assuming this function is above
     
-    # Generate KPIs and Charts
-    if df is not None:
-        kpi_table = generate_dynamic_kpis(df)
-        generate_logistics_charts(df)
-    else:
-        kpi_table = ""
+    if isinstance(payload, str):
+        try: payload = json.loads(payload)
+        except json.JSONDecodeError: payload = {"raw_data": payload} 
+            
+    payload['kpi_results'] = kpi_list
+    
+    prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
+    if not os.path.exists(prompt_path): return kpi_markdown
         
-    print(f"⚙️ DEBUG: Generated KPI Table ({len(kpi_table)} characters)")
-    
-    with open(prompt_path, "r", encoding="utf-8") as file:
-        raw_prompt = file.read()
+    with open(prompt_path, 'r', encoding='utf-8') as file:
+        prompt_template = file.read()
         
-    final_prompt = raw_prompt.format(data_payload=payload)
+    final_prompt = prompt_template.replace('{data_payload}', json.dumps(payload, indent=2))
+    system_prompt = "You are a pragmatic, highly experienced Supply Chain and Operations Analytics Consultant."
     
-    print("🧠 Requesting Governed Strategic Insights...")
+    print("🧠 Consulting AI Logistics Analyst...")
     try:
-        response = client.chat.completions.create(
-            model="gemini-2.5-flash", 
-            messages=[
-                {"role": "system", "content": "You are a pragmatic, highly experienced Operations Analytics Consultant. Focus only on the provided data context."},
-                {"role": "user", "content": final_prompt}
-            ],
-            temperature=0.2
-        )
-        ai_raw_report = response.choices[0].message.content
-        print("✅ DEBUG: AI responded successfully.")
+        report_content = execute_with_fallback(clients, system_prompt, final_prompt)
     except Exception as e:
-        print(f"❌ DEBUG: AI API Call Failed! Error: {e}")
-        return "ERROR: AI failed to generate response."
+        print(f"❌ API Call Failed: {e}")
+        return f"❌ CRITICAL API ERROR: {str(e)}\n\n### Backup Data Table\n{kpi_markdown}"
     
-    if "{{INSERT_KPIS_HERE}}" in ai_raw_report:
-        print("🔗 DEBUG: Double-brace placeholder found! Injecting KPIs...")
-        final_stitched_report = ai_raw_report.replace("{{INSERT_KPIS_HERE}}", kpi_table)
-    elif "{INSERT_KPIS_HERE}" in ai_raw_report:
-        print("🔗 DEBUG: Single-brace placeholder found! Injecting KPIs...")
-        final_stitched_report = ai_raw_report.replace("{INSERT_KPIS_HERE}", kpi_table)
-    else:
-        print("⚠️ DEBUG: AI completely forgot the placeholder. Forcing KPIs to the bottom of the report.")
-        final_stitched_report = ai_raw_report + "\n\n### Traceable KPIs\n" + kpi_table
-        
-    return final_stitched_report
+    return report_content.replace('{{INSERT_KPIS_HERE}}', kpi_markdown)
