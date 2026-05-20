@@ -5,33 +5,36 @@ from openai import OpenAI
 # 1. IMPORT OUR UNIVERSAL UTILITIES
 from utils.cleaner import load_and_clean, universal_clean
 from utils.profiler import generate_payload
-from tenacity import retry, stop_after_attempt, wait_exponential
+from utils.llm_router import execute_with_fallback  # 🛡️ THE NEW FALLBACK ENGINE
 
-# 2. SETUP GEMINI CLIENT (Via OpenAI Compatibility Layer)
+# 2. HIGH-AVAILABILITY CLIENT SETUP
+print("🔌 Initializing Multi-API Client Router...")
+clients = {}
+
 gemini_key = os.getenv("GEMINI_API_KEY")
-if not gemini_key:
-    print("❌ ERROR: GEMINI_API_KEY missing from environment variables.")
+if gemini_key:
+    clients["gemini"] = OpenAI(
+        api_key=gemini_key,
+        base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+    )
+
+or_key = os.getenv("OPENROUTER_API_KEY")
+if or_key:
+    clients["openrouter"] = OpenAI(
+        api_key=or_key,
+        base_url="https://openrouter.ai/api/v1"
+    )
+
+if not clients:
+    print("❌ ERROR: No API keys found. Please set GEMINI_API_KEY or OPENROUTER_API_KEY.")
     sys.exit(1)
 
-client = OpenAI(
-    api_key=gemini_key,
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-)
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-def call_router_llm(client, prompt):
-    """Calls Gemini API with automatic retries if rate limit is hit."""
-    response = client.chat.completions.create(
-        model="gemini-2.5-flash",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.0
-    )
-    return response.choices[0].message.content.strip().lower()
-
-def detect_industry(columns_list):
+def detect_industry(clients, columns_list):
     """THE AGENTIC ROUTER: Looks at the column names and guesses the industry."""
     print(f"🔍 Sniffing data schema: {columns_list}")
-   # ⚡ STEP 1: HEURISTIC FAST-TRACK (Saves API Quota)
+    
+    # ⚡ STEP 1: HEURISTIC FAST-TRACK (Saves API Quota)
     cols_str = str(columns_list).lower()
     
     if any(word in cols_str for word in ['store', 'dept', 'weekly_sales', 'retail']):
@@ -49,17 +52,18 @@ def detect_industry(columns_list):
         
     # 🧠 STEP 2: AI ROUTING (If heuristics fail to identify it)
     supported_industries = ["logistics", "retail", "banking", "pharma", "generic"]
+    system_prompt = "You are a data schema router. Follow instructions exactly."
     
-    prompt = f"""
+    user_prompt = f"""
     Analyze these dataset columns: {columns_list}
     Classify the industry of this dataset. 
     You MUST reply with EXACTLY ONE WORD from this list in all lowercase: {supported_industries}.
-    If it doesn't clearly match logistics, retail, or banking, reply with 'generic'.
+    If it doesn't clearly match logistics, retail, banking, or pharma, reply with 'generic'.
     """
     
     try:
-        # Calls the retry-wrapped function to prevent 429 crashes
-        raw_response = call_router_llm(client, prompt)
+        # 🛡️ Uses the new fallback router so industry detection never crashes!
+        raw_response = execute_with_fallback(clients, system_prompt, user_prompt).strip().lower()
         
         # Cleanup loop (Ensures we get a clean word even if AI adds a period)
         for valid_industry in supported_industries:
@@ -70,9 +74,10 @@ def detect_industry(columns_list):
         return "generic"
         
     except Exception as e:
-        print(f"⚠️ AI Routing failed (Rate Limit/Connection). Defaulting to generic. Error: {e}")
+        print(f"⚠️ AI Routing failed (All APIs Exhausted). Defaulting to generic. Error: {e}")
         return "generic"
         
+
 def main():
     print("🚀 Starting Universal Enterprise Pipeline...")
     
@@ -115,8 +120,7 @@ def main():
         
         # --- C. DETECT INDUSTRY ---
         columns = df.columns.tolist()
-        industry = detect_industry(columns)
-        print(f"🎯 Agentic Router Classified Industry As: [{industry.upper()}]")
+        industry = detect_industry(clients, columns)
         
         # --- D. PROFILE DATA & GENERATE PAYLOAD ---
         payload = generate_payload(df, industry_context=industry)
@@ -124,28 +128,27 @@ def main():
         # --- E. THE DYNAMIC SWITCHBOARD ---
         print(f"🔀 Routing to {industry} module...")
         
+        # 🛡️ NOTE: We are now passing 'clients' (plural) to all pipelines!
         if industry == "logistics":
             from industries.logistics.pipeline import run_logistics_analysis
-            final_report = run_logistics_analysis(payload, client, df)
+            final_report = run_logistics_analysis(payload, clients, df)
 
         elif industry == "retail":
             from industries.retail.pipeline import run_retail_analysis
-            final_report = run_retail_analysis(payload, client, df)
+            final_report = run_retail_analysis(payload, clients, df)
             
         elif industry == "banking": 
             from industries.banking.pipeline import run_banking_analysis
-            final_report = run_banking_analysis(payload, client, df)
+            final_report = run_banking_analysis(payload, clients, df)
 
         elif industry == "pharma": 
             from industries.pharma.pipeline import run_pharma_analysis
-            final_report = run_pharma_analysis(payload, client, df)
+            final_report = run_pharma_analysis(payload, clients, df)
 
         else:
             final_report = "Generic analysis simulated..."
             
         # --- F. SAVE OUTPUT ---
-        # Append the original filename to the report name to avoid overwriting 
-        # if multiple datasets are uploaded at the same time.
         base_name = os.path.splitext(file_name)[0]
         report_name = f"AI_{industry.capitalize()}_{base_name}_Report.md"
         output_path = os.path.join(output_dir, report_name)
