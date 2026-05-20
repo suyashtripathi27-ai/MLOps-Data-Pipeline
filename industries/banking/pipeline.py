@@ -2,6 +2,7 @@ import os
 import json
 from utils.llm_router import execute_with_fallback
 from .account_analysis import calc_account_metrics
+from .balance_analysis import calc_balance_metrics
 from .deposit_analysis import calc_deposit_metrics
 from .loan_analysis import calc_loan_metrics
 from .customer_analysis import calc_customer_metrics
