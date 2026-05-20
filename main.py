@@ -153,7 +153,19 @@ def main():
             
         print(f"✅ Report saved to: {output_path}")
 
-    # --- F. GRACEFUL EXIT ---
+    # --- F. SAVE OUTPUT ---
+        base_name = os.path.splitext(file_name)[0]
+        report_name = f"AI_{industry.capitalize()}_{base_name}_Report.md"
+        output_path = os.path.join(output_dir, report_name) # Ensure this is always defined
+        
+        try:
+            with open(output_path, "w", encoding="utf-8") as f:
+                f.write(final_report)
+            print(f"✅ Report saved to: {output_path}")
+        except Exception as e:
+            print(f"❌ Failed to save report: {e}")
+            
+    # --- G. GRACEFUL EXIT ---
     if not processed_any_file:
         print("\n⏸️ No valid data files found in data/raw/. Pipeline sleeping safely.")
 
