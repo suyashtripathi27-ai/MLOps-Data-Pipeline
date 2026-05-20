@@ -21,7 +21,7 @@ def _call_openrouter(client, system_prompt, user_prompt):
     print("   -> 🟠 Routing to Fallback: OpenRouter...")
     response = client.chat.completions.create(
         # You can use any free model here (e.g., google/gemini-2.5-flash:free or meta-llama/llama-3-8b-instruct:free)
-        model="google/gemini-2.5-flash:free", 
+        model="meta-llama/llama-3.1-8b-instruct:free", 
         messages=[
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
