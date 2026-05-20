@@ -7,6 +7,7 @@ from .hub_analysis import calc_hub_intelligence
 from .fleet_analysis import calc_fleet_economics 
 from .freight_analysis import calc_freight_metrics
 from .iot_analysis import calc_iot_sensor_metrics
+from .sla_analysis import calc_sla_performance
 
 def generate_dynamic_kpis(df):
     """Executes all KPI modules dynamically and returns a list of dictionaries."""
