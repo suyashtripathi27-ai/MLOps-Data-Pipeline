@@ -132,7 +132,6 @@ def main():
        # --- E. THE DYNAMIC SWITCHBOARD ---
         print(f"🔀 Routing to {industry} module...")
         
-        # Define the routing map
         ROUTER_MAP = {
             "logistics": ("industries.logistics.pipeline", "run_logistics_analysis"),
             "retail":    ("industries.retail.pipeline",    "run_retail_analysis"),
@@ -141,22 +140,19 @@ def main():
             "finance":   ("industries.finance.pipeline",   "run_finance_analysis")
         }
 
+        # Determine the report content
         if industry in ROUTER_MAP:
             mod_path, func_name = ROUTER_MAP[industry]
-            # Use importlib for safe, dynamic imports
-            import importlib
             module = importlib.import_module(mod_path)
             analysis_func = getattr(module, func_name)
             final_report = analysis_func(payload, clients, df)
         else:
             final_report = f"# Generic Analysis\n\nNo industry-specific pipeline detected for: {industry}."
             
-        print(f"✅ Report saved to: {output_path}")
-
-    # --- F. SAVE OUTPUT ---
+        # --- F. SAVE OUTPUT ---
         base_name = os.path.splitext(file_name)[0]
         report_name = f"AI_{industry.capitalize()}_{base_name}_Report.md"
-        output_path = os.path.join(output_dir, report_name) # Ensure this is always defined
+        output_path = os.path.join(output_dir, report_name) 
         
         try:
             with open(output_path, "w", encoding="utf-8") as f:
