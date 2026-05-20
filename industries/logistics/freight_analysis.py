@@ -2,52 +2,54 @@ import pandas as pd
 from .reliability import evaluate_kpi_confidence
 from utils.validator import SemanticValidator
 
-def calc_freight_metrics(df):
-    """Calculates KPIs specifically for Freight Forwarding and Shipments with strict validation."""
-    kpis = []
-    
-    # 1. Network Speed (Average Transit Time)
-    if 'actual_duration_hours' in df.columns:
-        # 🛡️ GATEKEEPER CHECK: Is this duration valid?
-        is_valid, reason = SemanticValidator.is_valid_duration(df['actual_duration_hours'])
-        
-        if is_valid:
-            valid_duration = df['actual_duration_hours'].dropna()
-            if not valid_duration.empty:
-                avg_transit = valid_duration.mean()
-                kpis.append({
-                    "category": "⚡ Network Velocity", "name": "Average Transit Time",
-                    "value": f"{avg_transit:.1f} days",
-                    "source": "`actual_duration_hours`"
-                })
-        else:
-            # 🚨 REJECTED: Send warning to Technical Appendix
-            kpis.append({
-                "category": "⚡ Network Velocity", "name": "Average Transit Time",
-                "value": "EXCLUDED",
-                "source": f"Data rejected: {reason}"
-            })
+def _first_column(df, candidates):
+    for col in candidates:
+        if col in df.columns: return col
+    return None
 
-    # 2. Cost Efficiency (Cost per Weight Unit)
-    if 'total_cost' in df.columns and 'total_weight' in df.columns:
-        # 🛡️ GATEKEEPER CHECK: Are costs and weights valid (no negatives)?
-        cost_valid, cost_reason = SemanticValidator.is_valid_duration(df['total_cost'])
-        weight_valid, weight_reason = SemanticValidator.is_valid_duration(df['total_weight'])
-        
-        if cost_valid and weight_valid:
-            valid_data = df.dropna(subset=['total_cost', 'total_weight'])
-            if not valid_data.empty and valid_data['total_weight'].sum() > 0:
-                cost_per_unit = valid_data['total_cost'].sum() / valid_data['total_weight'].sum()
-                kpis.append({
-                    "category": "📦 Freight Economics", "name": "Cost per Mass Unit",
-                    "value": f"${cost_per_unit:.2f}",
-                    "source": "`total_cost`, `total_weight`"
-                })
-        else:
-            kpis.append({
-                "category": "📦 Freight Economics", "name": "Cost per Mass Unit",
-                "value": "EXCLUDED",
-                "source": f"Cost: {cost_reason} | Weight: {weight_reason}"
-            })
+def calc_freight_metrics(df):
+    kpis = []
+    if len(df) == 0: return kpis
+
+    weight_col = _first_column(df, ['freight_weight', 'total_weight', 'cargo_weight'])
+    damage_col = _first_column(df, ['damage_incidents', 'damaged_goods', 'defect_count'])
+
+    if not weight_col: 
+        return kpis
+
+    # 🛡️ ENTERPRISE VALIDATION
+    weight_valid, reason = SemanticValidator.is_valid_duration(df[weight_col].fillna(0))
+    if not weight_valid:
+        return [{
+            "category": "📦 Freight & Cargo", "name": "Total Tonnage Handled",
+            "value": "EXCLUDED", "formula": "N/A", "source": f"`{weight_col}`",
+            "confidence": "Low", "warnings": reason
+        }]
+
+    conf, warns = evaluate_kpi_confidence(df, [weight_col, damage_col])
+    
+    total_weight = df[weight_col].fillna(0).sum()
+    kpis.append({
+        "category": "📦 Freight & Cargo",
+        "name": "Total Tonnage Handled",
+        "value": f"{total_weight:,.2f} tons",
+        "formula": "SUM(weight)",
+        "source": f"`{weight_col}`",
+        "confidence": conf,
+        "warnings": warns
+    })
+
+    if damage_col:
+        total_damaged = df[damage_col].fillna(0).sum()
+        damage_rate = (total_damaged / len(df)) * 100
+        kpis.append({
+            "category": "📦 Freight & Cargo",
+            "name": "Freight Damage Rate",
+            "value": f"{damage_rate:.2f}%",
+            "formula": "(COUNT(Damaged) / TOTAL) * 100",
+            "source": f"`{damage_col}`",
+            "confidence": conf,
+            "warnings": "High freight damage detected" if damage_rate > 2 else warns
+        })
 
     return kpis
