@@ -1,4 +1,5 @@
 import pandas as pd
+from .reliability import evaluate_kpi_confidence
 from utils.validator import SemanticValidator
 
 def calc_freight_metrics(df):
