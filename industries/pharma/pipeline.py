@@ -3,7 +3,7 @@ import json
 from utils.llm_router import execute_with_fallback
 from .sales_analysis import calc_pharma_sales_metrics
 from .shelf_life_analysis import calc_shelf_life_metrics
-from .compliance_analysis import calc_pharma_compliance_metrics
+from .compliance_analysis import compliance_metrics
 
 def generate_dynamic_kpis(df):
     """Executes all KPI modules dynamically and returns a list of dictionaries."""
