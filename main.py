@@ -26,6 +26,10 @@ if or_key:
         base_url="https://openrouter.ai/api/v1"
     )
 
+hf_key = os.getenv("HUGGINGFACE_API_KEY")
+if hf_key:
+    clients["huggingface"] = hf_key
+
 if not clients:
     print("❌ ERROR: No API keys found. Please set GEMINI_API_KEY or OPENROUTER_API_KEY.")
     sys.exit(1)
