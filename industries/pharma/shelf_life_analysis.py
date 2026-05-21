@@ -2,7 +2,7 @@ import pandas as pd
 from .reliability import evaluate_kpi_confidence
 from utils.validator import SemanticValidator
 
-def calc_pharma_shelflife_kpis(df):
+def calc_shelf_life_metrics(df):
     """
     Analyzes expiration risk and remaining inventory shelf life.
     """
