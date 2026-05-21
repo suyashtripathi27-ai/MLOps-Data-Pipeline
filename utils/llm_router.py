@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import requests
 os.makedirs("data/outputs/reports/", exist_ok=True)
 from tenacity import retry, stop_after_attempt, wait_exponential
 from openai import RateLimitError
@@ -33,44 +34,39 @@ def _call_openrouter(client, system_prompt, user_prompt):
     )
     return response.choices[0].message.content
 
-def execute_with_fallback(clients, system_prompt, user_prompt):
-    """
-    The High-Availability Router.
-    Tries Gemini first. If it rate-limits or crashes, seamlessly swaps to OpenRouter.
-    """
-    # 1. Try Primary (Gemini)
-    if clients.get("gemini"):
-        try:
-            return response
-        except RateLimitError:
-            print(f"⚠️ Rate limit hit. Backing off for {2**i} seconds...")
-            time.sleep(2**i) # Exponential backoff
-    raise Exception("❌ All retries failed due to rate limits.")
-            
-    # 2. Try Secondary (OpenRouter)
-    if clients.get("openrouter"):
-        try:
-            return response
-        except RateLimitError:
-            print(f"⚠️ Rate limit hit. Backing off for {2**i} seconds...")
-            time.sleep(2**i) # Exponential backoff
-    raise Exception("❌ All retries failed due to rate limits.")
+def execute_with_fallback(clients, system_prompt, final_prompt):
+    # Initialize with a safe default
+    final_response = "### ⚠️ Pipeline Alert: All AI services are currently unavailable."
+    
+    # 1. Try OpenAI-compatible clients (Gemini/OpenRouter)
+    for name in ["gemini", "openrouter"]:
+        if name in clients:
+            try:
+                print(f"-> 🟢 Routing to {name.upper()}...")
+                client = clients[name]
+                completion = client.chat.completions.create(
+                    model="gemini-1.5-flash" if name == "gemini" else "gpt-4o",
+                    messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": final_prompt}]
+                )
+                final_response = completion.choices[0].message.content
+                return final_response # Success
+            except Exception as e:
+                print(f"⚠️ {name.upper()} failed: {e}")
 
-    # 3. Add the Hugging Face Fallback
-    hf_token = os.getenv("HUGGINGFACE_API_KEY")
-    if hf_token:
+    # 2. Try Hugging Face (Requests-based)
+    hf_key = clients.get("huggingface")
+    if hf_key:
         try:
             print("-> 🟢 Routing to HUGGINGFACE...")
-            headers = {"Authorization": f"Bearer {hf_token}"}
-            payload = {
-                "inputs": f"{system_prompt}\n\n{final_prompt}",
-                "parameters": {"max_new_tokens": 500}
-            }
-            # Using a popular free model like Mistral-7B-Instruct
+            headers = {"Authorization": f"Bearer {hf_key}"}
+            # Use the actual free inference URL structure
             url = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
-            response = requests.post(url, headers=headers, json=payload)
-            return response.json()[0]['generated_text']
+            res = requests.post(url, headers=headers, json={"inputs": f"{system_prompt}\n{final_prompt}"})
+            if res.status_code == 200:
+                final_response = res.json()[0]['generated_text']
+                return final_response # Success
         except Exception as e:
-            print(f"⚠️ HuggingFace API Failed: {e}")
+            print(f"⚠️ HuggingFace failed: {e}")
             
-    return "### ⚠️ Pipeline Warning\nAI analysis could not be completed."
+    # Return the fallback if all services failed
+    return final_response
