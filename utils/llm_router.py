@@ -45,8 +45,12 @@ def execute_with_fallback(clients, system_prompt, final_prompt):
             try:
                 print(f"-> 🟢 Routing to {name.upper()}...")
                 client = clients[name]
+                
+                # Using the models you specified in your wrappers
+                target_model = "gemini-2.5-flash" if name == "gemini" else "meta-llama/llama-3.1-8b-instruct:free"
+                
                 completion = client.chat.completions.create(
-                    model="gemini-1.5-flash" if name == "gemini" else "gpt-4o",
+                    model=target_model,
                     messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": final_prompt}]
                 )
                 final_response = completion.choices[0].message.content
@@ -54,35 +58,28 @@ def execute_with_fallback(clients, system_prompt, final_prompt):
             except Exception as e:
                 print(f"⚠️ {name.upper()} failed: {e}")
 
-    # 2. Try Hugging Face (Requests-based)
+    # 2. Try Hugging Face (Requests-based) with Retry Logic
     hf_key = clients.get("huggingface")
-    if hf_key:
-        try:
-            print("-> 🟢 Routing to HUGGINGFACE...")
-            headers = {"Authorization": f"Bearer {hf_key}"}
-            # Use the actual free inference URL structure
-            url = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
-            res = requests.post(url, headers=headers, json={"inputs": f"{system_prompt}\n{final_prompt}"})
-            if res.status_code == 200:
-                final_response = res.json()[0]['generated_text']hf_key = clients.get("huggingface")
     if hf_key:
         for attempt in range(2): # Try twice before giving up
             try:
-                print("-> 🟢 Routing to HUGGINGFACE...")
+                print(f"-> 🟢 Routing to HUGGINGFACE (Attempt {attempt + 1})...")
                 headers = {"Authorization": f"Bearer {hf_key}"}
                 url = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
                 res = requests.post(url, headers=headers, json={"inputs": f"{system_prompt}\n{final_prompt}"})
                 
                 if res.status_code == 200:
                     return res.json()[0]['generated_text']
+                else:
+                    print(f"⚠️ HuggingFace API Rejected (Code {res.status_code}): {res.text}")
+                    break # Stop retrying if we get a hard rejection (like invalid API key)
+                    
             except requests.exceptions.ConnectionError:
                 print("⚠️ Network glitch. Retrying Hugging Face...")
                 time.sleep(2)
-                return final_response
-            else:
-                print(f"⚠️ HuggingFace API Rejected (Code {res.status_code}): {res.text}")   
-        except Exception as e:
-            print(f"⚠️ HuggingFace failed: {e}")
-            
+            except Exception as e:
+                print(f"⚠️ HuggingFace failed: {e}")
+                break # Stop on other unexpected errors
+                
     # Return the fallback if all services failed
     return final_response
