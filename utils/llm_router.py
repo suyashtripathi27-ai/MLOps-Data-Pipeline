@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 import requests
+import time
 os.makedirs("data/outputs/reports/", exist_ok=True)
 from tenacity import retry, stop_after_attempt, wait_exponential
 from openai import RateLimitError
@@ -63,7 +64,20 @@ def execute_with_fallback(clients, system_prompt, final_prompt):
             url = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
             res = requests.post(url, headers=headers, json={"inputs": f"{system_prompt}\n{final_prompt}"})
             if res.status_code == 200:
-                final_response = res.json()[0]['generated_text']
+                final_response = res.json()[0]['generated_text']hf_key = clients.get("huggingface")
+    if hf_key:
+        for attempt in range(2): # Try twice before giving up
+            try:
+                print("-> 🟢 Routing to HUGGINGFACE...")
+                headers = {"Authorization": f"Bearer {hf_key}"}
+                url = "https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2"
+                res = requests.post(url, headers=headers, json={"inputs": f"{system_prompt}\n{final_prompt}"})
+                
+                if res.status_code == 200:
+                    return res.json()[0]['generated_text']
+            except requests.exceptions.ConnectionError:
+                print("⚠️ Network glitch. Retrying Hugging Face...")
+                time.sleep(2)
                 return final_response
             else:
                 print(f"⚠️ HuggingFace API Rejected (Code {res.status_code}): {res.text}")   
