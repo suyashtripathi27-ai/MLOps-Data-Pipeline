@@ -64,7 +64,9 @@ def execute_with_fallback(clients, system_prompt, final_prompt):
             res = requests.post(url, headers=headers, json={"inputs": f"{system_prompt}\n{final_prompt}"})
             if res.status_code == 200:
                 final_response = res.json()[0]['generated_text']
-                return final_response # Success
+                return final_response
+            else:
+                print(f"⚠️ HuggingFace API Rejected (Code {res.status_code}): {res.text}")   
         except Exception as e:
             print(f"⚠️ HuggingFace failed: {e}")
             
