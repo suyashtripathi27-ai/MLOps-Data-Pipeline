@@ -3,7 +3,7 @@ import json
 from utils.llm_router import execute_with_fallback
 from .profitability_analysis import calc_profitability_metrics
 from .liquidity_analysis import calc_liquidity_metrics
-from .expense_analysis import calc_expense_metrics
+from .expenses_analysis import calc_expense_metrics
 from .revenue_analysis import calc_revenue_metrics
 from .cashflow_analysis import calc_cashflow_metrics
 from .risk_analysis import calc_risk_metrics
