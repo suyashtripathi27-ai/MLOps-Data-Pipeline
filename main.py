@@ -54,19 +54,22 @@ def detect_industry(clients, columns_list):
     elif any(word in cols_str for word in ['batch', 'expiry', 'purity', 'therapeutic', 'drug', 'fda']):
         print("🎯 Fast Route: Classified as [PHARMA] via Heuristics")
         return "pharma"
+    elif any(word in cols_str for word in ['production', 'manufacturing', 'batch_id', 'lot_number', 'downtime', 'defect_rate', 'scrap']):
+        print("🎯 Fast Route: Classified as [MANUFACTURING] via Heuristics")
+        return "manufacturing"
     elif any(word in cols_str for word in ['revenue', 'profit', 'expense', 'cashflow', 'liquidity', 'investment', 'roi', 'forecast', 'assets', 'equity']):
         print("🎯 Fast Route: Classified as [FINANCE] via Heuristics")
         return "finance"
         
     # 🧠 STEP 2: AI ROUTING (If heuristics fail to identify it)
-    supported_industries = ["logistics", "retail", "banking", "pharma", "banking", "generic"]
+    supported_industries = ["logistics", "retail", "banking", "pharma", "manufacturing", "finance", "generic"]
     system_prompt = "You are a data schema router. Follow instructions exactly."
     
     user_prompt = f"""
     Analyze these dataset columns: {columns_list}
     Classify the industry of this dataset. 
     You MUST reply with EXACTLY ONE WORD from this list in all lowercase: {supported_industries}.
-    If it doesn't clearly match logistics, retail, banking, or pharma, reply with 'generic'.
+    If it doesn't clearly match logistics, retail, banking, pharma, manufacturing, or finance, reply with 'generic'.
     """
     
     try:
@@ -141,7 +144,8 @@ def main():
             "retail":    ("industries.retail.pipeline",    "run_retail_analysis"),
             "banking":   ("industries.banking.pipeline",   "run_banking_analysis"),
             "pharma":    ("industries.pharma.pipeline",    "run_pharma_analysis"),
-            "finance":   ("industries.finance.pipeline",   "run_finance_analysis")
+            "finance":   ("industries.finance.pipeline",   "run_finance_analysis"),
+            "manufacturing": ("industries.manufacturing.pipeline", "run_manufacturing_analysis")
         }
 
         # Determine the report content
