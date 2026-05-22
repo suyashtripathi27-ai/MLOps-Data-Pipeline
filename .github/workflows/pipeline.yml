@@ -42,18 +42,19 @@ jobs:
         python main.py
 
     - name: Commit and Push AI Reports
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action Bot"
+      run: |
+          git config --global user.email "action@github.com"
+          git config --global user.name "GitHub Action Bot"
           
-          # 1. Add the newly generated reports
+          # 1. Explicitly turn off rebasing (This prevents your specific error!)
+          git config pull.rebase false
+          
+          # 2. Add and commit the new report
           git add data/outputs/reports/
-          
-          # 2. Commit the changes (or skip if nothing changed)
           git commit -m "🤖 Auto-generated AI Strategy Report" || echo "No changes to commit"
           
-          # 3. Pull latest changes, forcing the runner's new files to win any conflicts (-X ours)
-          git pull --no-rebase -s recursive -X ours origin main
+          # 3. Pull latest changes and FORCE the runner's file to win (-X ours)
+          git pull origin main -s recursive -X ours
           
           # 4. Push safely to the repository
           git push
