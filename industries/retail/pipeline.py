@@ -1,15 +1,35 @@
 import os
 import json
 from utils.llm_router import execute_with_fallback
-from .kpis import generate_retail_kpis 
+from .customer_analysis import calc_customer_metrics
+from .department_analysis import calc_department_metrics
+from .inventory_analysis import calc_inventory_metrics
+from .pricing_analysis import calc_pricing_metrics
+from .promotion_analysis import calc_promotion_metrics
+from .sales_analysis import calc_sales_metrics
+from .seasonality_analysis import calc_seasonality_metrics
+from .store_analysis import calc_store_metrics
+from .workforce_analysis import calc_workforce_metrics
 
 def generate_dynamic_kpis(df):
     """Executes all KPI modules dynamically and returns a list of dictionaries."""
-    try:
-        return generate_retail_kpis(df)
-    except Exception as e:
-        print(f"⚠️ Warning: Retail KPI generation failed: {e}")
-        return []
+    all_kpis = []
+    for module in [
+        calc_sales_metrics,
+        calc_store_metrics,
+        calc_department_metrics,
+        calc_inventory_metrics,
+        calc_seasonality_metrics,
+        calc_pricing_metrics,
+        calc_customer_metrics,
+        calc_promotion_metrics,
+        calc_workforce_metrics
+    ]:
+        try:
+            all_kpis.extend(module(df))
+        except Exception as e:
+            print(f"⚠️ Warning: Retail module {module.__name__} failed: {e}")
+    return all_kpis
 
 def build_markdown_table(kpis):
     """Formats KPI dictionaries into a traceable markdown table."""
