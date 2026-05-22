@@ -83,7 +83,14 @@ def generate_payload(df, industry_context="generic"):
     stats_dict = df.describe().to_dict()
     clean_stats = {}
     for col, metrics in stats_dict.items():
-        clean_stats[col] = {k: round(v, 2) if pd.notnull(v) else None for k, v in metrics.items()}
+        clean_stats[col] = {}
+        for k, v in metrics.items():
+            if pd.isnull(v):
+                clean_stats[col][k] = None
+            elif isinstance(v, (int, float)):
+                clean_stats[col][k] = round(v, 2)
+            else:
+                clean_stats[col][k] = str(v) # Safely handle Timestamps and Strings
         
     payload = {
         "dataset_context": industry_context,
