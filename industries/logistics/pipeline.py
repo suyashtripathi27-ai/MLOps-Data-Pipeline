@@ -1,7 +1,6 @@
 import os
 import json
 from utils.llm_router import execute_with_fallback
-from .kpis import calc_sla_performance
 from .route_analysis import calc_route_efficiency, calc_cost_efficiency
 from .hub_analysis import calc_hub_intelligence
 from .fleet_analysis import calc_fleet_economics 
@@ -13,9 +12,15 @@ def generate_dynamic_kpis(df):
     """Executes all KPI modules dynamically and returns a list of dictionaries."""
     all_kpis = []
     # Safely collect KPIs from all sub-modules
-    for module in [calc_sla_performance, calc_route_efficiency, calc_cost_efficiency, 
-                   calc_hub_intelligence, calc_fleet_economics, calc_iot_sensor_metrics, 
-                   calc_freight_metrics]:
+    for module in [
+        calc_sla_performance, 
+        calc_route_efficiency, 
+        calc_cost_efficiency, 
+        calc_hub_intelligence, 
+        calc_fleet_economics, 
+        calc_iot_sensor_metrics, 
+        calc_freight_metrics
+    ]:
         try:
             all_kpis.extend(module(df))
         except Exception as e:
