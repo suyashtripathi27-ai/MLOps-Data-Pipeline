@@ -83,4 +83,6 @@ def run_manufacturing_analysis(payload, clients, df):
         print(f"❌ API Call Failed: {e}")
         return f"❌ CRITICAL API ERROR: {str(e)}\n\n### Backup KPI Table\n{kpi_markdown}"
 
-    return report_content.replace("{{INSERT_KPIS_HERE}}", kpi_markdown)
+    # Force the KPI table into the final output safely
+    final_report = f"{report_content}\n\n### 📊 Detailed Operational KPIs\n{kpi_markdown}"
+    return final_report
