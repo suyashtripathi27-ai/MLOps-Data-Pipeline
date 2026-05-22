@@ -21,13 +21,13 @@ def detect_industry(columns_list):
     """THE AGENTIC ROUTER: Looks at the column names and guesses the industry."""
     print(f"🔍 Sniffing data schema: {columns_list}")
     
-    supported_industries = ["logistics", "retail", "generic"]
+    supported_industries = ["logistics", "retail", "manufacturing", "generic"]
     
     prompt = f"""
     Analyze these dataset columns: {columns_list}
     Classify the industry of this dataset. 
     You MUST reply with EXACTLY ONE WORD from this list in all lowercase: {supported_industries}.
-    If it doesn't clearly match logistics or retail, reply with 'generic'.
+    If it doesn't clearly match logistics, retail, or manufacturing, reply with 'generic'.
     """
     
     try:
@@ -104,6 +104,10 @@ def main():
         elif industry == "retail":
             from industries.retail.pipeline import run_retail_analysis
             final_report = run_retail_analysis(payload, client, df)
+
+        elif industry == "manufacturing":
+            from industries.manufacturing.pipeline import run_manufacturing_analysis
+            final_report = run_manufacturing_analysis(payload, client, df)
 
         else:
             final_report = "Generic analysis simulated..."
