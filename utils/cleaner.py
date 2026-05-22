@@ -113,6 +113,20 @@ UNIVERSAL_SCHEMA = {
     "investment_value": ["portfolio_value", "market_value", "investmentamount"],
     "return": ["roi", "pct_return", "investment_return"],
     "default_flag": ["defaulted", "is_default", "loan_default"],
+    "machine_id": ["equipment_id", "asset_id", "work_center", "machine_name"],
+    "production_line": ["line_id", "assembly_line", "workcell", "line_number"],
+    "operator_id": ["worker_id", "employee_id", "technician", "operator"],
+    "shift": ["shift_id", "working_shift", "shift_name"],
+    "production_volume": ["actual_output", "units_produced", "good_units", "qty_produced", "total_yield"],
+    "target_volume": ["planned_production", "target_output", "expected_units", "target_qty"],
+    "defect_rate": ["scrap_rate", "reject_rate", "defect_pct", "failure_rate"],
+    "scrap_units": ["defects", "rejected_units", "scrap_qty", "waste", "failed_units"],
+    "downtime_hours": ["unplanned_downtime", "machine_downtime", "idle_time", "stop_hours", "breakdown_time"],
+    "oee_score": ["overall_equipment_effectiveness", "efficiency", "utilization_pct", "performance_score"],
+    "maintenance_hours": ["repair_time", "planned_downtime", "pm_hours", "maintenance_time"],
+    "energy_consumption_kwh": ["power_usage", "electricity_kwh", "energy_used", "kwh"],
+    "safety_incidents": ["accidents", "near_misses", "osha_recordables", "incidents"],
+    "days_without_incident": ["safe_days", "days_since_accident"],
 }
 
 def normalize_string(s):
