@@ -3,7 +3,6 @@ Manufacturing Data Governance & Reliability Checks
 """
 
 import pandas as pd
-from utils.validator import SemanticValidator
 
 
 def _first_column(df, candidates):
