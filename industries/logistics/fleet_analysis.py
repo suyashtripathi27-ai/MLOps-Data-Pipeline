@@ -1,5 +1,6 @@
 import pandas as pd
 from .reliability import evaluate_kpi_confidence
+from utils.validator import SemanticValidator
 
 def calc_fleet_economics(df):
     """Calculates KPIs specifically for Heavy Fleet and Trucking data."""
