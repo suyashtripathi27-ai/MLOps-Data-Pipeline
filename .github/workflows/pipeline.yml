@@ -41,20 +41,19 @@ jobs:
       run: |
         python main.py
 
-    - name: Save AI Strategy Report to GitHub
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        mkdir -p data/outputs/reports/
-        mkdir -p data/outputs/charts/
-        mkdir -p data/outputs/logs/
-        
-        git add --force data/outputs/
-        
-        if git diff-index --quiet HEAD --; then
-          echo "⚠️ No new reports generated. Check Python execution logs."
-        else
-          git commit -m "🤖 Auto-generated AI Strategy Report"
-          git pull --rebase origin main
-          git push origin main
-        fi
+    - name: Commit and Push AI Reports
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action Bot"
+          
+          # 1. Add the newly generated reports
+          git add data/outputs/reports/
+          
+          # 2. Commit the changes (or skip if nothing changed)
+          git commit -m "🤖 Auto-generated AI Strategy Report" || echo "No changes to commit"
+          
+          # 3. Pull latest changes, forcing the runner's new files to win any conflicts (-X ours)
+          git pull --no-rebase -s recursive -X ours origin main
+          
+          # 4. Push safely to the repository
+          git push
