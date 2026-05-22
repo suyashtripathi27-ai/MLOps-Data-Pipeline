@@ -14,9 +14,16 @@ def generate_dynamic_kpis(df):
     """Executes all KPI modules dynamically and returns a list of dictionaries."""
     all_kpis = []
     # Safely collect KPIs from all sub-modules
-    for module in [calc_account_metrics, calc_deposit_metrics, calc_loan_metrics, 
-                   calc_customer_metrics, calc_fee_metrics, calc_compliance_metrics, 
-                   calc_branch_metrics]:
+    for module in [
+        calc_account_metrics, 
+        calc_balance_metrics,
+        calc_deposit_metrics, 
+        calc_loan_metrics, 
+        calc_customer_metrics, 
+        calc_fee_metrics, 
+        calc_compliance_metrics, 
+        calc_branch_metrics
+    ]:
         try:
             all_kpis.extend(module(df))
         except Exception as e:
