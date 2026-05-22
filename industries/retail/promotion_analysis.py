@@ -1,5 +1,6 @@
 import pandas as pd
 from .reliability import evaluate_kpi_confidence
+from utils.validator import SemanticValidator
 
 
 def _first_column(df, candidates):
