@@ -2,18 +2,10 @@ import pandas as pd
 from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
 
-
-def _first_column(df, candidates):
-    for c in candidates:
-        if c in df.columns:
-            return c
-    return None
-
-
 def calc_expense_metrics(df):
     kpis = []
-    expense_col = _first_column(df, ["expense", "expenses", "operating_expense", "opex"]) 
-    revenue_col = _first_column(df, ["revenue", "sales"]) 
+    expense_col = first_column(df, ["expense", "expenses", "operating_expense", "opex"]) 
+    revenue_col = first_column(df, ["revenue", "sales"]) 
 
     if not expense_col:
         return kpis
