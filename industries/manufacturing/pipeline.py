@@ -61,7 +61,7 @@ def run_manufacturing_analysis(payload, clients, df):
     kpi_markdown = build_markdown_table(kpi_list)
     
     # 2. Extract and Prioritize Signals
-    signals_dict = synthesize_operational_signals(kpi_list)
+   signals_dict = synthesize_operational_signals(kpi_list, industry="manufacturing")
     
     # 🔥 TOP CLUSTER FILTERING (NARRATIVE PRIORITIZATION) 🔥
     # Slice the dictionary to ONLY send the top 3 most critical clusters to the AI
