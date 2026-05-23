@@ -2,23 +2,15 @@ import pandas as pd
 from utils.validator import SemanticValidator
 from utils.confidence_engine import evaluate_kpi_confidence
 
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
-
 def calc_supply_chain_metrics(df):
     """Compute inbound and outbound supply chain KPIs."""
     kpis = []
     if len(df) == 0:
         return kpis
 
-    inbound_col = _first_column(df, ["inbound_days", "supplier_lead_time", "lead_time_days"])
-    outbound_col = _first_column(df, ["outbound_days", "delivery_lead_time", "shipment_days"])
-    fill_rate_col = _first_column(df, ["fill_rate", "service_level", "on_time_fill_rate"])
+    inbound_col = first_column(df, ["inbound_days", "supplier_lead_time", "lead_time_days"])
+    outbound_col = first_column(df, ["outbound_days", "delivery_lead_time", "shipment_days"])
+    fill_rate_col = first_column(df, ["fill_rate", "service_level", "on_time_fill_rate"])
 
     if inbound_col and pd.api.types.is_numeric_dtype(df[inbound_col]):
         confidence, warnings = evaluate_kpi_confidence(df, [inbound_col])
