@@ -1,6 +1,6 @@
 import json
 import os
-
+from utils.insight_engine import synthesize_operational_signals
 from utils.llm_router import execute_with_fallback
 from .cost_analysis import calc_cost_metrics
 from .demand_analysis import calc_demand_metrics
@@ -53,36 +53,42 @@ def build_markdown_table(kpis):
     return md
 
 
-def run_manufacturing_analysis(payload, clients, df):
-    """The central orchestration layer for Manufacturing."""
+def run_manufacturing_analysis(payload, clients, df): 
     kpi_list = generate_dynamic_kpis(df)
     kpi_markdown = build_markdown_table(kpi_list)
-
+    
+    # 👇 LAYER 2 & 3: Generate the structured signals
+    operational_signals = synthesize_operational_signals(kpi_list)
+    
     if isinstance(payload, str):
-        try:
-            payload = json.loads(payload)
-        except json.JSONDecodeError:
-            payload = {"raw_data": payload}
-
-    payload["kpi_results"] = kpi_list
-
-    prompt_path = os.path.join(os.path.dirname(__file__), "prompt.txt")
-    if not os.path.exists(prompt_path):
+        try: payload = json.loads(payload)
+        except json.JSONDecodeError: payload = {"raw_data": payload} 
+            
+    # 👇 Feed the AI the SIGNALS, not just the raw data
+    payload['prioritized_signals'] = operational_signals
+    
+    prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
+    if not os.path.exists(prompt_path): 
         return f"⚠️ Warning: prompt.txt missing.\n\n{kpi_markdown}"
-
-    with open(prompt_path, "r", encoding="utf-8") as file:
+        
+    with open(prompt_path, 'r', encoding='utf-8') as file:
         prompt_template = file.read()
-
-    final_prompt = prompt_template.replace("{data_payload}", json.dumps(payload, indent=2))
-    system_prompt = "You are a world-class Manufacturing Operations, Production Planning, and Quality Assurance Consultant."
-
-    print("🧠 Consulting AI Manufacturing Operations Analyst...")
+        
+    final_prompt = prompt_template.replace('{data_payload}', json.dumps(payload, indent=2))
+    
+    # Update the system prompt to force synthesis
+    system_prompt = (
+        "You are an elite Industry 4.0 Plant Manager. "
+        "DO NOT explain individual metrics. Instead, synthesize the 'prioritized_signals' "
+        "into a cohesive, executive-level root-cause narrative."
+    )
+    
+    print("🧠 Synthesizing Executive Intelligence...")
     try:
         report_content = execute_with_fallback(clients, system_prompt, final_prompt)
     except Exception as e:
-        print(f"❌ API Call Failed: {e}")
-        return f"❌ CRITICAL API ERROR: {str(e)}\n\n### Backup KPI Table\n{kpi_markdown}"
-
-    # Force the KPI table into the final output safely
-    final_report = f"{report_content}\n\n### 📊 Detailed Operational KPIs\n{kpi_markdown}"
+        return f"❌ CRITICAL API ERROR: {str(e)}\n\n### Backup Data Table\n{kpi_markdown}"
+    
+    # Append the raw table safely at the bottom
+    final_report = f"{report_content}\n\n---\n### 📊 Technical Appendix: Operational KPIs\n{kpi_markdown}"
     return final_report
