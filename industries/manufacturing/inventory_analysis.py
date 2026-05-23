@@ -2,24 +2,16 @@ import pandas as pd
 from utils.validator import SemanticValidator
 from utils.confidence_engine import evaluate_kpi_confidence
 
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
-
 def calc_inventory_metrics(df):
     """Compute inventory and WIP related manufacturing KPIs."""
     kpis = []
     if len(df) == 0:
         return kpis
-    turnover_col = _first_column(df, ["inventory_turnover", "turnover_rate", "InventoryTurnover"])
-    stockout_col = _first_column(df, ["stockouts", "stockout_rate", "StockoutRate"])
-    inventory_col = _first_column(df, ["inventory_level", "stock_on_hand", "raw_material_stock", "wip_units"])
-    shortage_col = _first_column(df, ["stockout_count", "shortage_units", "material_shortage"])
-    aging_col = _first_column(df, ["inventory_age_days", "wip_age_days", "aging_days"])
+    turnover_col = first_column(df, ["inventory_turnover", "turnover_rate", "InventoryTurnover"])
+    stockout_col = first_column(df, ["stockouts", "stockout_rate", "StockoutRate"])
+    inventory_col = first_column(df, ["inventory_level", "stock_on_hand", "raw_material_stock", "wip_units"])
+    shortage_col = first_column(df, ["stockout_count", "shortage_units", "material_shortage"])
+    aging_col = first_column(df, ["inventory_age_days", "wip_age_days", "aging_days"])
 
     if inventory_col and pd.api.types.is_numeric_dtype(df[inventory_col]):
         confidence, warnings = evaluate_kpi_confidence(df, [inventory_col])
