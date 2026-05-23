@@ -2,23 +2,15 @@ import pandas as pd
 from utils.validator import SemanticValidator
 from utils.confidence_engine import evaluate_kpi_confidence
 
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
-
 def calc_workforce_metrics(df):
     """Compute workforce productivity and staffing KPIs."""
     kpis = []
     if len(df) == 0:
         return kpis
-    labor_col = _first_column(df, ["labor_hours", "operator_efficiency", "WorkerProductivity"])
-    headcount_col = _first_column(df, ["headcount", "employees", "workers", "shift_staff"])
-    hours_col = _first_column(df, ["labor_hours", "worked_hours", "shift_hours"])
-    absenteeism_col = _first_column(df, ["absenteeism_rate", "absence_rate"])
+    labor_col = first_column(df, ["labor_hours", "operator_efficiency", "WorkerProductivity"])
+    headcount_col = first_column(df, ["headcount", "employees", "workers", "shift_staff"])
+    hours_col = first_column(df, ["labor_hours", "worked_hours", "shift_hours"])
+    absenteeism_col = first_column(df, ["absenteeism_rate", "absence_rate"])
 
     if headcount_col and pd.api.types.is_numeric_dtype(df[headcount_col]):
         confidence, warnings = evaluate_kpi_confidence(df, [headcount_col])
