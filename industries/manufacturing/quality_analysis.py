@@ -2,23 +2,15 @@ import pandas as pd
 from utils.validator import SemanticValidator
 from utils.confidence_engine import evaluate_kpi_confidence
 
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
-
 def calc_quality_metrics(df):
     """Compute core manufacturing quality KPIs."""
     kpis = []
     if len(df) == 0:
         return kpis
-    quality_col = _first_column(df, ["supplier_quality", "vendor_rating", "SupplierQuality"])
-    good_col = _first_column(df, ["good_units", "accepted_units", "pass_units", "saleable_units"])
-    scrap_col = _first_column(df, ["scrap_units", "reject_units", "defective_units", "waste_units"])
-    defect_col = _first_column(df, ["defect_rate", "scrap_rate", "reject_rate"])
+    quality_col = first_column(df, ["supplier_quality", "vendor_rating", "SupplierQuality"])
+    good_col = first_column(df, ["good_units", "accepted_units", "pass_units", "saleable_units"])
+    scrap_col = first_column(df, ["scrap_units", "reject_units", "defective_units", "waste_units"])
+    defect_col = first_column(df, ["defect_rate", "scrap_rate", "reject_rate"])
 
     if good_col and pd.api.types.is_numeric_dtype(df[good_col]):
         good_total = df[good_col].sum()
