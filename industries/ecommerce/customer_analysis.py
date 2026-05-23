@@ -1,5 +1,5 @@
 import pandas as pd
-from .common import confidence_for, first_column, safe_kpi
+from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
 
 def calc_customer_metrics(df):
