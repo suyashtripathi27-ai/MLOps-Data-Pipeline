@@ -1,11 +1,6 @@
 import pandas as pd
-from .reliability import evaluate_kpi_confidence
+from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns: return col
-    return None
 
 def calc_profitability_metrics(df):
     """Computes high-level CFO profitability metrics (Margins, EBITDA)."""
@@ -13,9 +8,9 @@ def calc_profitability_metrics(df):
     total_rows = len(df)
     if total_rows == 0: return kpis
 
-    rev_col = _first_column(df, ["revenue", "sales", "gross_revenue", "income"])
-    net_col = _first_column(df, ["net_income", "net_profit", "bottom_line"])
-    ebitda_col = _first_column(df, ["ebitda", "operating_profit_before_depreciation"])
+    rev_col = first_column(df, ["revenue", "sales", "gross_revenue", "income"])
+    net_col = first_column(df, ["net_income", "net_profit", "bottom_line"])
+    ebitda_col = first_column(df, ["ebitda", "operating_profit_before_depreciation"])
 
     if not rev_col: 
         return kpis
