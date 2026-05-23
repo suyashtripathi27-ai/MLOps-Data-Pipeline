@@ -59,7 +59,76 @@ INDUSTRY_ONTOLOGIES = {
             "related_signals": ["employee_engagement_cluster"],
             "criticality": "internal_operational"
         }
-        # You can add more HR clusters here later
+    }
+    "pharma": {
+        "compliance_risk_cluster": {
+            "keywords": ["fda", "audit", "gmp", "deviation", "sterility", "temperature", "excursion"],
+            "impact_areas": ["regulatory_action", "batch_rejection", "market_recall"],
+            "related_signals": ["quality_degradation_cluster"],
+            "criticality": "customer_facing"
+        },
+        "yield_degradation_cluster": {
+            "keywords": ["yield", "titer", "batch", "loss", "scrap", "api"],
+            "impact_areas": ["cost_of_goods", "supply_shortage"],
+            "related_signals": ["compliance_risk_cluster"],
+            "criticality": "internal_operational"
+        }
+    },
+    "finance": {
+        "liquidity_risk_cluster": {
+            "keywords": ["cash flow", "working capital", "dscr", "burn rate", "runway", "receivables"],
+            "impact_areas": ["solvency_risk", "operational_funding", "debt_covenant"],
+            "related_signals": ["margin_erosion_cluster"],
+            "criticality": "internal_operational"
+        },
+        "margin_erosion_cluster": {
+            "keywords": ["ebitda", "gross margin", "cogs", "opex", "variance"],
+            "impact_areas": ["profitability", "valuation", "dividend_risk"],
+            "related_signals": ["liquidity_risk_cluster"],
+            "criticality": "internal_operational"
+        }
+    },
+    "banking": {
+        "credit_risk_cluster": {
+            "keywords": ["npl", "default", "delinquency", "charge off", "fico", "ltv"],
+            "impact_areas": ["capital_adequacy", "provision_expense", "asset_quality"],
+            "related_signals": ["liquidity_risk_cluster"],
+            "criticality": "customer_facing"
+        },
+        "aml_fraud_cluster": {
+            "keywords": ["sar", "aml", "kyc", "fraud", "suspicious", "breach"],
+            "impact_areas": ["regulatory_fine", "reputational_damage", "license_risk"],
+            "related_signals": [],
+            "criticality": "customer_facing"
+        }
+    },
+    "retail": {
+        "store_performance_cluster": {
+            "keywords": ["footfall", "conversion", "basket size", "upt", "shrinkage", "theft"],
+            "impact_areas": ["store_profitability", "comp_sales", "inventory_loss"],
+            "related_signals": ["inventory_health_cluster"],
+            "criticality": "customer_facing"
+        },
+        "inventory_health_cluster": {
+            "keywords": ["stockout", "overstock", "turnover", "markdown", "clearance"],
+            "impact_areas": ["working_capital", "margin_erosion"],
+            "related_signals": ["store_performance_cluster"],
+            "criticality": "internal_operational"
+        }
+    },
+    "logistics": {
+        "network_bottleneck_cluster": {
+            "keywords": ["transit time", "delay", "detention", "demurrage", "port", "routing"],
+            "impact_areas": ["sla_breach", "customer_churn", "asset_utilization"],
+            "related_signals": ["freight_cost_cluster"],
+            "criticality": "customer_facing"
+        },
+        "freight_cost_cluster": {
+            "keywords": ["fuel", "spot rate", "carrier", "lane cost", "accessorial"],
+            "impact_areas": ["margin_erosion", "contract_profitability"],
+            "related_signals": ["network_bottleneck_cluster"],
+            "criticality": "internal_operational"
+        }
     }
 }
 
