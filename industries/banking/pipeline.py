@@ -1,5 +1,8 @@
 import os
 import json
+from utils.insight_engine import synthesize_operational_signals
+from utils.report_cleaner import clean_report_text
+from utils.governance_engine import validate_operational_claims, inject_reliability_warning
 from utils.llm_router import execute_with_fallback
 from .account_analysis import calc_account_metrics
 from .balance_analysis import calc_balance_metrics
@@ -45,6 +48,15 @@ def run_banking_analysis(payload, clients, df):
     """The central orchestration layer for Banking."""
     kpi_list = generate_dynamic_kpis(df)
     kpi_markdown = build_markdown_table(kpi_list)
+    signals_dict = synthesize_operational_signals(kpi_list, industry="banking")  # change per industry
+    narrative_blocks = signals_dict.get("PRIORITIZED_NARRATIVE_BLOCKS", {})
+    top_3_clusters = dict(list(narrative_blocks.items())[:3])
+
+    confidences = [
+        data.get("aggregated_confidence", 1.0)
+        for data in top_3_clusters.values()
+    ]
+    avg_confidence = sum(confidences) / len(confidences) if confidences else 1.0
     
     if isinstance(payload, str):
         try: payload = json.loads(payload)
