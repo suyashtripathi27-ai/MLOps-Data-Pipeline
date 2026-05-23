@@ -2,20 +2,15 @@ import pandas as pd
 from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
 
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns: return col
-    return None
-
 def calc_cashflow_metrics(df):
     """Computes critical liquidity and cash runway metrics for the CFO."""
     kpis = []
     if len(df) == 0: return kpis
 
-    ocf_col = _first_column(df, ["cash_flow_operating", "ocf", "operating_cash_flow"])
-    capex_col = _first_column(df, ["capital_expenditure", "capex", "capital_investments"])
-    cash_col = _first_column(df, ["cash_balance", "cash_and_equivalents"])
-    burn_col = _first_column(df, ["monthly_burn_rate", "operating_burn"])
+    ocf_col = first_column(df, ["cash_flow_operating", "ocf", "operating_cash_flow"])
+    capex_col = first_column(df, ["capital_expenditure", "capex", "capital_investments"])
+    cash_col = first_column(df, ["cash_balance", "cash_and_equivalents"])
+    burn_col = first_column(df, ["monthly_burn_rate", "operating_burn"])
 
     if not ocf_col: 
         return kpis
