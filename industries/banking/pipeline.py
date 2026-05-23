@@ -1,8 +1,8 @@
-import os
-import json
 from utils.insight_engine import synthesize_operational_signals
 from utils.report_cleaner import clean_report_text
 from utils.governance_engine import validate_operational_claims, inject_reliability_warning
+import os
+import json
 from utils.llm_router import execute_with_fallback
 from .account_analysis import calc_account_metrics
 from .balance_analysis import calc_balance_metrics
