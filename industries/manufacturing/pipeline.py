@@ -55,7 +55,7 @@ def build_markdown_table(kpis):
     return md
 
 
-def run_manufacturing_analysis(payload, clients, df): 
+def run_manufacturing_analysis(payload, clients, df):
     # 1. Generate Raw Data
     kpi_list = generate_dynamic_kpis(df)
     kpi_markdown = build_markdown_table(kpi_list)
@@ -72,8 +72,10 @@ def run_manufacturing_analysis(payload, clients, df):
     avg_confidence = sum(confidences) / len(confidences) if confidences else 1.0
     
     if isinstance(payload, str):
-        try: payload = json.loads(payload)
-        except: payload = {"raw_data": payload} 
+        try:
+            payload = json.loads(payload)
+        except:
+            payload = {"raw_data": payload}
             
     # Send ONLY the top 3 clusters
     payload['prioritized_signals'] = {"PRIORITIZED_NARRATIVE_BLOCKS": top_3_clusters}
