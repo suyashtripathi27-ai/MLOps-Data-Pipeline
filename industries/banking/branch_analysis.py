@@ -2,17 +2,11 @@ import pandas as pd
 from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
 
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
 def calc_branch_metrics(df):
     """Calculates branch performance and efficiency KPIs."""
     kpis = []
-    branch_col = _first_column(df, ["branch_id", "branch_code", "location", "Geography"])
-    amount_col = _first_column(df, ["amount", "balance", "transaction_amount"])
+    branch_col = first_column(df, ["branch_id", "branch_code", "location", "Geography"])
+    amount_col = first_column(df, ["amount", "balance", "transaction_amount"])
 
     if not branch_col or not amount_col:
         return kpis
