@@ -1,6 +1,6 @@
 from utils.insight_engine import synthesize_operational_signals
 from utils.report_cleaner import clean_report_text
-from industries.manufacturing.governance import validate_operational_claims, inject_reliability_warning
+from utils.governance_engine import validate_operational_claims, inject_reliability_warning
 import json
 import os
 from utils.llm_router import execute_with_fallback
