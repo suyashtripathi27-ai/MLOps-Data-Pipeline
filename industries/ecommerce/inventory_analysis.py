@@ -1,6 +1,6 @@
 import pandas as pd
 from utils.validator import SemanticValidator
-from .common import confidence_for, first_column, safe_kpi
+from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 
 def calc_inventory_metrics(df):
     kpis = []
