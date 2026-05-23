@@ -2,18 +2,13 @@ import pandas as pd
 from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
 
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns: return col
-    return None
-
 def calc_balance_metrics(df):
     """Computes retail banking liquidity, overdraft risk, and wealth concentration."""
     kpis = []
     total_rows = len(df)
     if total_rows == 0: return kpis
 
-    balance_col = _first_column(df, ["balance", "account_balance", "ledger_balance"])
+    balance_col = first_column(df, ["balance", "account_balance", "ledger_balance"])
 
     if not balance_col: 
         return kpis
