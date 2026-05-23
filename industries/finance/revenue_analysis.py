@@ -1,21 +1,13 @@
 """Revenue KPIs: totals, growth and average ticket."""
 import pandas as pd
-from .reliability import evaluate_kpi_confidence
+from utils.kpi_helpers import first_column, safe_kpi, confidence_fore
 from utils.validator import SemanticValidator
-
-
-def _first_column(df, candidates):
-    for c in candidates:
-        if c in df.columns:
-            return c
-    return None
-
 
 def calc_revenue_metrics(df):
     kpis = []
-    revenue_col = _first_column(df, ["revenue", "sales", "turnover"])
-    date_col = _first_column(df, ["date", "transaction_date", "period"])
-    ticket_col = _first_column(df, ["ticket_value", "amount", "value"])
+    revenue_col = first_column(df, ["revenue", "sales", "turnover"])
+    date_col = first_column(df, ["date", "transaction_date", "period"])
+    ticket_col = first_column(df, ["ticket_value", "amount", "value"])
 
     if not revenue_col:
         return kpis
