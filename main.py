@@ -7,6 +7,7 @@ from openai import OpenAI
 from utils.cleaner import load_and_clean, universal_clean
 from utils.profiler import generate_payload
 from utils.llm_router import execute_with_fallback  # 🛡️ THE NEW FALLBACK ENGINE
+from utils.contextual_matcher import detect_industry_from_columns
 
 # 2. HIGH-AVAILABILITY CLIENT SETUP
 print("🔌 Initializing Multi-API Client Router...")
@@ -38,31 +39,18 @@ if not clients:
 def detect_industry(clients, columns_list):
     """THE AGENTIC ROUTER: Looks at the column names and guesses the industry."""
     print(f"🔍 Sniffing data schema: {columns_list}")
-    
-    # ⚡ STEP 1: HEURISTIC FAST-TRACK (Saves API Quota)
-    cols_str = str(columns_list).lower()
-    
-    if any(word in cols_str for word in ['store', 'dept', 'weekly_sales', 'retail']):
-        print("🎯 Fast Route: Classified as [RETAIL] via Heuristics")
-        return "retail"
-    elif any(word in cols_str for word in ['hub', 'actual_time', 'fleet', 'osrm_time']):
-        print("🎯 Fast Route: Classified as [LOGISTICS] via Heuristics")
-        return "logistics"
-    elif any(word in cols_str for word in ['account', 'balance', 'transaction', 'loan', 'deposit']):
-        print("🎯 Fast Route: Classified as [BANKING] via Heuristics")
-        return "banking"
-    elif any(word in cols_str for word in ['batch', 'expiry', 'purity', 'therapeutic', 'drug', 'fda']):
-        print("🎯 Fast Route: Classified as [PHARMA] via Heuristics")
-        return "pharma"
-    elif any(word in cols_str for word in ['production', 'manufacturing', 'batch_id', 'lot_number', 'downtime', 'defect_rate', 'scrap']):
-        print("🎯 Fast Route: Classified as [MANUFACTURING] via Heuristics")
-        return "manufacturing"
-    elif any(word in cols_str for word in ['revenue', 'profit', 'expense', 'cashflow', 'liquidity', 'investment', 'roi', 'forecast', 'assets', 'equity']):
-        print("🎯 Fast Route: Classified as [FINANCE] via Heuristics")
-        return "finance"
+
+    # ⚡ STEP 1: CONTEXTUAL ROUTING (Weighted context-aware matcher)
+    routed_industry, routing_meta = detect_industry_from_columns(columns_list)
+    if routed_industry:
+        print(
+            f"🎯 Context Route: Classified as [{routed_industry.upper()}] "
+            f"(keywords={routing_meta.get('keyword_hits', [])}, context={routing_meta.get('context_hits', [])})"
+        )
+        return routed_industry
         
     # 🧠 STEP 2: AI ROUTING (If heuristics fail to identify it)
-    supported_industries = ["logistics", "retail", "banking", "pharma", "manufacturing", "finance", "generic"]
+    supported_industries = ["logistics", "retail", "banking", "pharma", "manufacturing", "finance", "ecommerce", "generic"]
     system_prompt = "You are a data schema router. Follow instructions exactly."
     
     user_prompt = f"""
@@ -145,7 +133,8 @@ def main():
             "banking":   ("industries.banking.pipeline",   "run_banking_analysis"),
             "pharma":    ("industries.pharma.pipeline",    "run_pharma_analysis"),
             "finance":   ("industries.finance.pipeline",   "run_finance_analysis"),
-            "manufacturing": ("industries.manufacturing.pipeline", "run_manufacturing_analysis")
+            "manufacturing": ("industries.manufacturing.pipeline", "run_manufacturing_analysis"),
+            "ecommerce": ("industries.ecommerce.pipeline", "run_ecommerce_analysis")
         }
 
         # Determine the report content

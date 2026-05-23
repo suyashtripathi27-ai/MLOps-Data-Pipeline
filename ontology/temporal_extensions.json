@@ -1,0 +1,28 @@
+{
+  "default_temporal_profile": {
+    "lookback_window": "90d",
+    "baseline_comparison": "trailing_4_period_average"
+  },
+  "trajectory_terms": {
+    "improving": ["improving", "rising", "increasing", "recovery", "uptrend"],
+    "declining": ["declining", "falling", "decreasing", "downtrend", "erosion"],
+    "stable": ["stable", "flat", "unchanged", "steady"]
+  },
+  "trend_indicators": {
+    "velocity": {
+      "fast": ["sharp", "rapid", "spike", "surge"],
+      "moderate": ["gradual", "steady"],
+      "slow": ["slight", "marginal"]
+    },
+    "acceleration": {
+      "increasing": ["accelerating", "worsening faster", "compounding"],
+      "decreasing": ["decelerating", "stabilizing"],
+      "flat": ["linear", "steady"]
+    },
+    "volatility": {
+      "high": ["volatile", "swing", "erratic"],
+      "medium": ["variable", "oscillating"],
+      "low": ["stable", "consistent"]
+    }
+  }
+}

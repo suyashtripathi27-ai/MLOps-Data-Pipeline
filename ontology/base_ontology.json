@@ -1,0 +1,264 @@
+{
+  "industries": {
+    "manufacturing": {
+      "clusters": {
+        "production_instability_cluster": {
+          "keywords": ["downtime", "maintenance", "oee", "utilization", "delay", "idle"],
+          "context_type": "inventory_management",
+          "required_context": ["production", "line", "plant", "batch"],
+          "forbidden_cooccurrence": ["employee", "asset"],
+          "impact_areas": ["operational_efficiency", "throughput_risk", "capex_roi"],
+          "criticality": "internal_operational",
+          "signal_weight": 0.82,
+          "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.55},
+          "llm_reasoning_hints": "Connect downtime indicators with throughput and margin impact.",
+          "hierarchy": {"subcluster": "line_stability", "signal_family": "asset_uptime", "specific_metric": "unplanned_downtime_hours"}
+        },
+        "workforce_risk_cluster": {
+          "keywords": ["turnover", "attrition", "absenteeism", "labor", "safety incident"],
+          "context_type": "hr",
+          "required_context": ["employee", "workforce", "staff", "headcount"],
+          "forbidden_cooccurrence": ["inventory", "stock", "asset"],
+          "impact_areas": ["talent_drain", "employee_safety", "continuity_risk"],
+          "criticality": "internal_operational",
+          "signal_weight": 0.8,
+          "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.55},
+          "llm_reasoning_hints": "Treat workforce indicators as people-risk and avoid demographic inferences.",
+          "hierarchy": {"subcluster": "workforce_stability", "signal_family": "retention", "specific_metric": "employee_turnover_rate"}
+        },
+        "supply_chain_cluster": {
+          "keywords": ["inventory", "stock", "wip", "turnover", "lead time", "freight", "transit"],
+          "context_type": "inventory_management",
+          "required_context": ["inventory", "warehouse", "sku", "supply"],
+          "forbidden_cooccurrence": ["employee", "headcount"],
+          "impact_areas": ["working_capital", "stockout_risk", "holding_costs"],
+          "criticality": "internal_operational",
+          "signal_weight": 0.84,
+          "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.55},
+          "llm_reasoning_hints": "Track inventory flow reliability and downstream service risk.",
+          "hierarchy": {"subcluster": "inventory_velocity", "signal_family": "turnover_health", "specific_metric": "inventory_turnover_ratio"}
+        },
+        "financial_performance_cluster": {
+          "keywords": ["sales", "revenue", "profit", "cost", "margin", "expense", "roi"],
+          "context_type": "financial",
+          "required_context": ["margin", "revenue", "cost", "ebitda"],
+          "forbidden_cooccurrence": ["employee", "stockout"],
+          "impact_areas": ["margin_erosion", "revenue_growth", "ebitda_impact"],
+          "criticality": "internal_operational",
+          "signal_weight": 0.88,
+          "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.6},
+          "llm_reasoning_hints": "Differentiate profitability level from profitability trajectory.",
+          "hierarchy": {"subcluster": "margin_pressure", "signal_family": "gross_margin", "specific_metric": "gross_margin_pct"}
+        }
+      }
+    },
+    "finance": {
+      "clusters": {
+        "liquidity_risk_cluster": {
+          "keywords": ["cash flow", "working capital", "dscr", "burn rate", "runway", "receivables"],
+          "context_type": "financial",
+          "required_context": ["cash", "liquidity", "debt", "working capital"],
+          "forbidden_cooccurrence": ["employee", "stockout"],
+          "impact_areas": ["solvency_risk", "operational_funding", "debt_covenant"],
+          "criticality": "internal_operational",
+          "signal_weight": 0.9,
+          "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.6},
+          "llm_reasoning_hints": "Prioritize near-term solvency and covenant exposure.",
+          "hierarchy": {"subcluster": "cash_stress", "signal_family": "liquidity", "specific_metric": "operating_cash_flow"}
+        },
+        "margin_erosion_cluster": {
+          "keywords": ["ebitda", "gross margin", "cogs", "opex", "variance", "asset turnover", "turnover"],
+          "context_type": "financial",
+          "required_context": ["margin", "asset", "roa", "ebitda"],
+          "forbidden_cooccurrence": ["employee", "inventory", "stockout"],
+          "impact_areas": ["profitability", "valuation", "dividend_risk"],
+          "criticality": "internal_operational",
+          "signal_weight": 0.9,
+          "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.6},
+          "llm_reasoning_hints": "Separate structural margin floor from active erosion trend.",
+          "hierarchy": {"subcluster": "margin_pressure", "signal_family": "operating_margin", "specific_metric": "ebitda_margin_pct"}
+        }
+      }
+    },
+    "banking": {
+      "clusters": {
+        "credit_risk_cluster": {
+          "keywords": ["npl", "default", "delinquency", "charge off", "fico", "ltv"],
+          "context_type": "financial",
+          "required_context": ["loan", "credit", "portfolio", "delinquency"],
+          "forbidden_cooccurrence": ["inventory", "sku"],
+          "impact_areas": ["capital_adequacy", "provision_expense", "asset_quality"],
+          "criticality": "customer_facing",
+          "signal_weight": 0.92,
+          "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.65},
+          "llm_reasoning_hints": "Escalate only with enough corroborating portfolio evidence.",
+          "hierarchy": {"subcluster": "portfolio_stress", "signal_family": "delinquency", "specific_metric": "npl_ratio"}
+        },
+        "aml_fraud_cluster": {
+          "keywords": ["sar", "aml", "kyc", "fraud", "suspicious", "breach"],
+          "context_type": "financial",
+          "required_context": ["transaction", "account", "monitoring", "anomaly"],
+          "forbidden_cooccurrence": ["confirmed conviction"],
+          "impact_areas": ["regulatory_fine", "reputational_damage", "license_risk"],
+          "criticality": "customer_facing",
+          "signal_weight": 0.94,
+          "confidence_requirements": {"min_evidence": 2, "min_confidence": 0.65},
+          "llm_reasoning_hints": "Use anomaly language; avoid definitive criminal claims.",
+          "hierarchy": {"subcluster": "transaction_monitoring", "signal_family": "anomaly_pattern", "specific_metric": "suspicious_activity_rate"}
+        }
+      }
+    },
+    "pharma": {
+      "clusters": {
+        "compliance_risk_cluster": {
+          "keywords": ["fda", "audit", "gmp", "deviation", "sterility", "temperature", "excursion"],
+          "context_type": "inventory_management",
+          "required_context": ["batch", "lot", "quality", "gmp"],
+          "forbidden_cooccurrence": ["speculative diagnosis"],
+          "impact_areas": ["regulatory_action", "batch_rejection", "market_recall"],
+          "criticality": "customer_facing",
+          "signal_weight": 0.95,
+          "confidence_requirements": {"min_evidence": 2, "min_confidence": 0.7},
+          "llm_reasoning_hints": "Anchor recommendations to GMP/FDA aligned controls.",
+          "hierarchy": {"subcluster": "quality_compliance", "signal_family": "gmp_adherence", "specific_metric": "deviation_rate"}
+        },
+        "yield_degradation_cluster": {
+          "keywords": ["yield", "titer", "batch", "loss", "scrap", "api"],
+          "context_type": "inventory_management",
+          "required_context": ["batch", "yield", "process"],
+          "forbidden_cooccurrence": ["employee attrition"],
+          "impact_areas": ["cost_of_goods", "supply_shortage"],
+          "criticality": "internal_operational",
+          "signal_weight": 0.86,
+          "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.6},
+          "llm_reasoning_hints": "Tie process-yield losses to supply risk and quality tradeoffs.",
+          "hierarchy": {"subcluster": "bioprocess_yield", "signal_family": "batch_performance", "specific_metric": "yield_pct"}
+        }
+      }
+    },
+    "retail": {
+      "clusters": {
+        "store_performance_cluster": {
+          "keywords": ["footfall", "conversion", "basket size", "upt", "shrinkage", "theft"],
+          "context_type": "inventory_management",
+          "required_context": ["store", "customer", "sales", "basket"],
+          "forbidden_cooccurrence": ["loan", "kyc"],
+          "impact_areas": ["store_profitability", "comp_sales", "inventory_loss"],
+          "criticality": "customer_facing",
+          "signal_weight": 0.83,
+          "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.55},
+          "llm_reasoning_hints": "Balance top-line conversion with shrink and labor pressure.",
+          "hierarchy": {"subcluster": "store_conversion", "signal_family": "in_store_sales", "specific_metric": "conversion_rate"}
+        },
+        "inventory_health_cluster": {
+          "keywords": ["stockout", "overstock", "turnover", "markdown", "clearance"],
+          "context_type": "inventory_management",
+          "required_context": ["inventory", "stock", "sku", "warehouse"],
+          "forbidden_cooccurrence": ["employee", "attrition", "asset"],
+          "impact_areas": ["working_capital", "margin_erosion"],
+          "criticality": "internal_operational",
+          "signal_weight": 0.87,
+          "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.6},
+          "llm_reasoning_hints": "Focus on inventory flow and markdown risk coupling.",
+          "hierarchy": {"subcluster": "inventory_velocity", "signal_family": "turnover_health", "specific_metric": "inventory_turnover_ratio"}
+        }
+      }
+    },
+    "logistics": {
+      "clusters": {
+        "network_bottleneck_cluster": {
+          "keywords": ["transit time", "delay", "detention", "demurrage", "port", "routing"],
+          "context_type": "inventory_management",
+          "required_context": ["route", "shipment", "network", "carrier"],
+          "forbidden_cooccurrence": ["employee turnover"],
+          "impact_areas": ["sla_breach", "customer_churn", "asset_utilization"],
+          "criticality": "customer_facing",
+          "signal_weight": 0.89,
+          "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.6},
+          "llm_reasoning_hints": "Explain delay propagation through network nodes.",
+          "hierarchy": {"subcluster": "transit_reliability", "signal_family": "delivery_performance", "specific_metric": "on_time_delivery_pct"}
+        },
+        "freight_cost_cluster": {
+          "keywords": ["fuel", "spot rate", "carrier", "lane cost", "accessorial"],
+          "context_type": "financial",
+          "required_context": ["cost", "freight", "carrier"],
+          "forbidden_cooccurrence": ["fda"],
+          "impact_areas": ["margin_erosion", "contract_profitability"],
+          "criticality": "internal_operational",
+          "signal_weight": 0.85,
+          "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.55},
+          "llm_reasoning_hints": "Quantify freight inflation pass-through risk.",
+          "hierarchy": {"subcluster": "transport_cost_pressure", "signal_family": "lane_economics", "specific_metric": "cost_per_shipment"}
+        }
+      }
+    },
+    "ecommerce": {
+      "clusters": {
+        "conversion_friction_cluster": {
+          "keywords": ["checkout", "dropoff", "cart abandonment", "conversion", "funnel"],
+          "context_type": "inventory_management",
+          "required_context": ["session", "cart", "checkout", "traffic"],
+          "forbidden_cooccurrence": ["branch", "loan"],
+          "impact_areas": ["lost_revenue", "customer_experience"],
+          "criticality": "customer_facing",
+          "signal_weight": 0.9,
+          "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.6},
+          "llm_reasoning_hints": "Trace friction from traffic quality to checkout completion.",
+          "hierarchy": {"subcluster": "funnel_dropoff", "signal_family": "checkout_conversion", "specific_metric": "checkout_conversion_rate"}
+        },
+        "retention_risk_cluster": {
+          "keywords": ["repeat purchase", "churn", "retention", "cohort", "ltv"],
+          "context_type": "hr",
+          "required_context": ["customer", "cohort", "repeat"],
+          "forbidden_cooccurrence": ["employee", "headcount"],
+          "impact_areas": ["lifetime_value", "revenue_predictability"],
+          "criticality": "customer_facing",
+          "signal_weight": 0.88,
+          "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.6},
+          "llm_reasoning_hints": "Differentiate transient promo lift from durable loyalty.",
+          "hierarchy": {"subcluster": "cohort_decay", "signal_family": "customer_retention", "specific_metric": "repeat_purchase_rate"}
+        },
+        "fulfillment_instability_cluster": {
+          "keywords": ["fulfillment", "late delivery", "shipment delay", "warehouse backlog", "rto"],
+          "context_type": "inventory_management",
+          "required_context": ["order", "shipment", "delivery"],
+          "forbidden_cooccurrence": ["fraud conviction"],
+          "impact_areas": ["sla_breach", "refund_cost", "customer_churn"],
+          "criticality": "customer_facing",
+          "signal_weight": 0.91,
+          "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.6},
+          "llm_reasoning_hints": "Model service instability impact on repeat demand.",
+          "hierarchy": {"subcluster": "delivery_reliability", "signal_family": "order_fulfillment", "specific_metric": "on_time_fulfillment_pct"}
+        },
+        "promotion_dependency_cluster": {
+          "keywords": ["discount", "promo", "coupon", "markdown", "campaign dependency"],
+          "context_type": "financial",
+          "required_context": ["promotion", "discount", "margin"],
+          "forbidden_cooccurrence": ["employee attrition"],
+          "impact_areas": ["margin_pressure", "demand_quality"],
+          "criticality": "internal_operational",
+          "signal_weight": 0.86,
+          "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.55},
+          "llm_reasoning_hints": "Separate healthy campaign elasticity from promo addiction.",
+          "hierarchy": {"subcluster": "discount_intensity", "signal_family": "promotion_effectiveness", "specific_metric": "promo_share_of_sales"}
+        }
+      }
+    },
+    "hr": {
+      "clusters": {
+        "employee_engagement_cluster": {
+          "keywords": ["engagement", "satisfaction", "survey", "wellbeing", "burnout"],
+          "context_type": "hr",
+          "required_context": ["employee", "team", "workforce"],
+          "forbidden_cooccurrence": ["sku", "inventory"],
+          "impact_areas": ["retention", "productivity", "morale"],
+          "criticality": "internal_operational",
+          "signal_weight": 0.8,
+          "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.55},
+          "llm_reasoning_hints": "Avoid demographic assumptions; focus on observable workplace metrics.",
+          "hierarchy": {"subcluster": "engagement_health", "signal_family": "sentiment", "specific_metric": "engagement_score"}
+        }
+      }
+    }
+  }
+}

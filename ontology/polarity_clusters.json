@@ -1,0 +1,58 @@
+{
+  "positive": {
+    "growth_stability_cluster": {
+      "applies_to": ["finance", "retail", "ecommerce", "manufacturing"],
+      "keywords": ["predictable growth", "stable growth", "sustained demand"],
+      "context_type": "financial",
+      "impact_areas": ["revenue_quality", "forecast_reliability"],
+      "hierarchy": {"subcluster": "growth_quality", "signal_family": "revenue_stability", "specific_metric": "revenue_growth_consistency"},
+      "signal_weight": 0.72,
+      "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.55},
+      "llm_reasoning_hints": "Treat this as stabilizer evidence against downside risk."
+    },
+    "operational_resilience_cluster": {
+      "applies_to": ["*"],
+      "keywords": ["resilience", "recovered quickly", "redundancy", "continuity"],
+      "context_type": "inventory_management",
+      "impact_areas": ["service_continuity", "shock_absorption"],
+      "hierarchy": {"subcluster": "resilience_capacity", "signal_family": "continuity", "specific_metric": "recovery_time"},
+      "signal_weight": 0.7,
+      "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.5},
+      "llm_reasoning_hints": "Use this to avoid overly pessimistic recommendations."
+    },
+    "customer_loyalty_cluster": {
+      "applies_to": ["retail", "ecommerce"],
+      "keywords": ["repeat customers", "loyalty", "retention improved", "nps"],
+      "context_type": "hr",
+      "impact_areas": ["lifetime_value", "demand_resilience"],
+      "hierarchy": {"subcluster": "loyalty_strength", "signal_family": "retention", "specific_metric": "repeat_purchase_rate"},
+      "signal_weight": 0.74,
+      "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.55},
+      "llm_reasoning_hints": "Include loyalty signals when balancing downside scenarios."
+    }
+  },
+  "neutral": {
+    "operational_efficiency_cluster": {
+      "applies_to": ["*"],
+      "keywords": ["efficiency", "utilization", "cycle time", "throughput"],
+      "context_type": "inventory_management",
+      "impact_areas": ["cost_efficiency", "capacity_utilization"],
+      "hierarchy": {"subcluster": "process_efficiency", "signal_family": "throughput", "specific_metric": "cycle_time"},
+      "signal_weight": 0.62,
+      "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.5},
+      "llm_reasoning_hints": "Efficiency observations can be neutral unless paired with degradation trajectory."
+    }
+  },
+  "risk": {
+    "capital_efficiency_risk_cluster": {
+      "applies_to": ["finance", "manufacturing"],
+      "keywords": ["low roa", "capital intensity", "asset underutilization"],
+      "context_type": "financial",
+      "impact_areas": ["valuation", "return_on_capital"],
+      "hierarchy": {"subcluster": "capital_productivity", "signal_family": "asset_efficiency", "specific_metric": "roic"},
+      "signal_weight": 0.78,
+      "confidence_requirements": {"min_evidence": 1, "min_confidence": 0.55},
+      "llm_reasoning_hints": "Use with baseline trend to avoid false alarms on structurally low-margin models."
+    }
+  }
+}

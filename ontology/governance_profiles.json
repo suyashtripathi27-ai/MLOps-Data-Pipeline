@@ -1,0 +1,36 @@
+{
+  "profiles": {
+    "banking": {
+      "severity_clamping": {
+        "aml_fraud_cluster": {
+          "forbidden_claims": ["fraud_detected", "confirmed_fraud", "criminal_activity_confirmed"],
+          "replacement_claim": "anomaly_flagged",
+          "max_severity": "MEDIUM"
+        }
+      },
+      "compliance_constraints": ["regulatory_language_only", "no_definitive_criminal_claims_without_case_outcome"]
+    },
+    "pharma": {
+      "severity_clamping": {
+        "compliance_risk_cluster": {
+          "forbidden_claims": ["fda_violation_confirmed"],
+          "replacement_claim": "potential_compliance_deviation",
+          "max_severity": "HIGH"
+        }
+      },
+      "compliance_constraints": ["GMP_relevant", "FDA_aligned", "quality_system_root_cause_required"]
+    },
+    "hr": {
+      "severity_clamping": {},
+      "demographic_safety_checks": [
+        "no_protected_attribute_inference",
+        "no_demographic_targeting",
+        "behavioral_evidence_required"
+      ]
+    },
+    "ecommerce": {
+      "severity_clamping": {},
+      "compliance_constraints": ["customer_data_privacy_safe", "no_dark_pattern_recommendations"]
+    }
+  }
+}

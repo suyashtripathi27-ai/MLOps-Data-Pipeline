@@ -1,96 +1,29 @@
 import hashlib
 import re
 
-# ==========================================
-# LAYER 1: THE MASTER ONTOLOGY (Multi-Industry)
-# ==========================================
-INDUSTRY_ONTOLOGIES = {
-    "manufacturing": {
-        "production_instability_cluster": {
-            "keywords": ["downtime", "maintenance", "oee", "efficiency", "utilization", "delay", "idle"],
-            "impact_areas": ["operational_efficiency", "throughput_risk", "capex_roi"],
-            "related_signals": ["quality_degradation_cluster", "supply_chain_cluster"],
-            "criticality": "internal_operational"
-        },
-        "quality_degradation_cluster": {
-            "keywords": ["defect", "quality", "scrap", "reject", "fail", "oos", "purity"],
-            "impact_areas": ["cost_of_poor_quality", "customer_satisfaction", "compliance_risk"],
-            "related_signals": ["production_instability_cluster"],
-            "criticality": "customer_facing"
-        },
-        "workforce_risk_cluster": {
-            "keywords": ["safety", "incident", "accident", "turnover", "absenteeism", "labor"],
-            "impact_areas": ["regulatory_compliance", "employee_safety", "liability_cost"],
-            "related_signals": ["production_instability_cluster"],
-            "criticality": "internal_operational"
-        },
-        "supply_chain_cluster": {
-            "keywords": ["inventory", "stock", "wip", "turnover", "lead_time", "freight", "transit"],
-            "impact_areas": ["working_capital", "stockout_risk", "holding_costs"],
-            "related_signals": ["financial_performance_cluster"],
-            "criticality": "internal_operational"
-        },
-        "financial_performance_cluster": {
-            "keywords": ["sales", "revenue", "profit", "cost", "margin", "expense", "roi"],
-            "impact_areas": ["margin_erosion", "revenue_growth", "ebitda_impact"],
-            "related_signals": ["supply_chain_cluster", "production_instability_cluster"],
-            "criticality": "internal_operational"
-        }
-    },
-    "ecommerce": {
-        "fulfillment_risk_cluster": {
-            "keywords": ["delivery", "shipping", "delay", "fulfillment", "transit", "logistics"],
-            "impact_areas": ["customer_satisfaction", "sla_breach", "logistics_cost"],
-            "related_signals": ["inventory_health_cluster"],
-            "criticality": "customer_facing"
-        },
-        "inventory_health_cluster": {
-            "keywords": ["stock", "stockout", "turnover", "overstock", "sku"],
-            "impact_areas": ["working_capital", "lost_sales"],
-            "related_signals": ["fulfillment_risk_cluster"],
-            "criticality": "internal_operational"
-        }
-        # You can add more E-commerce clusters here later
-    },
-    "hr": {
-        "retention_risk_cluster": {
-            "keywords": ["turnover", "attrition", "flight risk", "resignation", "tenure"],
-            "impact_areas": ["talent_drain", "recruiting_costs", "continuity_risk"],
-            "related_signals": ["employee_engagement_cluster"],
-            "criticality": "internal_operational"
-        }
-        # You can add more HR clusters here later
-    }
-}
+from utils.contextual_matcher import apply_governance, match_ontology_signal
 
-# ==========================================
-# LAYER 2: SIGNAL ENRICHMENT ENGINE
-# ==========================================
-def map_to_ontology(category, name, industry="manufacturing"):
-    """Pulls the correct ontology based on the industry pipeline calling it."""
-    text = f"{category} {name}".lower()
-    
-    # Safely fallback to manufacturing if the industry isn't found
-    active_ontology = INDUSTRY_ONTOLOGIES.get(industry, INDUSTRY_ONTOLOGIES["manufacturing"])
-    
-    for cluster_name, rules in active_ontology.items():
-        if any(keyword in text for keyword in rules["keywords"]):
-            return cluster_name, rules["impact_areas"], rules["related_signals"], rules["criticality"]
-            
-    return "general_operations_cluster", ["general_monitoring"], [], "internal_operational"
+
+def map_to_ontology(category, name, warning="", industry="manufacturing"):
+    """Context-aware ontology mapper with hierarchy, polarity balancing, and temporal hints."""
+    return match_ontology_signal(category, name, warning=warning, industry=industry)
+
 
 def calculate_numeric_confidence(label):
     mapping = {"🟢 High": 0.92, "High": 0.92, "🟡 Medium": 0.65, "Medium": 0.65, "🔴 Low": 0.35, "Low": 0.35}
     return mapping.get(label, 0.50)
 
+
 def determine_operational_scope(name, category):
     text = f"{category} {name}".lower()
-    if any(k in text for k in ['total', 'overall', 'revenue', 'average']):
+    if any(k in text for k in ["total", "overall", "revenue", "average"]):
         return "systemic"
     return "localized"
 
+
 def clean_dimension_name(category):
-    return re.sub(r'[^\w\s]', '', category).strip().replace(' ', '_').lower()
+    return re.sub(r"[^\w\s]", "", category).strip().replace(" ", "_").lower()
+
 
 def generate_signal(kpi, industry):
     warning = str(kpi.get("warnings", "None"))
@@ -98,25 +31,33 @@ def generate_signal(kpi, industry):
     name = kpi.get("name", "Metric")
     value = kpi.get("value", "")
     conf_label = kpi.get("confidence", "Medium")
-    
-    # Pass the industry down to the mapper
-    cluster, impacts, related, criticality = map_to_ontology(category, name, industry)
-    
+
+    ontology_match = map_to_ontology(category, name, warning=warning, industry=industry)
+
     signal = {
         "signal_id": hashlib.md5(f"{category}{name}".encode()).hexdigest()[:8],
-        "cluster": cluster,
-        "affected_dimension": clean_dimension_name(category), 
+        "cluster": ontology_match["cluster"],
+        "subcluster": ontology_match["hierarchy"].get("subcluster", "general_operations"),
+        "signal_family": ontology_match["hierarchy"].get("signal_family", "monitoring"),
+        "specific_metric": ontology_match["hierarchy"].get("specific_metric", clean_dimension_name(name)),
+        "affected_dimension": clean_dimension_name(category),
         "business_area": category,
         "finding": f"{name} is at {value}",
-        "raw_warning": warning,                               
-        "impact_areas": impacts,
-        "related_clusters": related,
-        "business_criticality": criticality,
+        "raw_warning": warning,
+        "impact_areas": ontology_match["impact_areas"],
+        "related_clusters": ontology_match["related_signals"],
+        "business_criticality": ontology_match["criticality"],
+        "context_type": ontology_match["context_type"],
+        "signal_weight": ontology_match["signal_weight"],
+        "confidence_requirements": ontology_match["confidence_requirements"],
+        "llm_reasoning_hints": ontology_match["llm_reasoning_hints"],
+        "temporal_dynamics": ontology_match["temporal_dynamics"],
+        "match_debug": ontology_match["match_debug"],
         "confidence_score": calculate_numeric_confidence(conf_label),
         "confidence_label": conf_label.replace("🟢 ", "").replace("🟡 ", "").replace("🔴 ", "").upper(),
-        "operational_scope": determine_operational_scope(name, category)
+        "operational_scope": determine_operational_scope(name, category),
     }
-    
+
     if warning != "None" and ("CRITICAL" in warning.upper() or "HIGH" in warning.upper() or ">" in warning):
         signal["severity"] = "HIGH"
         signal["evidence_strength"] = "strong_statistical_outlier"
@@ -129,19 +70,30 @@ def generate_signal(kpi, industry):
         signal["severity"] = "LOW"
         signal["evidence_strength"] = "baseline_normal"
         signal["time_sensitivity"] = "none"
-        
+
+    governed_finding, governed_severity, governance_meta = apply_governance(
+        industry=industry,
+        cluster_name=signal["cluster"],
+        finding=signal["finding"],
+        severity=signal["severity"],
+    )
+    signal["finding"] = governed_finding
+    signal["severity"] = governed_severity
+    signal["governance"] = governance_meta
+
     return signal
+
 
 # ==========================================
 # LAYER 3: DEDUPLICATION, WEIGHTING & ESCALATION
 # ==========================================
 def consolidate_signals(signals_list):
     consolidated = {}
-    
+
     for sig in signals_list:
         if sig["severity"] == "LOW":
-            continue 
-            
+            continue
+
         cluster = sig["cluster"]
         if cluster not in consolidated:
             consolidated[cluster] = {
@@ -149,26 +101,34 @@ def consolidate_signals(signals_list):
                 "primary_impacts": sig["impact_areas"],
                 "highest_severity": sig["severity"],
                 "time_sensitivity": sig["time_sensitivity"],
+                "subcluster": sig.get("subcluster"),
+                "signal_family": sig.get("signal_family"),
+                "specific_metric": sig.get("specific_metric"),
+                "temporal_dynamics": sig.get("temporal_dynamics", {}),
+                "governance": sig.get("governance", {}),
                 "evidence_chain": [],
                 "raw_confidences": [],
-                "unique_evidence_types": set()
+                "unique_evidence_types": set(),
             }
-            
-        consolidated[cluster]["evidence_chain"].append({
-            "finding": sig["finding"],
-            "evidence_strength": sig["evidence_strength"],
-            "scope": sig["operational_scope"],
-            "confidence": sig["confidence_score"]
-        })
-        
+
+        consolidated[cluster]["evidence_chain"].append(
+            {
+                "finding": sig["finding"],
+                "evidence_strength": sig["evidence_strength"],
+                "scope": sig["operational_scope"],
+                "confidence": sig["confidence_score"],
+            }
+        )
+
         consolidated[cluster]["raw_confidences"].append(sig["confidence_score"])
         consolidated[cluster]["unique_evidence_types"].add(sig["affected_dimension"])
-        
+
         if sig["severity"] == "HIGH":
             consolidated[cluster]["highest_severity"] = "HIGH"
             consolidated[cluster]["time_sensitivity"] = "immediate_attention"
 
     return consolidated
+
 
 def apply_cross_cluster_escalation(clusters, industry):
     # Industry-specific escalation rules
@@ -177,48 +137,53 @@ def apply_cross_cluster_escalation(clusters, industry):
             clusters["production_instability_cluster"]["time_sensitivity"] = "CRITICAL_BOARD_LEVEL"
             clusters["quality_degradation_cluster"]["time_sensitivity"] = "CRITICAL_BOARD_LEVEL"
             clusters["production_instability_cluster"]["compounding_risk_detected"] = True
-            
+
     elif industry == "ecommerce":
-        if "fulfillment_risk_cluster" in clusters and "inventory_health_cluster" in clusters:
-            clusters["fulfillment_risk_cluster"]["time_sensitivity"] = "CRITICAL_BOARD_LEVEL"
-            
+        if "fulfillment_instability_cluster" in clusters and "conversion_friction_cluster" in clusters:
+            clusters["fulfillment_instability_cluster"]["time_sensitivity"] = "CRITICAL_BOARD_LEVEL"
+
     return clusters
+
 
 def calculate_priority_scores(clusters):
     for cluster_name, data in clusters.items():
         avg_conf = sum(data["raw_confidences"]) / len(data["raw_confidences"])
         data["aggregated_confidence"] = round(avg_conf, 2)
-        
+
         diversity_score = len(data["unique_evidence_types"])
         data["evidence_diversity_score"] = diversity_score
-        
+
         sev_weight = 3.0 if data["highest_severity"] == "HIGH" else 1.0
         if data["time_sensitivity"] == "CRITICAL_BOARD_LEVEL":
             sev_weight = 5.0
-            
+
         crit_weight = 1.5 if data["business_criticality"] == "customer_facing" else 1.0
-        
+
         priority_score = (sev_weight * crit_weight) + avg_conf + (diversity_score * 0.5)
         data["cluster_priority_score"] = round(priority_score, 2)
-        
-        theme = cluster_name.replace('_cluster', '').replace('_', ' ')
-        data["cluster_summary"] = f"Detected {data['highest_severity']} priority indicators related to {theme} across {len(data['evidence_chain'])} operational dimensions."
-        
+
+        theme = cluster_name.replace("_cluster", "").replace("_", " ")
+        data["cluster_summary"] = (
+            f"Detected {data['highest_severity']} priority indicators related to {theme} "
+            f"across {len(data['evidence_chain'])} operational dimensions."
+        )
+
         del data["raw_confidences"]
         del data["unique_evidence_types"]
-        
+
     return clusters
+
 
 def synthesize_operational_signals(kpi_list, industry="manufacturing"):
     """Main execution function, now accepts an industry parameter."""
     raw_signals = [generate_signal(kpi, industry) for kpi in kpi_list]
-    
+
     grouped_clusters = consolidate_signals(raw_signals)
     escalated_clusters = apply_cross_cluster_escalation(grouped_clusters, industry)
     scored_clusters = calculate_priority_scores(escalated_clusters)
-    
+
     sorted_narrative_blocks = dict(
-        sorted(scored_clusters.items(), key=lambda item: item[1]['cluster_priority_score'], reverse=True)
+        sorted(scored_clusters.items(), key=lambda item: item[1]["cluster_priority_score"], reverse=True)
     )
-    
+
     return {"PRIORITIZED_NARRATIVE_BLOCKS": sorted_narrative_blocks}
