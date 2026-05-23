@@ -1,21 +1,13 @@
 """Risk KPIs: credit/default metrics and concentration risk."""
 import pandas as pd
-from .reliability import evaluate_kpi_confidence
+from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
-
-
-def _first_column(df, candidates):
-    for c in candidates:
-        if c in df.columns:
-            return c
-    return None
-
 
 def calc_risk_metrics(df):
     kpis = []
-    loan_id = _first_column(df, ["loan_id", "loan_account", "credit_id"]) 
-    default_flag = _first_column(df, ["default_flag", "is_default", "defaulted"]) 
-    balance = _first_column(df, ["balance", "outstanding"])
+    loan_id = first_column(df, ["loan_id", "loan_account", "credit_id"]) 
+    default_flag = first_column(df, ["default_flag", "is_default", "defaulted"]) 
+    balance = first_column(df, ["balance", "outstanding"])
 
     if not loan_id and not default_flag:
         return kpis
