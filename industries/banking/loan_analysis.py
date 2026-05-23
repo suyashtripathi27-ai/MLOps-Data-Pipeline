@@ -2,7 +2,7 @@
 Loan product and portfolio risk KPIs.
 """
 import pandas as pd
-from .reliability import evaluate_kpi_confidence
+from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
 
 
