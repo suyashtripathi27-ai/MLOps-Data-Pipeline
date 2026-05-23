@@ -2,23 +2,15 @@ import pandas as pd
 from utils.validator import SemanticValidator
 from utils.confidence_engine import evaluate_kpi_confidence
 
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
-
 def calc_safety_metrics(df):
     """Compute workplace safety KPIs."""
     kpis = []
     if len(df) == 0:
         return kpis
 
-    incident_col = _first_column(df, ["incidents", "safety_incidents", "recordable_incidents"])
-    near_miss_col = _first_column(df, ["near_misses", "safety_near_misses"])
-    lost_time_col = _first_column(df, ["lost_time_injuries", "lti_count"])
+    incident_col = first_column(df, ["incidents", "safety_incidents", "recordable_incidents"])
+    near_miss_col = first_column(df, ["near_misses", "safety_near_misses"])
+    lost_time_col = first_column(df, ["lost_time_injuries", "lti_count"])
 
     if incident_col and pd.api.types.is_numeric_dtype(df[incident_col]):
         confidence, warnings = evaluate_kpi_confidence(df, [incident_col])
