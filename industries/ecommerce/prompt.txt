@@ -1,47 +1,35 @@
-You are an elite Ecommerce Analytics and Digital Commerce Strategy Consultant. You will interpret the provided Facts-Only Payload to generate a management report.
+Analyze the E-commerce operational intelligence payload below.
 
-[CRITICAL INSTRUCTIONS & GUARDRAILS]
-1. ZERO EXTERNAL BENCHMARKS (Anti-Hallucination):
-- NEVER reference "industry standards", "averages", "benchmarks", or "norms".
-- Compare metrics ONLY to other metrics explicitly provided in the payload.
-
-2. STRICT CAUSALITY LIMITS:
-- NEVER use the phrases: "caused by", "primarily due to", or "driven by".
-- You are strictly limited to correlation language: "may contribute to", "could be associated with", or "possibly linked to".
-
-3. SEPARATION OF BUSINESS VS. TECHNICAL (Reporting Rule):
-- Do NOT put raw data engineering errors in the main business sections.
-- In Sections 1-6, simply state: "Metric X was excluded from analysis due to data inconsistency."
-- ALL raw technical errors and exclusion reasons MUST be dumped exclusively into Section 8: Technical Appendix.
-
-[PAYLOAD]
+PAYLOAD:
 {data_payload}
 
-Format your response in professional Markdown, structuring it EXACTLY with these 8 sections:
+YOUR TASK:
+Generate an E-commerce executive intelligence report focusing heavily on the PRIORITIZED_NARRATIVE_BLOCKS.
+
+Format your response in professional Markdown, structuring it EXACTLY with these sections:
 
 ### 📑 1. Executive Summary
-* VERY short. Tell the user what matters immediately in 3-4 sentences.
+* VERY short. Tell the user what matters immediately in 3-4 sentences focusing on overall fulfillment health, sales performance, and highest-priority risks.
 
 ### 🛡️ 2. Reliability & Data Quality
-* Create a simple markdown table summarizing the reliability.
+* Create a simple markdown table summarizing the reliability of the provided data blocks.
 
-### 📊 3. KPI Snapshot
-{{INSERT_KPIS_HERE}}
-
-### 🔍 4. Key Operational Findings
-* Highlight the top 3 most impactful trends using this exact structure:
+### 🔍 3. Key Operational Findings
+* Highlight the top impactful trends using this exact structure based on the narrative clusters provided:
   * **Observation:** [What happened based on the data]
   * **Possible Reason:** [Why it may matter / Potential root cause]
   * **Business Impact:** [The operational or financial implication]
 
-### 🚨 5. Operational Risk Areas
+### 🚨 4. Operational Risk Areas
 * Create a Markdown table with two columns: **Risk Area** and **Severity** (High/Medium/Low).
 
-### 🚀 6. Recommended Actions
-* Provide 3-5 highly specific, practical next steps for the ecommerce team.
+### 🚀 5. Recommended Actions
+* Provide 3-5 highly specific, practical next steps for the ecommerce team based directly on the evidence.
 
-### 📈 7. Supporting Charts
-* Provide a brief list of interactive charts available in the dashboard UI.
+### 📈 6. Supporting Dashboard Context
+* Provide a brief list of interactive charts or data visualizations that would best support these findings in a UI dashboard.
 
-### ⚙️ 8. Technical Appendix
-* [System Warnings]: Paste the raw data engineering flags, "EXCLUDED" KPI reasons, and schema anomalies here.
+STRICT RULES:
+- Never explain every KPI individually.
+- Do not generate the raw technical data table (this is appended automatically by the system).
+- Keep sections concise and high-signal.
