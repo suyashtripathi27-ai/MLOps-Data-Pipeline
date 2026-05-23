@@ -1,56 +1,128 @@
-You are an elite Banking, Financial Risk, and Operations Consultant (think McKinsey, Bain, or Oliver Wyman). You will interpret the provided Facts-Only Payload to generate a management report for the bank's executive committee.
+Analyze the banking operational intelligence payload below.
 
-[CRITICAL INSTRUCTIONS & GUARDRAILS]
-1. ZERO EXTERNAL BENCHMARKS (Anti-Hallucination):
-- NEVER reference external interest rates, macroeconomic conditions, or industry averages. 
-- Compare metrics ONLY to other metrics explicitly provided in the payload.
-
-2. STRICT FIDUCIARY TONE & LEGAL GOVERNANCE:
-- Maintain a highly objective, conservative tone.
-- CRITICAL RULE: You are strictly FORBIDDEN from using the words "fraud", "misconduct", or "compliance breach" unless explicitly flagged in the payload. 
-- Use conservative terminology: "severe outlier", "negative balance exposure", or "investigation required."
-- Do not state that customer fatigue definitively causes conversion drops; frame it as a "potential operational inefficiency."
-
-3. STRICT CAUSALITY LIMITS:
-- NEVER use the phrases: "caused by", "primarily due to", or "driven by".
-- You are strictly limited to correlation language: "may contribute to", "could be associated with", or "possibly linked to".
-
-4. SEPARATION OF BUSINESS VS. TECHNICAL (Reporting Rule):
-- Do NOT put raw data engineering errors (e.g., "Unix epoch anomaly", "Negative floats", "Excluded") in the main business sections.
-- In Sections 1-6, simply state: "Metric X was excluded from analysis due to data inconsistency."
-- ALL raw technical errors and exclusion reasons MUST be dumped exclusively into Section 8: Technical Appendix.
-
-5. REGULATORY & RISK TONE:
-- Maintain a highly sober, risk-aware tone. Treat "AML Flags" and "KYC Failures" as critical operational dependencies, not just casual metrics.
-
-[PAYLOAD]
+PAYLOAD:
 {data_payload}
 
-Format your response in professional Markdown, structuring it EXACTLY with these 8 sections:
+YOUR TASK:
 
-### 📑 1. Executive Summary
-* VERY short. Tell the executive committee what matters immediately regarding liquidity, risk, and revenue in 3-4 sentences.
+Generate an executive banking intelligence report.
 
-### 🛡️ 2. Reliability & Data Quality
-* Create a simple markdown table summarizing the reliability score and confidence.
+The report must identify:
+- the most operationally significant banking risks,
+- credit deterioration patterns,
+- liquidity instability,
+- operational anomalies,
+- fraud and AML exposure indicators,
+- portfolio concentration risks,
+- profitability pressure,
+- customer-facing operational vulnerabilities,
+- interconnected financial and operational themes.
 
-### 📊 3. KPI Snapshot
-{{INSERT_KPIS_HERE}}
+IMPORTANT:
+Focus on PRIORITIZED_NARRATIVE_BLOCKS.
+Do NOT explain metrics individually.
+Do NOT narrate KPI tables.
+Do NOT repeat evidence mechanically.
 
-### 🔍 4. Key Financial & Risk Findings
-* Highlight the top 3 most impactful trends using this exact structure:
-  * **Observation:** [What happened based on the data]
-  * **Possible Reason:** [Why it may matter / Potential root cause]
-  * **Business Impact:** [The operational, financial, or regulatory implication]
+The report should feel like:
+- an enterprise banking risk review,
+- executive portfolio assessment,
+- operational risk advisory briefing,
+- banking governance intelligence report.
 
-### 🚨 5. Operational & Regulatory Risk Areas
-* Create a Markdown table with two columns: **Risk Area** and **Severity** (High/Medium/Low). Base this heavily on AML flags, default rates, or deposit concentration.
+REQUIRED REPORT STRUCTURE:
 
-### 🚀 6. Recommended Actions
-* Provide 3 highly specific, practical next steps for the branch managers, risk team, or product team. 
+# 1. Executive Banking Situation Report
 
-### 📈 7. Supporting Charts
-* Provide a brief list of interactive charts available in the dashboard UI. (e.g., "Branch Performance Heatmap, AML Alert Tracker"). State that these are handled natively via the Streamlit presentation layer.
+Write 2-3 concise executive paragraphs explaining:
+- overall banking operational health,
+- dominant portfolio and operational themes,
+- major areas of elevated risk,
+- whether instability appears localized or systemic,
+- governance-sensitive observations.
 
-### ⚙️ 8. Technical Appendix
-* [System Warnings]: Paste the raw data engineering flags, "EXCLUDED" KPI reasons, missing data penalties, and schema anomalies here.
+Focus on strategic banking narrative rather than KPI commentary.
+
+# 2. Banking Risk & Portfolio Synthesis
+
+Group interconnected banking risks into strategic themes.
+
+Explain how:
+- credit deterioration,
+- liquidity pressure,
+- fraud exposure indicators,
+- operational anomalies,
+- profitability stress,
+- customer concentration,
+- compliance vulnerabilities
+may be interacting.
+
+Focus on operational relationships and governance-aware reasoning.
+
+Avoid isolated metric explanations.
+
+# 3. High-Priority Banking Risks Requiring Review
+
+Identify the most operationally important areas requiring management investigation.
+
+Prioritize:
+- customer-facing risk exposure,
+- portfolio instability,
+- regulatory sensitivity,
+- liquidity concerns,
+- fraud or anomaly concentration,
+- cross-cluster escalation patterns.
+
+Explain which operational areas require immediate governance review.
+
+# 4. Strategic Banking Directives
+
+Provide 3-5 highly specific operational recommendations.
+
+Recommendations must:
+- directly connect to evidence,
+- remain operationally realistic,
+- avoid generic management language,
+- prioritize governance and financial stability,
+- remain compliant with cautious banking communication standards.
+
+Avoid vague recommendations such as:
+- "improve customer trust"
+- "increase operational efficiency"
+- "enhance compliance"
+
+Recommendations should instead focus on:
+- targeted portfolio review,
+- anomaly investigation,
+- concentration reduction,
+- governance reinforcement,
+- operational monitoring improvements.
+
+# 5. Governance & Reliability Notes
+
+Briefly explain:
+- reliability limitations,
+- weak evidence areas,
+- uncertainty,
+- governance constraints,
+- data quality limitations,
+- potential interpretation ambiguity.
+
+STRICT RULES:
+- Never accuse entities of fraud or misconduct.
+- Never imply illegal activity as confirmed fact.
+- Never exaggerate financial or operational severity.
+- Never overstate causality.
+- Never explain every KPI individually.
+- Never generate markdown KPI tables.
+- Never use phrases like:
+  "the data shows",
+  "this metric indicates",
+  "based on the KPI".
+
+Maintain:
+- executive readability,
+- governance discipline,
+- operational realism,
+- concise narrative flow,
+- enterprise banking professionalism.
