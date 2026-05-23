@@ -15,7 +15,7 @@ def calc_workforce_metrics(df):
     kpis = []
     if len(df) == 0:
         return kpis
-
+    labor_col = _first_column(df, ["labor_hours", "operator_efficiency", "WorkerProductivity"])
     headcount_col = _first_column(df, ["headcount", "employees", "workers", "shift_staff"])
     hours_col = _first_column(df, ["labor_hours", "worked_hours", "shift_hours"])
     absenteeism_col = _first_column(df, ["absenteeism_rate", "absence_rate"])
