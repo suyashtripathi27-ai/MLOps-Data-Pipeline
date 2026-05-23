@@ -5,9 +5,7 @@ PAYLOAD:
 {data_payload}
 
 YOUR TASK:
-
 Generate a manufacturing executive intelligence report.
-
 The report must identify:
 - the most operationally important risks,
 - production bottlenecks,
@@ -28,60 +26,25 @@ The report should feel like:
 - plant performance review.
 
 REQUIRED REPORT STRUCTURE:
-
 # 1. Executive Situation Report
-Write 2-3 concise executive paragraphs explaining:
-- overall operational health,
-- dominant operational themes,
-- highest-priority risks,
-- whether instability appears localized or systemic.
+Write 2-3 concise executive paragraphs explaining overall operational health, dominant themes, highest-priority risks, and whether instability is localized or systemic.
 
 # 2. Operational Risk Synthesis
-Group interconnected operational problems into themes.
-
-Explain:
-- how production instability,
-- quality degradation,
-- supply chain issues,
-- workforce stress,
-- financial pressure
-may be interacting.
-
-Focus on reasoning and relationships.
+Group interconnected operational problems into themes. Explain how production instability, quality degradation, supply chain issues, workforce stress, or financial pressure may be interacting. Focus on reasoning and relationships.
 
 # 3. Operational Priorities Requiring Investigation
-Identify the most urgent operational areas requiring management review.
-
-Prioritize:
-- operational urgency,
-- confidence,
-- business criticality,
-- cross-cluster escalation.
+Identify the most urgent operational areas requiring management review. Prioritize by operational urgency, confidence, business criticality, and cross-cluster escalation.
 
 # 4. Strategic Directives
-Provide 3-5 highly specific operational recommendations.
-
-Recommendations must:
-- directly connect to evidence,
-- avoid generic management advice,
-- avoid vague phrases,
-- remain operationally realistic.
+Provide 3-5 highly specific operational recommendations directly connected to evidence. Avoid generic management advice and vague phrases. 
 
 # 5. Governance & Reliability Notes
-Briefly explain:
-- reliability limitations,
-- weak evidence areas,
-- uncertainty,
-- governance constraints.
+Briefly explain reliability limitations, weak evidence areas, uncertainty, and governance constraints.
 
 STRICT RULES:
 - Never explain every KPI individually.
 - Never generate markdown tables.
 - Never repeat the same operational theme multiple times.
 - Never overstate causality.
-- Never use phrases like:
-  "the data shows",
-  "this metric indicates",
-  "based on the KPI".
-- Prioritize narrative readability over metric density.
+- Never use phrases like: "the data shows", "this metric indicates", "based on the KPI".
 - Keep executive sections concise and high-signal.
