@@ -1,6 +1,8 @@
+from utils.insight_engine import synthesize_operational_signals
+from utils.report_cleaner import clean_report_text
+from industries.manufacturing.governance import validate_operational_claims, inject_reliability_warning
 import json
 import os
-from utils.insight_engine import synthesize_operational_signals
 from utils.llm_router import execute_with_fallback
 from .cost_analysis import calc_cost_metrics
 from .demand_analysis import calc_demand_metrics
@@ -54,41 +56,50 @@ def build_markdown_table(kpis):
 
 
 def run_manufacturing_analysis(payload, clients, df): 
+    # 1. Generate Raw Data
     kpi_list = generate_dynamic_kpis(df)
     kpi_markdown = build_markdown_table(kpi_list)
     
-    # 👇 LAYER 2 & 3: Generate the structured signals
-    operational_signals = synthesize_operational_signals(kpi_list)
+    # 2. Extract and Prioritize Signals
+    signals_dict = synthesize_operational_signals(kpi_list)
+    
+    # 🔥 TOP CLUSTER FILTERING (NARRATIVE PRIORITIZATION) 🔥
+    # Slice the dictionary to ONLY send the top 3 most critical clusters to the AI
+    narrative_blocks = signals_dict.get("PRIORITIZED_NARRATIVE_BLOCKS", {})
+    top_3_clusters = dict(list(narrative_blocks.items())[:3])
+    
+    # Calculate average confidence for governance later
+    confidences = [data.get('aggregated_confidence', 1.0) for data in top_3_clusters.values()]
+    avg_confidence = sum(confidences) / len(confidences) if confidences else 1.0
     
     if isinstance(payload, str):
         try: payload = json.loads(payload)
-        except json.JSONDecodeError: payload = {"raw_data": payload} 
+        except: payload = {"raw_data": payload} 
             
-    # 👇 Feed the AI the SIGNALS, not just the raw data
-    payload['prioritized_signals'] = operational_signals
+    # Send ONLY the top 3 clusters
+    payload['prioritized_signals'] = {"PRIORITIZED_NARRATIVE_BLOCKS": top_3_clusters}
     
+    # 3. Load Prompts
     prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
-    if not os.path.exists(prompt_path): 
-        return f"⚠️ Warning: prompt.txt missing.\n\n{kpi_markdown}"
-        
-    with open(prompt_path, 'r', encoding='utf-8') as file:
-        prompt_template = file.read()
-        
-    final_prompt = prompt_template.replace('{data_payload}', json.dumps(payload, indent=2))
+    sys_prompt_path = os.path.join(os.path.dirname(__file__), 'system_prompt.txt')
     
-    # Update the system prompt to force synthesis
-    system_prompt = (
-        "You are an elite Industry 4.0 Plant Manager. "
-        "DO NOT explain individual metrics. Instead, synthesize the 'prioritized_signals' "
-        "into a cohesive, executive-level root-cause narrative."
-    )
+    with open(prompt_path, 'r', encoding='utf-8') as f:
+        final_prompt = f.read().replace('{data_payload}', json.dumps(payload, indent=2))
+        
+    with open(sys_prompt_path, 'r', encoding='utf-8') as f:
+        system_prompt = f.read()
     
+    # 4. Generate AI Report
     print("🧠 Synthesizing Executive Intelligence...")
     try:
-        report_content = execute_with_fallback(clients, system_prompt, final_prompt)
+        raw_report = execute_with_fallback(clients, system_prompt, final_prompt)
     except Exception as e:
         return f"❌ CRITICAL API ERROR: {str(e)}\n\n### Backup Data Table\n{kpi_markdown}"
+        
+    # 5. POST-PROCESSING: Governance & Readability Cleaners
+    clean_report = clean_report_text(raw_report)
+    safe_report = validate_operational_claims(clean_report)
+    final_report = inject_reliability_warning(safe_report, avg_confidence)
     
-    # Append the raw table safely at the bottom
-    final_report = f"{report_content}\n\n---\n### 📊 Technical Appendix: Operational KPIs\n{kpi_markdown}"
-    return final_report
+    # Append the raw data at the bottom
+    return f"{final_report}\n\n---\n### 📊 Technical Appendix: Operational KPIs\n{kpi_markdown}"
