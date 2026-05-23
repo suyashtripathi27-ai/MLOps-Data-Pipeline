@@ -1,6 +1,7 @@
 import pandas as pd
 from .common import confidence_for, first_column, safe_kpi
 from utils.validator import SemanticValidator
+from utils.confidence_engine import evaluate_kpi_confidence
 
 
 def calc_cart_metrics(df):
