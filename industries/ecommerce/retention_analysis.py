@@ -1,5 +1,5 @@
 import pandas as pd
-
+from utils.validator import SemanticValidator
 from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 
 
