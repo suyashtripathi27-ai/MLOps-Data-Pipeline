@@ -5,21 +5,13 @@ import pandas as pd
 from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
 
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
-
 def calc_deposit_metrics(df):
     """Calculates deposit product and interest KPIs."""
     kpis = []
-    product_col = _first_column(df, ["product_type", "product_name", "account_type"])
-    amount_col = _first_column(df, ["amount", "balance", "deposit_amount"])
-    interest_col = _first_column(df, ["interest_earned", "interest_income", "interest_rate"])
-    date_col = _first_column(df, ["transaction_date", "date"])
+    product_col = first_column(df, ["product_type", "product_name", "account_type"])
+    amount_col = first_column(df, ["amount", "balance", "deposit_amount"])
+    interest_col = first_column(df, ["interest_earned", "interest_income", "interest_rate"])
+    date_col = first_column(df, ["transaction_date", "date"])
 
     if not product_col or not amount_col:
         return kpis
