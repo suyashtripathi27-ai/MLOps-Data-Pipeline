@@ -1,20 +1,12 @@
 """Forecasting helpers: simple growth projections and seasonality hints."""
 import pandas as pd
-from .reliability import evaluate_kpi_confidence
+from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
-
-
-def _first_column(df, candidates):
-    for c in candidates:
-        if c in df.columns:
-            return c
-    return None
-
 
 def calc_forecasting_metrics(df):
     kpis = []
-    revenue_col = _first_column(df, ["revenue", "sales", "turnover"]) 
-    date_col = _first_column(df, ["date", "transaction_date", "period"])
+    revenue_col = first_column(df, ["revenue", "sales", "turnover"]) 
+    date_col = first_column(df, ["date", "transaction_date", "period"])
 
     if not revenue_col or not date_col:
         return kpis
