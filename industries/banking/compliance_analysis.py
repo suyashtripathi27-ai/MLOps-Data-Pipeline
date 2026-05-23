@@ -5,21 +5,13 @@ import pandas as pd
 from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from .reliability import evaluate_kpi_confidence
 
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
-
 def calc_compliance_metrics(df):
     """Calculates compliance and regulatory risk KPIs."""
     kpis = []
-    aml_flag_col = _first_column(df, ["aml_flag", "aml_alert", "suspicious_flag"])
-    kyc_col = _first_column(df, ["kyc_status", "kyc_verified", "verification_status"])
-    large_txn_col = _first_column(df, ["is_large_transaction", "high_value", "ctc_flag"])
-    amount_col = _first_column(df, ["amount", "transaction_amount"])
+    aml_flag_col = first_column(df, ["aml_flag", "aml_alert", "suspicious_flag"])
+    kyc_col = first_column(df, ["kyc_status", "kyc_verified", "verification_status"])
+    large_txn_col = first_column(df, ["is_large_transaction", "high_value", "ctc_flag"])
+    amount_col = first_column(df, ["amount", "transaction_amount"])
 
     if len(df) == 0:
         return kpis
