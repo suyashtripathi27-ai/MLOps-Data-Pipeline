@@ -1,7 +1,8 @@
 """
 Fee structure and revenue impact KPIs.
 """
-from .reliability import evaluate_kpi_confidence
+import pandas as pd
+from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
 
 
