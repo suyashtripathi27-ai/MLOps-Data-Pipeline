@@ -64,7 +64,6 @@ def run_manufacturing_analysis(payload, clients, df):
     signals_dict = synthesize_operational_signals(kpi_list, industry="manufacturing")
     
     # 🔥 TOP CLUSTER FILTERING (NARRATIVE PRIORITIZATION) 🔥
-    # Slice the dictionary to ONLY send the top 3 most critical clusters to the AI
     narrative_blocks = signals_dict.get("PRIORITIZED_NARRATIVE_BLOCKS", {})
     top_3_clusters = dict(list(narrative_blocks.items())[:3])
     
