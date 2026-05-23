@@ -15,7 +15,7 @@ def calc_quality_metrics(df):
     kpis = []
     if len(df) == 0:
         return kpis
-
+    quality_col = _first_column(df, ["supplier_quality", "vendor_rating", "SupplierQuality"])
     good_col = _first_column(df, ["good_units", "accepted_units", "pass_units", "saleable_units"])
     scrap_col = _first_column(df, ["scrap_units", "reject_units", "defective_units", "waste_units"])
     defect_col = _first_column(df, ["defect_rate", "scrap_rate", "reject_rate"])
