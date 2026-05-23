@@ -2,23 +2,15 @@ import pandas as pd
 from utils.validator import SemanticValidator
 from utils.confidence_engine import evaluate_kpi_confidence
 
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
-
 def calc_demand_metrics(df):
     """Compute demand and order signal KPIs."""
     kpis = []
     if len(df) == 0:
         return kpis
 
-    demand_col = _first_column(df, ["demand_units", "market_demand", "orders"])
-    backlog_col = _first_column(df, ["backlog_units", "open_orders", "unfulfilled_demand"])
-    order_fill_col = _first_column(df, ["order_fill_rate", "fill_rate"])
+    demand_col = first_column(df, ["demand_units", "market_demand", "orders"])
+    backlog_col = first_column(df, ["backlog_units", "open_orders", "unfulfilled_demand"])
+    order_fill_col = first_column(df, ["order_fill_rate", "fill_rate"])
 
     if demand_col and pd.api.types.is_numeric_dtype(df[demand_col]):
         confidence, warnings = evaluate_kpi_confidence(df, [demand_col])
