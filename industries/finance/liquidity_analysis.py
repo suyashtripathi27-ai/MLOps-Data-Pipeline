@@ -1,20 +1,14 @@
 import pandas as pd
-from .reliability import evaluate_kpi_confidence
 from utils.validator import SemanticValidator
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns: return col
-    return None
 
 def calc_liquidity_solvency_metrics(df):
     """Computes balance sheet health, leverage, and liquidity risk."""
     kpis = []
     if len(df) == 0: return kpis
 
-    asset_col = _first_column(df, ["asset_value", "total_assets", "assets", "portfolio_value"])
-    debt_col = _first_column(df, ["debt_amount", "total_debt", "liabilities"])
-    equity_col = _first_column(df, ["equity_amount", "total_equity", "shareholder_equity"])
+    asset_col = first_column(df, ["asset_value", "total_assets", "assets", "portfolio_value"])
+    debt_col = first_column(df, ["debt_amount", "total_debt", "liabilities"])
+    equity_col = first_column(df, ["equity_amount", "total_equity", "shareholder_equity"])
 
     if not asset_col and not debt_col: 
         return kpis
