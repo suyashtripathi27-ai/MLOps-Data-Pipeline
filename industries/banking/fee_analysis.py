@@ -5,20 +5,12 @@ import pandas as pd
 from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
 
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
-
 def calc_fee_metrics(df):
     """Calculates fee revenue and impact KPIs."""
     kpis = []
-    fee_col = _first_column(df, ["fees_charged", "fee_amount", "charges"])
-    amount_col = _first_column(df, ["amount", "transaction_amount", "revenue"])
-    fee_type_col = _first_column(df, ["fee_type", "charge_type", "fee_category"])
+    fee_col = first_column(df, ["fees_charged", "fee_amount", "charges"])
+    amount_col = first_column(df, ["amount", "transaction_amount", "revenue"])
+    fee_type_col = first_column(df, ["fee_type", "charge_type", "fee_category"])
 
     if not fee_col or not amount_col:
         return kpis
