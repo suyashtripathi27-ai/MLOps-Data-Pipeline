@@ -23,15 +23,16 @@ def clean_report_text(text):
 
 def enforce_paragraph_compression(text):
     """
-    If a paragraph is over 100 words, it finds the nearest sentence 
-    boundary near the middle and forces a line break.
+    Forces a line break if a paragraph exceeds 70 words to maintain 
+    high executive readability and scannability.
     """
     paragraphs = text.split('\n\n')
     compressed_paragraphs = []
     
     for p in paragraphs:
         words = p.split()
-        if len(words) > 100 and not p.startswith('#') and not p.startswith('|'):
+        # Changed from 100 to 70 for tighter executive flow
+        if len(words) > 70 and not p.startswith('#') and not p.startswith('|'):
             # Find all periods followed by a space
             sentences = p.split('. ')
             if len(sentences) > 1:
