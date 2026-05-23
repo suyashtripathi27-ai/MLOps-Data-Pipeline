@@ -1,20 +1,12 @@
 """Investment KPIs: portfolio returns and investment sizes."""
 import pandas as pd
-from .reliability import evaluate_kpi_confidence
+from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
-
-
-def _first_column(df, candidates):
-    for c in candidates:
-        if c in df.columns:
-            return c
-    return None
-
 
 def calc_investment_metrics(df):
     kpis = []
-    invest_val = _first_column(df, ["investment_value", "portfolio_value", "market_value"]) 
-    invest_return = _first_column(df, ["return", "roi", "pct_return"]) 
+    invest_val = first_column(df, ["investment_value", "portfolio_value", "market_value"]) 
+    invest_return = first_column(df, ["return", "roi", "pct_return"]) 
 
     if not invest_val and not invest_return:
         return kpis
