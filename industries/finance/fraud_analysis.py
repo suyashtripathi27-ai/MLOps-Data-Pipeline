@@ -1,20 +1,12 @@
 """Fraud detection KPIs: counts and rates of flagged transactions."""
 import pandas as pd
-from .reliability import evaluate_kpi_confidence
+from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
-
-
-def _first_column(df, candidates):
-    for c in candidates:
-        if c in df.columns:
-            return c
-    return None
-
 
 def calc_fraud_metrics(df):
     kpis = []
-    fraud_flag = _first_column(df, ["fraud_flag", "is_fraud", "suspicious"]) 
-    amount_col = _first_column(df, ["amount", "transaction_amount", "value"]) 
+    fraud_flag = first_column(df, ["fraud_flag", "is_fraud", "suspicious"]) 
+    amount_col = first_column(df, ["amount", "transaction_amount", "value"]) 
 
     if not fraud_flag:
         return kpis
