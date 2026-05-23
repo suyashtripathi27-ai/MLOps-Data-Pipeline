@@ -5,21 +5,13 @@ import pandas as pd
 from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
 
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
-
 def calc_account_metrics(df):
     """Calculates account performance and balance health KPIs."""
     kpis = []
-    account_col = _first_column(df, ["account_id", "account_number", "acct_id"])
-    amount_col = _first_column(df, ["amount", "transaction_amount", "value"])
-    balance_col = _first_column(df, ["balance", "account_balance", "ending_balance"])
-    date_col = _first_column(df, ["transaction_date", "date", "posting_date"])
+    account_col = first_column(df, ["account_id", "account_number", "acct_id"])
+    amount_col = first_column(df, ["amount", "transaction_amount", "value"])
+    balance_col = first_column(df, ["balance", "account_balance", "ending_balance"])
+    date_col = first_column(df, ["transaction_date", "date", "posting_date"])
 
     if not account_col or not amount_col:
         return kpis
