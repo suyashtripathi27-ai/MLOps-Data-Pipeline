@@ -2,23 +2,15 @@ import pandas as pd
 from utils.validator import SemanticValidator
 from utils.confidence_engine import evaluate_kpi_confidence
 
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
-
 def calc_efficiency_metrics(df):
     """Compute manufacturing efficiency KPIs."""
     kpis = []
     if len(df) == 0:
         return kpis
 
-    efficiency_col = _first_column(df, ["efficiency", "overall_efficiency", "line_efficiency"])
-    oee_col = _first_column(df, ["oee", "overall_equipment_effectiveness"])
-    utilization_col = _first_column(df, ["utilization_rate", "capacity_utilization"])
+    efficiency_col = first_column(df, ["efficiency", "overall_efficiency", "line_efficiency"])
+    oee_col = first_column(df, ["oee", "overall_equipment_effectiveness"])
+    utilization_col = first_column(df, ["utilization_rate", "capacity_utilization"])
 
     if efficiency_col and pd.api.types.is_numeric_dtype(df[efficiency_col]):
         confidence, warnings = evaluate_kpi_confidence(df, [efficiency_col])
