@@ -5,21 +5,13 @@ import pandas as pd
 from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from .reliability import evaluate_kpi_confidence
 
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
-
 def calc_customer_metrics(df):
     """Calculates customer behavior and CLV KPIs."""
     kpis = []
-    customer_col = _first_column(df, ["customer_id", "customer_code", "cust_id"])
-    account_col = _first_column(df, ["account_id", "account_number"])
-    amount_col = _first_column(df, ["amount", "balance", "transaction_amount"])
-    date_col = _first_column(df, ["transaction_date", "date"])
+    customer_col = first_column(df, ["customer_id", "customer_code", "cust_id"])
+    account_col = first_column(df, ["account_id", "account_number"])
+    amount_col = first_column(df, ["amount", "balance", "transaction_amount"])
+    date_col = first_column(df, ["transaction_date", "date"])
 
     if not customer_col or not amount_col:
         return kpis
