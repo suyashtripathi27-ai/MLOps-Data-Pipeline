@@ -5,21 +5,13 @@ import pandas as pd
 from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
 
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
-
 def calc_loan_metrics(df):
     """Calculates loan portfolio and risk KPIs."""
     kpis = []
-    loan_status_col = _first_column(df, ["loan_status", "status", "payment_status"])
-    outstanding_col = _first_column(df, ["outstanding_balance", "loan_balance", "remaining_balance"])
-    disbursed_col = _first_column(df, ["disbursed_amount", "loan_amount", "principal"])
-    rate_col = _first_column(df, ["interest_rate", "rate", "apr"])
+    loan_status_col = first_column(df, ["loan_status", "status", "payment_status"])
+    outstanding_col = first_column(df, ["outstanding_balance", "loan_balance", "remaining_balance"])
+    disbursed_col = first_column(df, ["disbursed_amount", "loan_amount", "principal"])
+    rate_col = first_column(df, ["interest_rate", "rate", "apr"])
 
     if not loan_status_col or not outstanding_col:
         return kpis
