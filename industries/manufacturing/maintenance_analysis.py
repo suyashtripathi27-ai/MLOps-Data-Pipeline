@@ -1,24 +1,16 @@
 import pandas as pd
 from utils.validator import SemanticValidator
 from utils.confidence_engine import evaluate_kpi_confidence
-
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
-
+  
 def calc_maintenance_metrics(df):
     """Compute maintenance performance KPIs."""
     kpis = []
     if len(df) == 0:
         return kpis
 
-    mtbf_col = _first_column(df, ["mtbf_hours", "mean_time_between_failures"])
-    mttr_col = _first_column(df, ["mttr_hours", "mean_time_to_repair"])
-    pm_col = _first_column(df, ["preventive_maintenance_hours", "planned_maintenance_hours"])
+    mtbf_col = first_column(df, ["mtbf_hours", "mean_time_between_failures"])
+    mttr_col = first_column(df, ["mttr_hours", "mean_time_to_repair"])
+    pm_col = first_column(df, ["preventive_maintenance_hours", "planned_maintenance_hours"])
 
     if mtbf_col and pd.api.types.is_numeric_dtype(df[mtbf_col]):
         confidence, warnings = evaluate_kpi_confidence(df, [mtbf_col])
