@@ -2,49 +2,81 @@ import hashlib
 import re
 
 # ==========================================
-# LAYER 1: THE ONTOLOGY (Configuration-Driven)
+# LAYER 1: THE MASTER ONTOLOGY (Multi-Industry)
 # ==========================================
-CLUSTER_ONTOLOGY = {
-    "production_instability_cluster": {
-        "keywords": ["downtime", "maintenance", "oee", "efficiency", "utilization", "delay", "idle"],
-        "impact_areas": ["operational_efficiency", "throughput_risk", "capex_roi"],
-        "related_signals": ["quality_degradation_cluster", "supply_chain_cluster"],
-        "criticality": "internal_operational"
+INDUSTRY_ONTOLOGIES = {
+    "manufacturing": {
+        "production_instability_cluster": {
+            "keywords": ["downtime", "maintenance", "oee", "efficiency", "utilization", "delay", "idle"],
+            "impact_areas": ["operational_efficiency", "throughput_risk", "capex_roi"],
+            "related_signals": ["quality_degradation_cluster", "supply_chain_cluster"],
+            "criticality": "internal_operational"
+        },
+        "quality_degradation_cluster": {
+            "keywords": ["defect", "quality", "scrap", "reject", "fail", "oos", "purity"],
+            "impact_areas": ["cost_of_poor_quality", "customer_satisfaction", "compliance_risk"],
+            "related_signals": ["production_instability_cluster"],
+            "criticality": "customer_facing"
+        },
+        "workforce_risk_cluster": {
+            "keywords": ["safety", "incident", "accident", "turnover", "absenteeism", "labor"],
+            "impact_areas": ["regulatory_compliance", "employee_safety", "liability_cost"],
+            "related_signals": ["production_instability_cluster"],
+            "criticality": "internal_operational"
+        },
+        "supply_chain_cluster": {
+            "keywords": ["inventory", "stock", "wip", "turnover", "lead_time", "freight", "transit"],
+            "impact_areas": ["working_capital", "stockout_risk", "holding_costs"],
+            "related_signals": ["financial_performance_cluster"],
+            "criticality": "internal_operational"
+        },
+        "financial_performance_cluster": {
+            "keywords": ["sales", "revenue", "profit", "cost", "margin", "expense", "roi"],
+            "impact_areas": ["margin_erosion", "revenue_growth", "ebitda_impact"],
+            "related_signals": ["supply_chain_cluster", "production_instability_cluster"],
+            "criticality": "internal_operational"
+        }
     },
-    "quality_degradation_cluster": {
-        "keywords": ["defect", "quality", "scrap", "reject", "fail", "oos", "purity"],
-        "impact_areas": ["cost_of_poor_quality", "customer_satisfaction", "compliance_risk"],
-        "related_signals": ["production_instability_cluster"],
-        "criticality": "customer_facing"
+    "ecommerce": {
+        "fulfillment_risk_cluster": {
+            "keywords": ["delivery", "shipping", "delay", "fulfillment", "transit", "logistics"],
+            "impact_areas": ["customer_satisfaction", "sla_breach", "logistics_cost"],
+            "related_signals": ["inventory_health_cluster"],
+            "criticality": "customer_facing"
+        },
+        "inventory_health_cluster": {
+            "keywords": ["stock", "stockout", "turnover", "overstock", "sku"],
+            "impact_areas": ["working_capital", "lost_sales"],
+            "related_signals": ["fulfillment_risk_cluster"],
+            "criticality": "internal_operational"
+        }
+        # You can add more E-commerce clusters here later
     },
-    "workforce_risk_cluster": {
-        "keywords": ["safety", "incident", "accident", "turnover", "absenteeism", "labor"],
-        "impact_areas": ["regulatory_compliance", "employee_safety", "liability_cost"],
-        "related_signals": ["production_instability_cluster"],
-        "criticality": "internal_operational"
-    },
-    "supply_chain_cluster": {
-        "keywords": ["inventory", "stock", "wip", "turnover", "lead_time", "freight", "transit"],
-        "impact_areas": ["working_capital", "stockout_risk", "holding_costs"],
-        "related_signals": ["financial_performance_cluster"],
-        "criticality": "internal_operational"
-    },
-    "financial_performance_cluster": {
-        "keywords": ["sales", "revenue", "profit", "cost", "margin", "expense", "roi"],
-        "impact_areas": ["margin_erosion", "revenue_growth", "ebitda_impact"],
-        "related_signals": ["supply_chain_cluster", "production_instability_cluster"],
-        "criticality": "internal_operational"
+    "hr": {
+        "retention_risk_cluster": {
+            "keywords": ["turnover", "attrition", "flight risk", "resignation", "tenure"],
+            "impact_areas": ["talent_drain", "recruiting_costs", "continuity_risk"],
+            "related_signals": ["employee_engagement_cluster"],
+            "criticality": "internal_operational"
+        }
+        # You can add more HR clusters here later
     }
 }
 
 # ==========================================
 # LAYER 2: SIGNAL ENRICHMENT ENGINE
 # ==========================================
-def map_to_ontology(category, name):
+def map_to_ontology(category, name, industry="manufacturing"):
+    """Pulls the correct ontology based on the industry pipeline calling it."""
     text = f"{category} {name}".lower()
-    for cluster_name, rules in CLUSTER_ONTOLOGY.items():
+    
+    # Safely fallback to manufacturing if the industry isn't found
+    active_ontology = INDUSTRY_ONTOLOGIES.get(industry, INDUSTRY_ONTOLOGIES["manufacturing"])
+    
+    for cluster_name, rules in active_ontology.items():
         if any(keyword in text for keyword in rules["keywords"]):
             return cluster_name, rules["impact_areas"], rules["related_signals"], rules["criticality"]
+            
     return "general_operations_cluster", ["general_monitoring"], [], "internal_operational"
 
 def calculate_numeric_confidence(label):
@@ -58,25 +90,25 @@ def determine_operational_scope(name, category):
     return "localized"
 
 def clean_dimension_name(category):
-    """Strips emojis and formatting to create a clean affected_dimension tag."""
     return re.sub(r'[^\w\s]', '', category).strip().replace(' ', '_').lower()
 
-def generate_signal(kpi):
+def generate_signal(kpi, industry):
     warning = str(kpi.get("warnings", "None"))
     category = kpi.get("category", "General")
     name = kpi.get("name", "Metric")
     value = kpi.get("value", "")
     conf_label = kpi.get("confidence", "Medium")
     
-    cluster, impacts, related, criticality = map_to_ontology(category, name)
+    # Pass the industry down to the mapper
+    cluster, impacts, related, criticality = map_to_ontology(category, name, industry)
     
     signal = {
         "signal_id": hashlib.md5(f"{category}{name}".encode()).hexdigest()[:8],
         "cluster": cluster,
-        "affected_dimension": clean_dimension_name(category), # <-- ADJUSTMENT 3
+        "affected_dimension": clean_dimension_name(category), 
         "business_area": category,
         "finding": f"{name} is at {value}",
-        "raw_warning": warning,                               # <-- ADJUSTMENT 2
+        "raw_warning": warning,                               
         "impact_areas": impacts,
         "related_clusters": related,
         "business_criticality": criticality,
@@ -138,11 +170,18 @@ def consolidate_signals(signals_list):
 
     return consolidated
 
-def apply_cross_cluster_escalation(clusters):
-    if "production_instability_cluster" in clusters and "quality_degradation_cluster" in clusters:
-        clusters["production_instability_cluster"]["time_sensitivity"] = "CRITICAL_BOARD_LEVEL"
-        clusters["quality_degradation_cluster"]["time_sensitivity"] = "CRITICAL_BOARD_LEVEL"
-        clusters["production_instability_cluster"]["compounding_risk_detected"] = True
+def apply_cross_cluster_escalation(clusters, industry):
+    # Industry-specific escalation rules
+    if industry == "manufacturing":
+        if "production_instability_cluster" in clusters and "quality_degradation_cluster" in clusters:
+            clusters["production_instability_cluster"]["time_sensitivity"] = "CRITICAL_BOARD_LEVEL"
+            clusters["quality_degradation_cluster"]["time_sensitivity"] = "CRITICAL_BOARD_LEVEL"
+            clusters["production_instability_cluster"]["compounding_risk_detected"] = True
+            
+    elif industry == "ecommerce":
+        if "fulfillment_risk_cluster" in clusters and "inventory_health_cluster" in clusters:
+            clusters["fulfillment_risk_cluster"]["time_sensitivity"] = "CRITICAL_BOARD_LEVEL"
+            
     return clusters
 
 def calculate_priority_scores(clusters):
@@ -162,7 +201,6 @@ def calculate_priority_scores(clusters):
         priority_score = (sev_weight * crit_weight) + avg_conf + (diversity_score * 0.5)
         data["cluster_priority_score"] = round(priority_score, 2)
         
-        # <-- ADJUSTMENT 1: Dynamic Narrative Summary
         theme = cluster_name.replace('_cluster', '').replace('_', ' ')
         data["cluster_summary"] = f"Detected {data['highest_severity']} priority indicators related to {theme} across {len(data['evidence_chain'])} operational dimensions."
         
@@ -171,11 +209,12 @@ def calculate_priority_scores(clusters):
         
     return clusters
 
-def synthesize_operational_signals(kpi_list):
-    raw_signals = [generate_signal(kpi) for kpi in kpi_list]
+def synthesize_operational_signals(kpi_list, industry="manufacturing"):
+    """Main execution function, now accepts an industry parameter."""
+    raw_signals = [generate_signal(kpi, industry) for kpi in kpi_list]
     
     grouped_clusters = consolidate_signals(raw_signals)
-    escalated_clusters = apply_cross_cluster_escalation(grouped_clusters)
+    escalated_clusters = apply_cross_cluster_escalation(grouped_clusters, industry)
     scored_clusters = calculate_priority_scores(escalated_clusters)
     
     sorted_narrative_blocks = dict(
