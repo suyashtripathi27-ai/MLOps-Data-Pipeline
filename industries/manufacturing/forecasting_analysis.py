@@ -2,22 +2,14 @@ import pandas as pd
 from utils.validator import SemanticValidator
 from utils.confidence_engine import evaluate_kpi_confidence
 
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
-
 def calc_forecasting_metrics(df):
     """Compute demand and forecast accuracy KPIs."""
     kpis = []
     if len(df) == 0:
         return kpis
 
-    forecast_col = _first_column(df, ["forecast_units", "forecast_volume", "predicted_demand"])
-    actual_col = _first_column(df, ["actual_units", "actual_demand", "realized_demand"])
+    forecast_col = first_column(df, ["forecast_units", "forecast_volume", "predicted_demand"])
+    actual_col = first_column(df, ["actual_units", "actual_demand", "realized_demand"])
 
     if forecast_col and pd.api.types.is_numeric_dtype(df[forecast_col]):
         confidence, warnings = evaluate_kpi_confidence(df, [forecast_col])
