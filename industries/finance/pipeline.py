@@ -1,3 +1,6 @@
+from utils.insight_engine import synthesize_operational_signals
+from utils.report_cleaner import clean_report_text
+from utils.governance_engine import validate_operational_claims, inject_reliability_warning
 import os
 import json
 from utils.llm_router import execute_with_fallback
@@ -46,6 +49,14 @@ def build_markdown_table(kpis):
 def run_finance_analysis(payload, clients, df):
     kpi_list = generate_dynamic_kpis(df)
     kpi_markdown = build_markdown_table(kpi_list)
+    signals_dict = synthesize_operational_signals(kpi_list, industry="finance") 
+    narrative_blocks = signals_dict.get("PRIORITIZED_NARRATIVE_BLOCKS", {})
+    top_3_clusters = dict(list(narrative_blocks.items())[:3])
+    confidences = [
+    data.get("aggregated_confidence", 1.0)
+    for data in top_3_clusters.values()
+    ]
+    avg_confidence = sum(confidences) / len(confidences) if confidences else 1.0
 
     if isinstance(payload, str):
         try:
@@ -53,6 +64,9 @@ def run_finance_analysis(payload, clients, df):
         except json.JSONDecodeError:
             payload = {"raw_data": payload}
 
+    payload["prioritized_signals"] = {
+    "PRIORITIZED_NARRATIVE_BLOCKS": top_3_clusters
+    }
     payload["kpi_results"] = kpi_list
 
     prompt_path = os.path.join(os.path.dirname(__file__), "prompt.txt")
