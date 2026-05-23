@@ -82,4 +82,29 @@ def run_ecommerce_analysis(payload, clients, df):
             payload = {"raw_data": payload}
             
     # Send ONLY the top 3 clusters to keep AI focused
-    payload['prioritized_signals'] = {"PRIORITIZED_N
+    payload['prioritized_signals'] = {"PRIORITIZED_NARRATIVE_BLOCKS": top_3_clusters}
+    
+    # 3. Load Prompts
+    prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
+    sys_prompt_path = os.path.join(os.path.dirname(__file__), 'system_prompt.txt')
+    
+    with open(prompt_path, 'r', encoding='utf-8') as f:
+        final_prompt = f.read().replace('{data_payload}', json.dumps(payload, indent=2))
+        
+    with open(sys_prompt_path, 'r', encoding='utf-8') as f:
+        system_prompt = f.read()
+    
+    # 4. Generate AI Report
+    print("🧠 Synthesizing E-commerce Executive Intelligence...")
+    try:
+        raw_report = execute_with_fallback(clients, system_prompt, final_prompt)
+    except Exception as e:
+        return f"❌ CRITICAL API ERROR: {str(e)}\n\n### Backup Data Table\n{kpi_markdown}"
+        
+    # 5. POST-PROCESSING: Governance & Readability Cleaners
+    clean_report = clean_report_text(raw_report)
+    safe_report = validate_operational_claims(clean_report)
+    final_report = inject_reliability_warning(safe_report, avg_confidence)
+    
+    # Append the raw data at the bottom natively
+    return f"{final_report}\n\n---\n### 📊 Technical Appendix: Operational KPIs\n{kpi_markdown}"
