@@ -2,23 +2,15 @@ import pandas as pd
 from utils.validator import SemanticValidator
 from utils.confidence_engine import evaluate_kpi_confidence
 
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
-
 def calc_production_metrics(df):
     """Compute core plant production KPIs."""
     kpis = []
     if len(df) == 0:
         return kpis
 
-    produced_col = _first_column(df, ["production_volume", "actual_output", "units_produced", "output_units", "good_units"])
-    planned_col = _first_column(df, ["planned_output", "target_output", "production_target", "expected_output"])
-    downtime_col = _first_column(df, ["downtime_hours", "unplanned_downtime", "machine_downtime_hours"])
+    produced_col = first_column(df, ["production_volume", "actual_output", "units_produced", "output_units", "good_units"])
+    planned_col = first_column(df, ["planned_output", "target_output", "production_target", "expected_output"])
+    downtime_col = first_column(df, ["downtime_hours", "unplanned_downtime", "machine_downtime_hours"])
 
     if produced_col and pd.api.types.is_numeric_dtype(df[produced_col]):
         produced_total = df[produced_col].sum()
