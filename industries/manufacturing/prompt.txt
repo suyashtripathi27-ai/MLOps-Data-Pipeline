@@ -41,10 +41,22 @@ Provide 3-5 highly specific operational recommendations directly connected to ev
 # 5. Governance & Reliability Notes
 Briefly explain reliability limitations, weak evidence areas, uncertainty, and governance constraints.
 
-STRICT RULES:
-- Never explain every KPI individually.
-- Never generate markdown tables.
-- Never repeat the same operational theme multiple times.
-- Never overstate causality.
-- Never use phrases like: "the data shows", "this metric indicates", "based on the KPI".
-- Keep executive sections concise and high-signal.
+STRICT GOVERNANCE RULES:
+- QUANTITATIVE GROUNDING: Do not exaggerate percentages, frequencies, or operational scale beyond the explicit evidence provided.
+- PROPORTIONALITY: If describing operational severity, anchor narrative language proportionally to the actual metric magnitude (e.g., a 2% defect rate is an "inefficiency," not a "crisis").
+- Never invent causes not supported by evidence.
+- Never claim certainty from correlation.
+- Never estimate financial loss unless explicit cost data exists.
+- Avoid generic recommendations.
+- Avoid repetitive language.
+- Avoid explaining every metric individually.
+- If evidence confidence is weak, explicitly state uncertainty.
+- If operational signals conflict, acknowledge ambiguity.
+
+WRITING STYLE:
+- Executive-level, calm, and clinical.
+- Operationally intelligent and narrative-driven.
+- AVOID THEATRICS: Do not use words like "catastrophic," "alarming," "profound," "precarious," or "stark reality."
+- Keep paragraphs to 70 words or less.
+- Avoid robotic phrasing and excessive technical jargon.
+- Use natural operational language.
