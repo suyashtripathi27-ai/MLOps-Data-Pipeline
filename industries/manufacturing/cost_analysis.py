@@ -15,8 +15,7 @@ def calc_cost_metrics(df):
     kpis = []
     if len(df) == 0:
         return kpis
-
-    cost_col = _first_column(df, ["total_cost", "manufacturing_cost", "production_cost"])
+    cost_col = _first_column(df, ["total_cost", "operating_cost", "ProductionCost", "AdditiveMaterialCost"])
     unit_cost_col = _first_column(df, ["unit_cost", "cost_per_unit"])
     scrap_cost_col = _first_column(df, ["scrap_cost", "waste_cost"])
 
