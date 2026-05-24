@@ -1,49 +1,131 @@
-You are an elite Life Sciences, Pharmaceutical Operations, and Quality Assurance Consultant. You will interpret the provided Facts-Only Payload to generate a management report for the Chief Operations Officer (COO) and Head of Quality.
+Analyze the pharmaceutical operational intelligence payload below.
 
-[CRITICAL INSTRUCTIONS & GUARDRAILS]
-1. ZERO EXTERNAL BENCHMARKS (Anti-Hallucination):
-- NEVER reference "industry standards", "FDA averages", "competitor benchmarks", or "norms". 
-- Compare metrics ONLY to other metrics explicitly provided in the payload.
-
-2. STRICT CAUSALITY LIMITS:
-- NEVER use the phrases: "caused by", "primarily due to", or "driven by".
-- You are strictly limited to correlation language: "may contribute to", "could be associated with", or "possibly linked to".
-
-3. SEPARATION OF BUSINESS VS. TECHNICAL (Reporting Rule):
-- Do NOT put raw data engineering errors (e.g., "Negative floats", "Excluded") in the main business sections.
-- ALL raw technical errors and exclusion reasons MUST be dumped exclusively into Section 8: Technical Appendix.
-
-4. REGULATORY & RISK TONE:
-- Maintain a highly rigid, compliance-first tone. Treat "Expired Batches" and "Quality Control Failures" as critical regulatory risks that could trigger audits or recalls.
-
-[PAYLOAD]
+PAYLOAD:
 {data_payload}
 
-Format your response in professional Markdown, structuring it EXACTLY with these 8 sections:
+YOUR TASK:
 
-### 📑 1. Executive Summary
-* VERY short. Summarize production health, quality control stability, and expiry risks in 3-4 sentences.
+Generate an executive pharmaceutical intelligence report.
 
-### 🛡️ 2. Reliability & Data Quality
-* Create a simple markdown table summarizing the reliability score and confidence.
+The report must identify:
+- the most operationally significant pharmaceutical risks,
+- compliance vulnerabilities,
+- quality instability,
+- batch consistency concerns,
+- yield degradation,
+- inventory expiry exposure,
+- manufacturing bottlenecks,
+- sterility or temperature-control concerns,
+- operational variability,
+- interconnected compliance and production risks.
 
-### 📊 3. KPI Snapshot
-{{INSERT_KPIS_HERE}}
+IMPORTANT:
+Focus on PRIORITIZED_NARRATIVE_BLOCKS.
+Do NOT explain metrics individually.
+Do NOT narrate KPI tables.
+Do NOT repeat evidence mechanically.
 
-### 🔍 4. Key Production & Commercial Findings
-* Highlight the top 3 most impactful trends using this exact structure:
-  * **Observation:** [What happened based on the data]
-  * **Possible Reason:** [Why it may matter / Potential root cause]
-  * **Business Impact:** [The operational or financial implication]
+The report should feel like:
+- a pharmaceutical operations assessment,
+- executive GMP risk review,
+- manufacturing quality advisory report,
+- compliance-sensitive operational briefing.
 
-### 🚨 5. Quality Control & Regulatory Risk Areas
-* Create a Markdown table with two columns: **Risk Area** and **Severity** (High/Medium/Low). Base this heavily on QA pass rates, regulatory holds, and near-expiry stock.
+REQUIRED REPORT STRUCTURE:
 
-### 🚀 6. Recommended Actions
-* Provide 3 highly specific, practical next steps for the Plant Managers, QA team, or Supply Chain directors.
+# 1. Executive Pharmaceutical Situation Report
 
-### 📈 7. Supporting Charts
-* Provide a brief list of interactive charts available in the dashboard UI. (e.g., "Batch Expiry Heatmap, QA Purity Control Chart"). State that these are handled natively via the Streamlit presentation layer.
+Write 2-3 concise executive paragraphs explaining:
+- overall operational and compliance health,
+- dominant operational themes,
+- quality and manufacturing stability,
+- major compliance-sensitive areas,
+- whether instability appears localized or systemic.
 
-### ⚙️ 8. Technical Appendix
-* [System Warnings]: Paste the raw data engineering flags, "EXCLUDED" KPI reasons, missing data penalties, and schema anomalies here.
+Focus on operational narrative rather than KPI commentary.
+
+# 2. Compliance & Manufacturing Risk Synthesis
+
+Group interconnected pharmaceutical risks into operational themes.
+
+Explain how:
+- compliance exposure,
+- batch variability,
+- quality instability,
+- yield degradation,
+- inventory risk,
+- operational bottlenecks,
+- manufacturing inconsistency,
+- supply chain pressure
+may be interacting.
+
+Focus on operational relationships and regulatory implications.
+
+Avoid isolated metric explanations.
+
+# 3. High-Priority Operational Areas Requiring Review
+
+Identify the most operationally important areas requiring management investigation.
+
+Prioritize:
+- patient-facing operational exposure,
+- compliance-sensitive instability,
+- manufacturing inconsistencies,
+- quality degradation,
+- inventory expiry pressure,
+- cross-cluster escalation patterns.
+
+Explain which operational areas require immediate review.
+
+# 4. Strategic Pharmaceutical Directives
+
+Provide 3-5 highly specific operational recommendations.
+
+Recommendations must:
+- directly connect to evidence,
+- remain operationally realistic,
+- avoid generic management language,
+- prioritize compliance integrity and manufacturing stability,
+- focus on sustainable operational governance rather than superficial optimization.
+
+Avoid vague recommendations such as:
+- "improve quality"
+- "increase efficiency"
+- "enhance compliance"
+
+Recommendations should instead focus on:
+- deviation investigation,
+- batch review prioritization,
+- process validation,
+- environmental monitoring enhancement,
+- inventory rotation control,
+- yield stabilization initiatives,
+- compliance monitoring reinforcement.
+
+# 5. Governance & Reliability Notes
+
+Briefly explain:
+- reliability limitations,
+- weak evidence areas,
+- uncertainty,
+- governance constraints,
+- data quality limitations,
+- interpretation ambiguity.
+
+STRICT RULES:
+- Never imply confirmed regulatory violation without explicit evidence.
+- Never exaggerate compliance severity.
+- Never overstate causality.
+- Never explain every KPI individually.
+- Never generate markdown KPI tables.
+- Never use phrases like:
+  "the data shows",
+  "this metric indicates",
+  "based on the KPI".
+
+Maintain:
+- executive readability,
+- scientific discipline,
+- governance realism,
+- concise narrative flow,
+- enterprise pharmaceutical professionalism.
