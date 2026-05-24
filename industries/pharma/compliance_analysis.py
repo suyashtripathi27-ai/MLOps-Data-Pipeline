@@ -1,54 +1,125 @@
+"""
+Regulatory compliance, audit findings, and GMP adherence metrics.
+"""
 import pandas as pd
-from .reliability import evaluate_kpi_confidence
-from utils.validator import SemanticValidator
+from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 
 def calc_compliance_metrics(df):
-    """
-    Scans for regulatory, FDA, EMA, or Quality Control (QC) compliance indicators.
-    Gracefully bypasses if the dataset only contains sales data.
-    """
+    """Calculates regulatory compliance and GMP KPIs."""
     kpis = []
-    if len(df) == 0: return kpis
-
-    # 1. Detect compliance-related columns dynamically
-    compliance_keywords = ['compliance', 'fda', 'ema', 'qc', 'quality', 'approved', 'status', 'recall', 'audit']
-    compliance_cols = [c for c in df.columns if any(keyword in c.lower() for keyword in compliance_keywords)]
-
-    if not compliance_cols:
-        return kpis # Gracefully exit if this specific dataset doesn't have compliance data
-
-    # 2. Calculate data confidence
-    conf, warns = evaluate_kpi_confidence(df, compliance_cols)
-
-    # 3. Tracked Compliance Volume
-    kpis.append({
-        "category": "⚖️ Regulatory Compliance",
-        "name": "Audited / Tracked Records",
-        "value": f"{len(df):,.0f}",
-        "formula": "COUNT(Rows)",
-        "source": f"Columns: {len(compliance_cols)}",
-        "confidence": conf,
-        "warnings": warns
-    })
-
-    # 4. Quality Control / Approval Rate
-    status_col = next((c for c in compliance_cols if 'status' in c.lower() or 'approved' in c.lower() or 'qc' in c.lower()), None)
-
-    if status_col:
-        # Check for positive regulatory indicators
-        passed = df[status_col].astype(str).str.lower().isin(['pass', 'approved', 'true', '1', 'yes', 'compliant', 'active']).sum()
-        total = len(df[status_col].dropna())
+    
+    if len(df) == 0:
+        return kpis
+    
+    # Compliance metrics are COUNT (number of findings/deviations), not time
+    audit_col = first_column(df, ["audit_id", "audit_number", "inspection_id"])
+    finding_col = first_column(df, ["finding_count", "findings", "audit_findings"])
+    severity_col = first_column(df, ["severity", "finding_severity", "classification"])
+    status_col = first_column(df, ["status", "compliance_status", "remediation_status"])
+    
+    if not finding_col:
+        return kpis
+    
+    conf, warns = confidence_for(df, [col for col in [audit_col, finding_col, severity_col, status_col] if col])
+    
+    # Total audits
+    if audit_col:
+        total_audits = df[audit_col].nunique()
         
-        if total > 0:
-            pass_rate = (passed / total) * 100
-            kpis.append({
-                "category": "⚖️ Regulatory Compliance",
-                "name": "Quality / Approval Rate",
-                "value": f"{pass_rate:.1f}%",
-                "formula": "Passed / Total Audited",
-                "source": f"`{status_col}`",
-                "confidence": conf,
-                "warnings": "CRITICAL: Compliance rate below 95% threshold" if pass_rate < 95.0 else "None"
-            })
-
+        kpis.append(safe_kpi(
+            category="✅ Compliance",
+            name="Total Audits/Inspections",
+            value=f"{total_audits:,}",
+            formula="Count(Distinct Audits)",
+            source=f"`{audit_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+    
+    # Total findings
+    if finding_col and pd.api.types.is_numeric_dtype(df[finding_col]):
+        total_findings = df[finding_col].sum()
+        avg_findings = df[finding_col].mean()
+        
+        kpis.append(safe_kpi(
+            category="✅ Compliance",
+            name="Total Audit Findings",
+            value=f"{total_findings:,}",
+            formula="Sum(Findings)",
+            source=f"`{finding_col}`",
+            confidence=conf,
+            warnings="High finding volume - Review QMS" if total_findings > 20 else warns
+        ))
+        
+        kpis.append(safe_kpi(
+            category="✅ Compliance",
+            name="Avg Findings per Audit",
+            value=f"{avg_findings:.2f}",
+            formula="Mean(Findings)",
+            source=f"`{finding_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+    
+    # Severity breakdown
+    if severity_col:
+        severity_lower = df[severity_col].astype(str).str.lower()
+        
+        critical = severity_lower.str.contains("critical|warning letter", na=False).sum()
+        major = severity_lower.str.contains("major|significant", na=False).sum()
+        minor = severity_lower.str.contains("minor|observation", na=False).sum()
+        
+        kpis.append(safe_kpi(
+            category="✅ Compliance",
+            name="Critical Findings",
+            value=f"{critical:,}",
+            formula="Count(Severity = Critical)",
+            source=f"`{severity_col}`",
+            confidence=conf,
+            warnings="⚠️ CRITICAL: Immediate action required" if critical > 0 else warns
+        ))
+        
+        if critical == 0:
+            kpis.append(safe_kpi(
+                category="✅ Compliance",
+                name="Major Findings",
+                value=f"{major:,}",
+                formula="Count(Severity = Major)",
+                source=f"`{severity_col}`",
+                confidence=conf,
+                warnings="Review and close findings" if major > 5 else warns
+            ))
+    
+    # Remediation status
+    if status_col:
+        status_lower = df[status_col].astype(str).str.lower()
+        
+        closed = status_lower.str.contains("closed|resolved|complete", na=False).sum()
+        open_findings = status_lower.str.contains("open|pending|in-progress", na=False).sum()
+        
+        total_status = closed + open_findings
+        
+        if total_status > 0:
+            closure_rate = (closed / total_status * 100)
+            
+            kpis.append(safe_kpi(
+                category="✅ Compliance",
+                name="Finding Closure Rate",
+                value=f"{closure_rate:.2f}%",
+                formula="(Closed / Total) * 100",
+                source=f"`{status_col}`",
+                confidence=conf,
+                warnings="Slow remediation progress" if closure_rate < 50 else warns
+            ))
+            
+            kpis.append(safe_kpi(
+                category="✅ Compliance",
+                name="Open Findings",
+                value=f"{open_findings:,}",
+                formula="Count(Status = Open)",
+                source=f"`{status_col}`",
+                confidence=conf,
+                warnings="High number of pending remediations" if open_findings > 10 else warns
+            ))
+    
     return kpis
