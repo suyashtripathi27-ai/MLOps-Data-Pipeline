@@ -12,7 +12,7 @@ def calc_customer_metrics(df):
     amount_col = first_column(df, ["amount", "balance", "transaction_amount"])
     date_col = first_column(df, ["transaction_date", "date"])
 
-    if not customer_col or not amount_col:
+    if not customer_col and not amount_col:
         return kpis
 
     conf, warns = confidence_for(df, [customer_col, amount_col])
