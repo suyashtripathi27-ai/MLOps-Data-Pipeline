@@ -19,7 +19,7 @@ def calc_engagement_metrics(df):
     kpis.append(safe_kpi(
         category="👥 Engagement", name="Total Employees Assessed",
         value=f"{total_employees:,}", formula="Total Rows",
-        source="System", confidence=0.99, warnings="None"
+        source="System", confidence="🟢 High", warnings="None"  # <--- THE FIX
     ))
     
     conf, warns = confidence_for(df, [col for col in [job_sat_col, env_sat_col, rel_sat_col, wlb_col] if col])
