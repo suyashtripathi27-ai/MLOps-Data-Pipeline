@@ -12,7 +12,7 @@ def calc_loan_metrics(df):
     disbursed_col = first_column(df, ["disbursed_amount", "loan_amount", "principal"])
     rate_col = first_column(df, ["interest_rate", "rate", "apr"])
 
-    if not loan_status_col or not outstanding_col:
+    if not loan_status_col and not outstanding_col:
         return kpis
 
     conf, warns = confidence_for(df, [loan_status_col, outstanding_col])
