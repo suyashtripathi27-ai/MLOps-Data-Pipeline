@@ -7,10 +7,10 @@ def calc_workforce_stability_metrics(df):
         return kpis
 
     # Aliases
-    attrition_col = first_column(df, ["attrition", "left_company", "status", "voluntary_leave"])
-    tenure_col = first_column(df, ["yearsatcompany", "tenure", "length_of_service"])
-    role_tenure_col = first_column(df, ["yearsincurrentrole", "role_tenure"])
-    manager_tenure_col = first_column(df, ["yearswithcurrmanager", "manager_tenure"])
+    attrition_col = first_column(df, ["Attrition", "attrition", "left_company", "status", "voluntary_leave"])
+    tenure_col = first_column(df, ["YearsAtCompany", "yearsatcompany", "tenure", "length_of_service"])
+    role_tenure_col = first_column(df, ["YearsInCurrentRole", "yearsincurrentrole", "role_tenure"])
+    manager_tenure_col = first_column(df, ["YearsWithCurrManager", "yearswithcurrmanager", "manager_tenure"])
 
     # 🛑 The only kill-switch left is Attrition itself. If no attrition column exists, skip attrition math.
     if not attrition_col and not tenure_col:
