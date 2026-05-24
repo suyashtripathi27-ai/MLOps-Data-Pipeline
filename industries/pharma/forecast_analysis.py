@@ -1,52 +1,79 @@
+"""
+Demand forecasting, forecast accuracy, and demand planning metrics.
+"""
 import pandas as pd
-from .reliability import evaluate_kpi_confidence
-from utils.validator import SemanticValidator
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns: return col
-    return None
+from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 
 def calc_forecast_metrics(df):
-    """Computes demand planning and supply forecast accuracy."""
+    """Calculates demand forecasting accuracy KPIs."""
     kpis = []
-    if len(df) == 0: return kpis
-
-    forecast_col = _first_column(df, ["forecast_demand", "predicted_demand"])
-    actual_col = _first_column(df, ["actual_demand", "quantity_sold"])
-
-    if not forecast_col or not actual_col: 
-        return kpis
-
-    # 🛡️ ENTERPRISE VALIDATION
-    forecast_valid, reason = SemanticValidator.is_valid_duration(df[forecast_col].fillna(0))
-    if not forecast_valid:
-        return [{
-            "category": "📈 Forecasting & Demand", "name": "Demand Forecast Accuracy",
-            "value": "EXCLUDED", "formula": "N/A", "source": f"`{forecast_col}`",
-            "confidence": "Low", "warnings": reason
-        }]
-
-    conf, warns = evaluate_kpi_confidence(df, [forecast_col, actual_col])
     
-    forecast_numeric = df[forecast_col].fillna(0)
-    actual_numeric = df[actual_col].fillna(0)
-    total_actual = actual_numeric.sum()
-
-    if total_actual > 0:
-        # Mean Absolute Percentage Error (MAPE) inverse for accuracy calculation
-        absolute_errors = abs(forecast_numeric - actual_numeric)
-        mape = (absolute_errors.sum() / total_actual) * 100
-        accuracy = max(0, 100 - mape)
-
-        kpis.append({
-            "category": "📈 Forecasting & Demand",
-            "name": "Demand Forecast Accuracy",
-            "value": f"{accuracy:.2f}%",
-            "formula": "100 - MAPE(forecast, actual)",
-            "source": f"`{forecast_col}`, `{actual_col}`",
-            "confidence": conf,
-            "warnings": "Severe demand planning variance" if accuracy < 80 else warns
-        })
-
+    if len(df) == 0:
+        return kpis
+    
+    # Forecast metrics are COUNT (units), not time
+    actual_col = first_column(df, ["actual_demand", "actual_sales", "actual_units"])
+    forecast_col = first_column(df, ["forecasted_demand", "predicted_demand", "forecast_units"])
+    product_col = first_column(df, ["product_id", "product", "drug_name"])
+    period_col = first_column(df, ["period", "month", "quarter"])
+    
+    if not actual_col or not forecast_col:
+        return kpis
+    
+    conf, warns = confidence_for(df, [col for col in [actual_col, forecast_col, product_col, period_col] if col])
+    
+    valid_df = df.dropna(subset=[actual_col, forecast_col])
+    
+    if valid_df.empty:
+        return kpis
+    
+    # Forecast accuracy (MAPE)
+    actual = valid_df[actual_col]
+    forecast = valid_df[forecast_col]
+    
+    mape = ((actual - forecast).abs() / actual.abs()).mean() * 100 if (actual.abs() > 0).any() else 0
+    
+    kpis.append(safe_kpi(
+        category="📊 Demand Planning",
+        name="Forecast Accuracy (MAPE)",
+        value=f"{mape:.2f}%",
+        formula="Mean(|Actual - Forecast| / |Actual|) * 100",
+        source=f"`{actual_col}`, `{forecast_col}`",
+        confidence=conf,
+        warnings="Poor forecast accuracy" if mape > 20 else warns
+    ))
+    
+    # Forecast bias
+    bias = (forecast - actual).mean()
+    
+    kpis.append(safe_kpi(
+        category="📊 Demand Planning",
+        name="Forecast Bias",
+        value=f"{bias:,.0f} units",
+        formula="Mean(Forecast - Actual)",
+        source=f"`{actual_col}`, `{forecast_col}`",
+        confidence=conf,
+        warnings="Systematic over-forecast" if bias > 0 else "Systematic under-forecast" if bias < 0 else warns
+    ))
+    
+    # By product accuracy
+    if product_col:
+        product_mape = valid_df.groupby(product_col).apply(
+            lambda x: ((x[actual_col] - x[forecast_col]).abs() / x[actual_col].abs()).mean() * 100
+        ).sort_values(ascending=False)
+        
+        if not product_mape.empty:
+            worst_product = product_mape.idxmax()
+            worst_mape = product_mape.max()
+            
+            kpis.append(safe_kpi(
+                category="📊 Demand Planning",
+                name="Worst Forecast Accuracy (by Product)",
+                value=f"{worst_product} (MAPE: {worst_mape:.2f}%)",
+                formula="Product with highest MAPE",
+                source=f"`{product_col}`, `{actual_col}`, `{forecast_col}`",
+                confidence=conf,
+                warnings="Critical accuracy issue for this product" if worst_mape > 40 else warns
+            ))
+    
     return kpis
