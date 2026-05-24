@@ -7,10 +7,10 @@ def calc_engagement_metrics(df):
         return kpis
     
     # Aliases
-    job_sat_col = first_column(df, ["jobsatisfaction", "job_satisfaction", "satisfaction_score"])
-    env_sat_col = first_column(df, ["environmentsatisfaction", "environment_satisfaction"])
-    rel_sat_col = first_column(df, ["relationshipsatisfaction", "relationship_satisfaction"])
-    wlb_col = first_column(df, ["worklifebalance", "work_life_balance"])
+    job_sat_col = first_column(df, ["JobSatisfaction", "jobsatisfaction", "job_satisfaction", "satisfaction_score"])
+    env_sat_col = first_column(df, ["EnvironmentSatisfaction", "environmentsatisfaction", "environment_satisfaction"])
+    rel_sat_col = first_column(df, ["RelationshipSatisfaction", "relationshipsatisfaction", "relationship_satisfaction"])
+    wlb_col = first_column(df, ["WorkLifeBalance", "worklifebalance", "work_life_balance"])
     
     # 🛑 Notice: We completely removed the `if not employee_col` kill-switch!
     
