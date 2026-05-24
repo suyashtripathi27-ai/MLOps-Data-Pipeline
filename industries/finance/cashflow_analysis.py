@@ -1,81 +1,118 @@
+"""
+Profitability, margins, and EBITDA metrics for financial analysis.
+"""
 import pandas as pd
 from utils.kpi_helpers import first_column, safe_kpi, confidence_for
-from utils.validator import SemanticValidator
 
-def calc_cashflow_metrics(df):
-    """Computes critical liquidity and cash runway metrics for the CFO."""
+def calc_profitability_metrics(df):
+    """Calculates profitability and margin KPIs."""
     kpis = []
-    if len(df) == 0: return kpis
-
-    ocf_col = first_column(df, ["cash_flow_operating", "ocf", "operating_cash_flow"])
-    capex_col = first_column(df, ["capital_expenditure", "capex", "capital_investments"])
-    cash_col = first_column(df, ["cash_balance", "cash_and_equivalents"])
-    burn_col = first_column(df, ["monthly_burn_rate", "operating_burn"])
-
-    if not ocf_col: 
+    
+    if len(df) == 0:
         return kpis
-
-    # 🛡️ ENTERPRISE VALIDATION
-    ocf_valid, reason = SemanticValidator.is_valid_duration(df[ocf_col].fillna(0))
-    if not ocf_valid:
-        return [{
-            "category": "💸 Cash Flow & Runway", "name": "Operating Cash Flow",
-            "value": "EXCLUDED", "formula": "N/A", "source": f"`{ocf_col}`",
-            "confidence": "Low", "warnings": reason
-        }]
-
-    # Calculate Confidence Score
-    conf_cols = [ocf_col] + ([capex_col] if capex_col else []) + ([cash_col] if cash_col else [])
-    conf, warns = evaluate_kpi_confidence(df, conf_cols)
     
-    # 1. Operating Cash Flow (OCF)
-    ocf_numeric = pd.to_numeric(df[ocf_col], errors='coerce').fillna(0)
-    total_ocf = ocf_numeric.sum()
+    revenue_col = first_column(df, ["revenue", "sales", "gross_revenue", "income", "turnover"])
+    net_col = first_column(df, ["net_income", "net_profit", "bottom_line", "net_earnings"])
+    ebitda_col = first_column(df, ["ebitda", "operating_profit_before_depreciation", "ebit"])
+    gross_profit_col = first_column(df, ["gross_profit", "gross_margin", "gross_income"])
     
-    kpis.append({
-        "category": "💸 Cash Flow & Runway",
-        "name": "Total Operating Cash Flow (OCF)",
-        "value": f"${total_ocf:,.2f}",
-        "formula": "SUM(ocf)",
-        "source": f"`{ocf_col}`",
-        "confidence": conf,
-        "warnings": "Negative OCF indicates core business operations are burning cash" if total_ocf < 0 else warns
-    })
-
-    # 2. Free Cash Flow (FCF)
-    if capex_col:
-        capex_numeric = pd.to_numeric(df[capex_col], errors='coerce').fillna(0)
-        total_capex = capex_numeric.sum()
-        # Ensure we subtract capex regardless of whether it was recorded as positive or negative
-        fcf = total_ocf - abs(total_capex) 
+    if not revenue_col:
+        return kpis
+    
+    # Revenue is MONEY, not duration
+    if not pd.api.types.is_numeric_dtype(df[revenue_col]):
+        kpis.append(safe_kpi(
+            category="💰 Profitability & Margins",
+            name="Revenue Metrics",
+            value="EXCLUDED",
+            formula="N/A",
+            source=f"`{revenue_col}`",
+            confidence="Low",
+            warnings="Revenue column contains non-numeric data."
+        ))
+        return kpis
+    
+    conf, warns = confidence_for(df, [col for col in [revenue_col, net_col, ebitda_col, gross_profit_col] if col])
+    
+    # Total revenue
+    total_revenue = df[revenue_col].sum()
+    
+    kpis.append(safe_kpi(
+        category="💰 Profitability & Margins",
+        name="Total Revenue",
+        value=f"${total_revenue:,.2f}",
+        formula="Sum(Revenue)",
+        source=f"`{revenue_col}`",
+        confidence=conf,
+        warnings=warns
+    ))
+    
+    # Gross profit margin
+    if gross_profit_col and pd.api.types.is_numeric_dtype(df[gross_profit_col]) and total_revenue > 0:
+        total_gross = df[gross_profit_col].sum()
+        gross_margin = (total_gross / total_revenue) * 100
         
-        kpis.append({
-            "category": "💸 Cash Flow & Runway",
-            "name": "Free Cash Flow (FCF)",
-            "value": f"${fcf:,.2f}",
-            "formula": "OCF - CapEx",
-            "source": f"`{ocf_col}`, `{capex_col}`",
-            "confidence": conf,
-            "warnings": "Severe FCF deficit detected" if fcf < 0 else "None"
-        })
-
-    # 3. Cash Runway Estimation
-    if cash_col and burn_col:
-        # Taking the most recent/average cash balance and burn rate
-        avg_cash = pd.to_numeric(df[cash_col], errors='coerce').dropna().mean()
-        avg_burn = pd.to_numeric(df[burn_col], errors='coerce').dropna().mean()
+        kpis.append(safe_kpi(
+            category="💰 Profitability & Margins",
+            name="Gross Profit Margin",
+            value=f"{gross_margin:.2f}%",
+            formula="(Gross Profit / Revenue) * 100",
+            source=f"`{gross_profit_col}`, `{revenue_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+    
+    # Net profit margin
+    if net_col and pd.api.types.is_numeric_dtype(df[net_col]) and total_revenue > 0:
+        total_net = df[net_col].sum()
+        net_margin = (total_net / total_revenue) * 100
         
-        if avg_burn > 0:
-            runway_months = avg_cash / avg_burn
-            kpis.append({
-                "category": "💸 Cash Flow & Runway",
-                "name": "Estimated Cash Runway",
-                "value": f"{runway_months:.1f} months",
-                "formula": "Avg Cash Balance / Avg Monthly Burn",
-                "source": f"`{cash_col}`, `{burn_col}`",
-                "confidence": conf,
-                "warnings": "CRITICAL: Less than 6 months of operational runway remaining" if runway_months < 6 else "None"
-            })
-
+        kpis.append(safe_kpi(
+            category="💰 Profitability & Margins",
+            name="Net Profit Margin",
+            value=f"{net_margin:.2f}%",
+            formula="(Net Income / Revenue) * 100",
+            source=f"`{net_col}`, `{revenue_col}`",
+            confidence=conf,
+            warnings="Critical margin compression" if net_margin < 5 else warns
+        ))
+        
+        kpis.append(safe_kpi(
+            category="💰 Profitability & Margins",
+            name="Total Net Income",
+            value=f"${total_net:,.2f}",
+            formula="Sum(Net Income)",
+            source=f"`{net_col}`",
+            confidence=conf,
+            warnings="Negative net income" if total_net < 0 else warns
+        ))
+    
+    # EBITDA
+    if ebitda_col and pd.api.types.is_numeric_dtype(df[ebitda_col]):
+        total_ebitda = df[ebitda_col].sum()
+        
+        kpis.append(safe_kpi(
+            category="💰 Profitability & Margins",
+            name="Total EBITDA",
+            value=f"${total_ebitda:,.2f}",
+            formula="Sum(EBITDA)",
+            source=f"`{ebitda_col}`",
+            confidence=conf,
+            warnings="Negative EBITDA - Cash burn" if total_ebitda < 0 else warns
+        ))
+        
+        # EBITDA margin
+        if total_revenue > 0:
+            ebitda_margin = (total_ebitda / total_revenue) * 100
+            
+            kpis.append(safe_kpi(
+                category="💰 Profitability & Margins",
+                name="EBITDA Margin",
+                value=f"{ebitda_margin:.2f}%",
+                formula="(EBITDA / Revenue) * 100",
+                source=f"`{ebitda_col}`, `{revenue_col}`",
+                confidence=conf,
+                warnings=warns
+            ))
+    
     return kpis
-  
