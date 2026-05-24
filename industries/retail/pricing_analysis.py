@@ -1,111 +1,141 @@
+"""
+Pricing strategy, discounts, margins, and price elasticity metrics.
+"""
 import pandas as pd
-from .reliability import evaluate_kpi_confidence
-from utils.validator import SemanticValidator
-
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
+from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 
 def calc_pricing_metrics(df):
-    """Calculates pricing, markdown, and margin pressure KPIs."""
+    """Calculates pricing and margin KPIs."""
     kpis = []
-    discount_col = _first_column(df, ["discount_pct", "discount", "markdown_pct"])
-    revenue_col = _first_column(df, ["revenue", "sales", "weekly_sales", "total_sales"])
-    margin_col = _first_column(df, ["margin", "gross_margin", "profit_margin"])
-    markdown_flag_col = _first_column(df, ["is_markdown", "markdown_flag"])
-
-    if not discount_col and not margin_col:
+    
+    if len(df) == 0:
         return kpis
-
-    columns_for_conf = [c for c in [discount_col, revenue_col, margin_col, markdown_flag_col] if c]
-    conf, warns = evaluate_kpi_confidence(df, columns_for_conf)
-
-    if discount_col:
-        disc_valid, reason = SemanticValidator.is_valid_percentage(df[discount_col].fillna(0))
-        if disc_valid:
-            avg_discount = df[discount_col].dropna().mean()
-            kpis.append({
-                "category": "🏷️ Pricing Analysis",
-                "name": "Avg Discount %",
-                "value": f"{avg_discount:.2f}%",
-                "formula": "Mean(Discount %)",
-                "source": f"`{discount_col}`",
-                "confidence": conf,
-                "warnings": warns,
-            })
-
-            if revenue_col:
-                discounted_revenue = df.loc[df[discount_col].fillna(0) > 0, revenue_col].sum()
-                total_revenue = df[revenue_col].sum()
-                discounted_share = (discounted_revenue / total_revenue * 100) if total_revenue > 0 else 0
-                markdown_frequency = (df[discount_col].fillna(0) > 0).mean() * 100
-                kpis.append({
-                    "category": "🏷️ Pricing Analysis",
-                    "name": "Discounted Sales Share",
-                    "value": f"{discounted_share:.2f}%",
-                    "formula": "Discounted Revenue / Total Revenue * 100",
-                    "source": f"`{discount_col}`, `{revenue_col}`",
-                    "confidence": conf,
-                    "warnings": warns,
-                })
-                kpis.append({
-                    "category": "🏷️ Pricing Analysis",
-                    "name": "Markdown Frequency",
-                    "value": f"{markdown_frequency:.2f}%",
-                    "formula": "Rows with discount > 0 / Total rows * 100",
-                    "source": f"`{discount_col}`",
-                    "confidence": conf,
-                    "warnings": warns,
-                })
-        else:
-            kpis.append({
-                "category": "🏷️ Pricing Analysis",
-                "name": "Pricing Metrics",
-                "value": "EXCLUDED",
-                "formula": "N/A",
-                "source": f"`{discount_col}`",
-                "confidence": "Low",
-                "warnings": reason,
-            })
-
-    if margin_col:
-        margin_valid, reason = SemanticValidator.is_valid_percentage(df[margin_col].fillna(0))
-        if margin_valid:
-            margin_compression = df[margin_col].dropna().diff().mean() * -1
-            kpis.append({
-                "category": "🏷️ Pricing Analysis",
-                "name": "Margin Compression",
-                "value": f"{margin_compression:.2f} pp",
-                "formula": "-Mean(Diff(Margin %))",
-                "source": f"`{margin_col}`",
-                "confidence": conf,
-                "warnings": warns,
-            })
-        else:
-            kpis.append({
-                "category": "🏷️ Pricing Analysis",
-                "name": "Margin Compression",
-                "value": "EXCLUDED",
-                "formula": "N/A",
-                "source": f"`{margin_col}`",
-                "confidence": "Low",
-                "warnings": reason,
-            })
-
-    if markdown_flag_col:
-        markdown_series = df[markdown_flag_col].astype(str).str.lower().isin(["true", "1", "yes", "y"])
-        kpis.append({
-            "category": "🏷️ Pricing Analysis",
-            "name": "Markdown Frequency",
-            "value": f"{(markdown_series.mean() * 100):.2f}%",
-            "formula": "Markdown rows / Total rows * 100",
-            "source": f"`{markdown_flag_col}`",
-            "confidence": conf,
-            "warnings": warns,
-        })
-
+    
+    # Pricing metrics are MONEY, not time
+    regular_price_col = first_column(df, ["regular_price", "list_price", "base_price", "msrp"])
+    selling_price_col = first_column(df, ["selling_price", "sale_price", "price", "final_price"])
+    discount_col = first_column(df, ["discount", "discount_amount", "discount_pct", "discount_percentage"])
+    cost_col = first_column(df, ["cost", "cogs", "unit_cost"])
+    quantity_col = first_column(df, ["quantity", "units_sold", "qty"])
+    
+    if not selling_price_col:
+        return kpis
+    
+    # Price is MONEY, not duration
+    if not pd.api.types.is_numeric_dtype(df[selling_price_col]):
+        kpis.append(safe_kpi(
+            category="💰 Pricing",
+            name="Pricing Metrics",
+            value="EXCLUDED",
+            formula="N/A",
+            source=f"`{selling_price_col}`",
+            confidence="Low",
+            warnings="Price column contains non-numeric data."
+        ))
+        return kpis
+    
+    conf, warns = confidence_for(df, [col for col in [regular_price_col, selling_price_col, discount_col, cost_col, quantity_col] if col])
+    
+    # Price metrics
+    valid_price = df[selling_price_col].dropna()
+    
+    if not valid_price.empty:
+        avg_price = valid_price.mean()
+        median_price = valid_price.median()
+        
+        kpis.append(safe_kpi(
+            category="💰 Pricing",
+            name="Avg Selling Price",
+            value=f"${avg_price:,.2f}",
+            formula="Mean(Selling Price)",
+            source=f"`{selling_price_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+        
+        kpis.append(safe_kpi(
+            category="💰 Pricing",
+            name="Median Selling Price",
+            value=f"${median_price:,.2f}",
+            formula="Median(Selling Price)",
+            source=f"`{selling_price_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+    
+    # Discount analysis
+    if discount_col and pd.api.types.is_numeric_dtype(df[discount_col]):
+        valid_discount = df[discount_col].dropna()
+        
+        if not valid_discount.empty:
+            avg_discount = valid_discount.mean()
+            discounted_items = (valid_discount > 0).sum()
+            discount_rate = (discounted_items / len(df) * 100) if len(df) > 0 else 0
+            
+            kpis.append(safe_kpi(
+                category="💰 Pricing",
+                name="Avg Discount Amount",
+                value=f"${avg_discount:,.2f}",
+                formula="Mean(Discount)",
+                source=f"`{discount_col}`",
+                confidence=conf,
+                warnings=warns
+            ))
+            
+            kpis.append(safe_kpi(
+                category="💰 Pricing",
+                name="Discounted Items %",
+                value=f"{discount_rate:.2f}%",
+                formula="(Items with Discount / Total) * 100",
+                source=f"`{discount_col}`",
+                confidence=conf,
+                warnings="High discount rate - Margin pressure" if discount_rate > 50 else warns
+            ))
+    
+    # Margin analysis
+    if cost_col and selling_price_col and pd.api.types.is_numeric_dtype(df[cost_col]) and pd.api.types.is_numeric_dtype(df[selling_price_col]):
+        margin_df = pd.DataFrame({
+            "cost": df[cost_col],
+            "price": df[selling_price_col]
+        }).dropna()
+        
+        if not margin_df.empty:
+            margin_df["margin"] = ((margin_df["price"] - margin_df["cost"]) / margin_df["price"] * 100)
+            valid_margins = margin_df[margin_df["margin"] >= 0]["margin"]
+            
+            if not valid_margins.empty:
+                avg_margin = valid_margins.mean()
+                
+                kpis.append(safe_kpi(
+                    category="💰 Pricing",
+                    name="Avg Profit Margin %",
+                    value=f"{avg_margin:.2f}%",
+                    formula="Mean((Price - Cost) / Price * 100)",
+                    source=f"`{selling_price_col}`, `{cost_col}`",
+                    confidence=conf,
+                    warnings="Low margin" if avg_margin < 20 else warns
+                ))
+    
+    # Price elasticity
+    if regular_price_col and selling_price_col and quantity_col and pd.api.types.is_numeric_dtype(df[regular_price_col]) and pd.api.types.is_numeric_dtype(df[selling_price_col]) and pd.api.types.is_numeric_dtype(df[quantity_col]):
+        price_df = pd.DataFrame({
+            "regular": df[regular_price_col],
+            "selling": df[selling_price_col],
+            "qty": df[quantity_col]
+        }).dropna()
+        
+        if not price_df.empty and (price_df["regular"] > 0).all():
+            discount_factor = (price_df["regular"] - price_df["selling"]) / price_df["regular"]
+            avg_discount_factor = discount_factor.mean() * 100
+            
+            kpis.append(safe_kpi(
+                category="💰 Pricing",
+                name="Avg Discount from List Price",
+                value=f"{avg_discount_factor:.2f}%",
+                formula="Mean((List - Sell) / List * 100)",
+                source=f"`{regular_price_col}`, `{selling_price_col}`",
+                confidence=conf,
+                warnings=warns
+            ))
+    
     return kpis
