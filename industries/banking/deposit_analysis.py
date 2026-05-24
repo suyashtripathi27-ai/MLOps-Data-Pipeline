@@ -11,7 +11,7 @@ def calc_deposit_metrics(df):
     amount_col = first_column(df, ["amount", "balance", "deposit_amount"])
     interest_col = first_column(df, ["interest_earned", "interest_income", "interest_rate"])
 
-    if not product_col or not amount_col:
+    if not product_col and not amount_col:
         return kpis
 
     conf, warns = confidence_for(df, [product_col, amount_col])
