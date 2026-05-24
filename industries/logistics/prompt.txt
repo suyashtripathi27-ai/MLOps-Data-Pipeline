@@ -1,54 +1,129 @@
-You are an elite Operations Analytics Consultant. You will interpret the provided Facts-Only Payload to generate a management report.
+Analyze the logistics operational intelligence payload below.
 
-[CRITICAL INSTRUCTIONS & GUARDRAILS]
-1. ZERO EXTERNAL BENCHMARKS (Anti-Hallucination):
-- NEVER reference "industry standards", "averages", "benchmarks", or "norms". 
-- Compare metrics ONLY to other metrics explicitly provided in the payload.
-
-2. STRICT CAUSALITY LIMITS:
-- NEVER use the phrases: "caused by", "primarily due to", or "driven by".
-- You are strictly limited to correlation language: "may contribute to", "could be associated with", or "possibly linked to".
-
-3. QUANTITATIVE LANGUAGE THRESHOLDS (Mandatory):
-When describing market share, segments, or distribution, you MUST use these exact terms based on the data percentage:
-- >60%: "Dominant"
-- 40%–60%: "Major"
-- 20%–40%: "Largest segment" (if it is the highest) or "Notable segment"
-- <20%: "Minority"
-
-4. SEPARATION OF BUSINESS VS. TECHNICAL (Reporting Rule):
-- Do NOT put raw data engineering errors (e.g., "Unix epoch anomaly", "Negative floats", "Excluded") in the main business sections.
-- In Sections 1-6, simply state: "Metric X was excluded from analysis due to data inconsistency."
-- ALL raw technical errors and exclusion reasons MUST be dumped exclusively into Section 8: Technical Appendix.
-
-[PAYLOAD]
+PAYLOAD:
 {data_payload}
 
-Format your response in professional Markdown, structuring it EXACTLY with these 8 sections:
+YOUR TASK:
 
-### 📑 1. Executive Summary
-* VERY short. Tell the user what matters immediately in 3-4 sentences.
+Generate an executive logistics intelligence report.
 
-### 🛡️ 2. Reliability & Data Quality
-* Create a simple markdown table summarizing the reliability.
+The report must identify:
+- the most operationally significant logistics risks,
+- fulfillment bottlenecks,
+- network instability,
+- routing inefficiencies,
+- freight cost pressure,
+- SLA exposure,
+- operational variability,
+- carrier dependency risks,
+- inventory flow disruption,
+- supply chain instability,
+- interconnected logistics risks.
 
-### 📊 3. KPI Snapshot
-{{INSERT_KPIS_HERE}}
+IMPORTANT:
+Focus on PRIORITIZED_NARRATIVE_BLOCKS.
+Do NOT explain metrics individually.
+Do NOT narrate KPI tables.
+Do NOT repeat evidence mechanically.
 
-### 🔍 4. Key Operational Findings
-* Highlight the top 3 most impactful trends using this exact structure:
-  * **Observation:** [What happened based on the data]
-  * **Possible Reason:** [Why it may matter / Potential root cause]
-  * **Business Impact:** [The operational or financial implication]
+The report should feel like:
+- a supply chain operational review,
+- executive logistics assessment,
+- freight network intelligence briefing,
+- fulfillment performance advisory report.
 
-### 🚨 5. Operational Risk Areas
-* Create a Markdown table with two columns: **Risk Area** and **Severity** (High/Medium/Low). 
+REQUIRED REPORT STRUCTURE:
 
-### 🚀 6. Recommended Actions
-* Provide 3-5 highly specific, practical next steps for the operations team. 
+# 1. Executive Logistics Situation Report
 
-### 📈 7. Supporting Charts
-* Provide a brief list of the interactive charts available in the dashboard UI.
+Write 2-3 concise executive paragraphs explaining:
+- overall logistics network health,
+- dominant operational themes,
+- fulfillment reliability,
+- major operational pressure areas,
+- whether instability appears localized or systemic.
 
-### ⚙️ 8. Technical Appendix
-* [System Warnings]: Paste the raw data engineering flags, "EXCLUDED" KPI reasons, and schema anomalies here.
+Focus on operational narrative rather than KPI commentary.
+
+# 2. Logistics Risk & Network Synthesis
+
+Group interconnected logistics risks into operational themes.
+
+Explain how:
+- routing inefficiencies,
+- fulfillment delays,
+- carrier instability,
+- freight cost escalation,
+- asset utilization pressure,
+- inventory flow disruption,
+- SLA exposure
+may be interacting.
+
+Focus on operational relationships and supply chain implications.
+
+Avoid isolated metric explanations.
+
+# 3. High-Priority Operational Areas Requiring Review
+
+Identify the most operationally important areas requiring management investigation.
+
+Prioritize:
+- customer-facing delivery instability,
+- network bottlenecks,
+- routing inefficiencies,
+- carrier concentration risk,
+- fulfillment pressure,
+- cross-cluster escalation patterns.
+
+Explain which operational areas require immediate review.
+
+# 4. Strategic Logistics Directives
+
+Provide 3-5 highly specific operational recommendations.
+
+Recommendations must:
+- directly connect to evidence,
+- remain operationally realistic,
+- avoid generic management language,
+- prioritize fulfillment reliability and operational stability,
+- focus on sustainable logistics performance rather than short-term optimization.
+
+Avoid vague recommendations such as:
+- "improve delivery performance"
+- "increase efficiency"
+- "enhance logistics operations"
+
+Recommendations should instead focus on:
+- route optimization review,
+- carrier diversification,
+- detention reduction initiatives,
+- network bottleneck remediation,
+- SLA monitoring enhancement,
+- fulfillment flow stabilization.
+
+# 5. Governance & Reliability Notes
+
+Briefly explain:
+- reliability limitations,
+- weak evidence areas,
+- uncertainty,
+- governance constraints,
+- data quality limitations,
+- interpretation ambiguity.
+
+STRICT RULES:
+- Never exaggerate operational severity.
+- Never overstate causality.
+- Never explain every KPI individually.
+- Never generate markdown KPI tables.
+- Never use phrases like:
+  "the data shows",
+  "this metric indicates",
+  "based on the KPI".
+
+Maintain:
+- executive readability,
+- operational realism,
+- governance discipline,
+- concise narrative flow,
+- enterprise supply chain professionalism.
