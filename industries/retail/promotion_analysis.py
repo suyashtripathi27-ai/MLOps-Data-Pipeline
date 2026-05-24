@@ -1,70 +1,124 @@
+"""
+Promotional effectiveness, lift, and ROI metrics.
+"""
 import pandas as pd
-from .reliability import evaluate_kpi_confidence
-from utils.validator import SemanticValidator
-
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
+from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 
 def calc_promotion_metrics(df):
-    """Calculates promotion lift, ROI, and conversion KPIs."""
+    """Calculates promotion effectiveness KPIs."""
     kpis = []
-    revenue_col = _first_column(df, ["revenue", "sales", "weekly_sales", "total_sales"])
-    promo_col = _first_column(df, ["is_promo", "promotion_flag", "promo_flag"])
-    discount_cost_col = _first_column(df, ["discount_amount", "promo_cost", "campaign_cost"])
-    conversion_col = _first_column(df, ["campaign_conversion", "conversion_rate", "promo_conversion"])
-    if not revenue_col or not promo_col:
+    
+    if len(df) == 0:
         return kpis
-
-    promo_series = df[promo_col].astype(str).str.lower().isin(["true", "1", "yes", "y"])
-    analysis_df = df[[revenue_col]].copy()
-    analysis_df["is_promo"] = promo_series
-    analysis_df = analysis_df.dropna(subset=[revenue_col])
-    if analysis_df.empty:
+    
+    # Promotion metrics
+    promo_col = first_column(df, ["promotion_id", "promo_id", "campaign_id", "offer_id"])
+    sales_col = first_column(df, ["sales", "revenue", "order_value", "sales_amount"])
+    discount_col = first_column(df, ["discount", "promotion_discount", "discount_value"])
+    quantity_col = first_column(df, ["quantity", "units_sold", "sales_qty"])
+    
+    if not promo_col:
         return kpis
-
-    conf, warns = evaluate_kpi_confidence(df, [promo_col, revenue_col] + ([discount_cost_col] if discount_cost_col else []))
-    promo_avg = analysis_df.loc[analysis_df["is_promo"], revenue_col].mean() if analysis_df["is_promo"].any() else 0
-    non_promo_avg = analysis_df.loc[~analysis_df["is_promo"], revenue_col].mean() if (~analysis_df["is_promo"]).any() else 0
-    sales_lift = ((promo_avg - non_promo_avg) / non_promo_avg * 100) if non_promo_avg else 0
-    kpis.append({
-        "category": "🎯 Promotion Analysis",
-        "name": "Promo Sales Lift",
-        "value": f"{sales_lift:.2f}%",
-        "formula": "((Promo Avg Sales - Non-Promo Avg Sales) / Non-Promo Avg Sales) * 100",
-        "source": f"`{promo_col}`, `{revenue_col}`",
-        "confidence": conf,
-        "warnings": warns,
-    })
-
-    if discount_cost_col:
-        promo_revenue = analysis_df.loc[analysis_df["is_promo"], revenue_col].sum()
-        promo_cost = df.loc[promo_series, discount_cost_col].fillna(0).sum()
-        roi = ((promo_revenue - promo_cost) / promo_cost) if promo_cost > 0 else 0
-        kpis.append({
-            "category": "🎯 Promotion Analysis",
-            "name": "Discount ROI",
-            "value": f"{roi:.2f}x",
-            "formula": "(Promo Revenue - Promo Cost) / Promo Cost",
-            "source": f"`{revenue_col}`, `{discount_cost_col}`",
-            "confidence": conf,
-            "warnings": warns,
-        })
-
-    if conversion_col:
-        conversion_rate = df[conversion_col].dropna().mean()
-        kpis.append({
-            "category": "🎯 Promotion Analysis",
-            "name": "Campaign Conversion",
-            "value": f"{conversion_rate:.2f}%",
-            "formula": "Mean(Campaign Conversion %)",
-            "source": f"`{conversion_col}`",
-            "confidence": conf,
-            "warnings": warns,
-        })
-
+    
+    conf, warns = confidence_for(df, [col for col in [promo_col, sales_col, discount_col, quantity_col] if col])
+    
+    # Total promotions
+    total_promos = df[promo_col].nunique()
+    
+    kpis.append(safe_kpi(
+        category="🎯 Promotions",
+        name="Total Active Promotions",
+        value=f"{total_promos}",
+        formula="Count(Distinct Promotions)",
+        source=f"`{promo_col}`",
+        confidence=conf,
+        warnings=warns
+    ))
+    
+    # Sales lift
+    if sales_col and pd.api.types.is_numeric_dtype(df[sales_col]):
+        total_sales = df[sales_col].sum()
+        promo_sales = df.groupby(promo_col)[sales_col].sum().sort_values(ascending=False)
+        
+        kpis.append(safe_kpi(
+            category="🎯 Promotions",
+            name="Total Promotion Sales",
+            value=f"${total_sales:,.2f}",
+            formula="Sum(Sales in Promotions)",
+            source=f"`{sales_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+        
+        if not promo_sales.empty:
+            top_promo = promo_sales.idxmax()
+            top_promo_sales = promo_sales.max()
+            
+            kpis.append(safe_kpi(
+                category="🎯 Promotions",
+                name="Top Promotion",
+                value=f"{top_promo} (${top_promo_sales:,.2f})",
+                formula="Promotion with max sales",
+                source=f"`{promo_col}`, `{sales_col}`",
+                confidence=conf,
+                warnings=warns
+            ))
+    
+    # Discount impact
+    if discount_col and pd.api.types.is_numeric_dtype(df[discount_col]):
+        total_discount = df[discount_col].sum()
+        avg_discount = df[discount_col].mean()
+        
+        kpis.append(safe_kpi(
+            category="🎯 Promotions",
+            name="Total Discount Given",
+            value=f"${total_discount:,.2f}",
+            formula="Sum(Discount)",
+            source=f"`{discount_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+        
+        kpis.append(safe_kpi(
+            category="🎯 Promotions",
+            name="Avg Discount per Promotion",
+            value=f"${avg_discount:,.2f}",
+            formula="Mean(Discount)",
+            source=f"`{discount_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+    
+    # ROI calculation
+    if discount_col and sales_col and pd.api.types.is_numeric_dtype(df[discount_col]) and pd.api.types.is_numeric_dtype(df[sales_col]):
+        total_discount = df[discount_col].sum()
+        total_sales = df[sales_col].sum()
+        
+        net_benefit = total_sales - total_discount
+        roi = (net_benefit / total_discount * 100) if total_discount > 0 else 0
+        
+        kpis.append(safe_kpi(
+            category="🎯 Promotions",
+            name="Promotion ROI",
+            value=f"{roi:.2f}%",
+            formula="((Sales - Discount) / Discount) * 100",
+            source=f"`{sales_col}`, `{discount_col}`",
+            confidence=conf,
+            warnings="Negative ROI - Losing money" if roi < 0 else "Low ROI" if roi < 50 else warns
+        ))
+    
+    # Units sold in promotions
+    if quantity_col and pd.api.types.is_numeric_dtype(df[quantity_col]):
+        total_qty = df[quantity_col].sum()
+        
+        kpis.append(safe_kpi(
+            category="🎯 Promotions",
+            name="Total Units Sold in Promotions",
+            value=f"{total_qty:,.0f}",
+            formula="Sum(Quantity in Promos)",
+            source=f"`{quantity_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+    
     return kpis
