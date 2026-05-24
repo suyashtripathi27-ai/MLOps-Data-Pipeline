@@ -36,47 +36,59 @@ if not clients:
 
 
 def detect_industry(clients, columns_list):
-    """THE AGENTIC ROUTER: Looks at the column names and guesses the industry."""
+    """THE AGENTIC ROUTER: Intelligently routes datasets using strict overrides and weighted scoring."""
     print(f"🔍 Sniffing data schema: {columns_list}")
     
-    # ⚡ STEP 1: HEURISTIC FAST-TRACK (Saves API Quota)
     cols_str = str(columns_list).lower()
     
-    if any(word in cols_str for word in ['store', 'dept', 'weekly_sales', 'retail']):
-        print("🎯 Fast Route: Classified as [RETAIL] via Heuristics")
-        return "retail"
-    elif any(word in cols_str for word in ['hub', 'actual_time', 'fleet', 'osrm_time']):
-        print("🎯 Fast Route: Classified as [LOGISTICS] via Heuristics")
-        return "logistics"
-    elif any(word in cols_str for word in ['account', 'balance', 'transaction', 'loan', 'deposit']):
-        print("🎯 Fast Route: Classified as [BANKING] via Heuristics")
-        return "banking"
-    elif any(word in cols_str for word in ['batch', 'expiry', 'purity', 'therapeutic', 'drug', 'fda']):
+    # ⚡ STEP 1: STRICT OVERRIDES (The Silver Bullets)
+    if any(word in cols_str for word in ['attrition', 'jobrole', 'maritalstatus', 'employee']):
+        print("🎯 Fast Route: Classified as [HR] via Heuristics")
+        return "hr"
+        
+    if any(word in cols_str for word in ['cart', 'checkout', 'pageview', 'ecommerce']):
+        print("🎯 Fast Route: Classified as [ECOMMERCE] via Heuristics")
+        return "ecommerce"
+        
+    if any(word in cols_str for word in ['fda', 'adverse_event', 'clinical', 'dosage', 'therapeutic']):
         print("🎯 Fast Route: Classified as [PHARMA] via Heuristics")
         return "pharma"
-    elif any(word in cols_str for word in ['production', 'manufacturing', 'batch_id', 'lot_number', 'downtime', 'defect_rate', 'scrap']):
+        
+    if any(word in cols_str for word in ['downtime', 'oee', 'scrap']) or ('machine' in cols_str and 'defect' in cols_str):
         print("🎯 Fast Route: Classified as [MANUFACTURING] via Heuristics")
         return "manufacturing"
-    elif any(word in cols_str for word in ['revenue', 'profit', 'expense', 'cashflow', 'liquidity', 'investment', 'roi', 'forecast', 'assets', 'equity']):
-        print("🎯 Fast Route: Classified as [FINANCE] via Heuristics")
-        return "finance"
+
+    if any(word in cols_str for word in ['demurrage', 'detention', 'freight', 'hub', 'osrm']):
+        print("🎯 Fast Route: Classified as [LOGISTICS] via Heuristics")
+        return "logistics"
+
+    # ⚖️ STEP 2: WEIGHTED SCORING (For ambiguous datasets)
+    scores = {
+        "banking": sum(1 for k in ['loan', 'credit', 'mortgage', 'aml', 'kyc', 'overdraft', 'deposit', 'delinquency'] if k in cols_str),
+        "finance": sum(1 for k in ['ebitda', 'cashflow', 'opex', 'cogs', 'liquidity', 'dividend', 'ledger', 'assets'] if k in cols_str),
+        "retail": sum(1 for k in ['store', 'footfall', 'pos', 'markdown', 'shrinkage', 'register', 'shelf', 'retail'] if k in cols_str)
+    }
+    
+    best_match = max(scores, key=scores.get)
+    
+    if scores[best_match] > 0:
+        print(f"🎯 Fast Route: Classified as [{best_match.upper()}] via Weighted Score")
+        return best_match
         
-    # 🧠 STEP 2: AI ROUTING (If heuristics fail to identify it)
-    supported_industries = ["logistics", "retail", "banking", "pharma", "manufacturing", "finance", "generic"]
+    # 🧠 STEP 3: AI ROUTING (If heuristics fail completely)
+    supported_industries = ["logistics", "retail", "banking", "pharma", "manufacturing", "finance", "ecommerce", "hr", "generic"]
     system_prompt = "You are a data schema router. Follow instructions exactly."
     
     user_prompt = f"""
     Analyze these dataset columns: {columns_list}
     Classify the industry of this dataset. 
     You MUST reply with EXACTLY ONE WORD from this list in all lowercase: {supported_industries}.
-    If it doesn't clearly match logistics, retail, banking, pharma, manufacturing, or finance, reply with 'generic'.
+    If it doesn't clearly match, reply with 'generic'.
     """
     
     try:
-        # 🛡️ Uses the new fallback router so industry detection never crashes!
         raw_response = execute_with_fallback(clients, system_prompt, user_prompt).strip().lower()
         
-        # Cleanup loop (Ensures we get a clean word even if AI adds a period)
         for valid_industry in supported_industries:
             if valid_industry in raw_response:
                 print(f"🎯 AI Router Classified Industry As: [{valid_industry.upper()}]")
@@ -97,7 +109,6 @@ def main():
         print(f"❌ Error: Directory '{raw_dir}' not found.")
         sys.exit(1)
 
-    # Make sure output directories exist before we start
     output_dir = 'data/outputs/reports/'
     os.makedirs(output_dir, exist_ok=True)
     os.makedirs('data/outputs/charts/', exist_ok=True)
@@ -105,10 +116,8 @@ def main():
 
     processed_any_file = False
 
-    # --- A. LOOP & GUARDRAIL ---
     for file_name in os.listdir(raw_dir):
         
-        # 🛡️ THE GUARDRAIL: Skip placeholders, hidden files, and unsupported formats
         if file_name.startswith('.') or file_name.lower() == 'process':
             print(f"⏭️ Skipping placeholder file: {file_name}")
             continue
@@ -121,43 +130,44 @@ def main():
         print(f"\n🚀 Processing dataset: {file_name}")
         processed_any_file = True
         
-        # --- B. INGEST & CLEAN ---
         try:
             df = load_and_clean(file_path)
             df = universal_clean(df)
         except Exception as e:
             print(f"❌ Error processing {file_name}: {e}")
-            continue # Skip to the next file if this one crashes
+            continue 
         
-        # --- C. DETECT INDUSTRY ---
         columns = df.columns.tolist()
         industry = detect_industry(clients, columns)
         
-        # --- D. PROFILE DATA & GENERATE PAYLOAD ---
         payload = generate_payload(df, industry_context=industry)
         
-       # --- E. THE DYNAMIC SWITCHBOARD ---
         print(f"🔀 Routing to {industry} module...")
         
+        # 🛡️ UPDATED: Added hr and ecommerce to the switchboard
         ROUTER_MAP = {
-            "logistics": ("industries.logistics.pipeline", "run_logistics_analysis"),
-            "retail":    ("industries.retail.pipeline",    "run_retail_analysis"),
-            "banking":   ("industries.banking.pipeline",   "run_banking_analysis"),
-            "pharma":    ("industries.pharma.pipeline",    "run_pharma_analysis"),
-            "finance":   ("industries.finance.pipeline",   "run_finance_analysis"),
-            "manufacturing": ("industries.manufacturing.pipeline", "run_manufacturing_analysis")
+            "logistics":     ("industries.logistics.pipeline", "run_logistics_analysis"),
+            "retail":        ("industries.retail.pipeline",    "run_retail_analysis"),
+            "banking":       ("industries.banking.pipeline",   "run_banking_analysis"),
+            "pharma":        ("industries.pharma.pipeline",    "run_pharma_analysis"),
+            "finance":       ("industries.finance.pipeline",   "run_finance_analysis"),
+            "manufacturing": ("industries.manufacturing.pipeline", "run_manufacturing_analysis"),
+            "ecommerce":     ("industries.ecommerce.pipeline", "run_ecommerce_analysis"),
+            "hr":            ("industries.hr.pipeline",        "run_hr_analysis")
         }
 
-        # Determine the report content
         if industry in ROUTER_MAP:
             mod_path, func_name = ROUTER_MAP[industry]
-            module = importlib.import_module(mod_path)
-            analysis_func = getattr(module, func_name)
-            final_report = analysis_func(payload, clients, df)
+            try:
+                module = importlib.import_module(mod_path)
+                analysis_func = getattr(module, func_name)
+                final_report = analysis_func(payload, clients, df)
+            except Exception as e:
+                print(f"❌ Failed to run pipeline for {industry}: {e}")
+                final_report = f"# System Error\n\nFailed to process {industry} pipeline: {e}"
         else:
             final_report = f"# Generic Analysis\n\nNo industry-specific pipeline detected for: {industry}."
             
-        # --- F. SAVE OUTPUT ---
         base_name = os.path.splitext(file_name)[0]
         report_name = f"AI_{industry.capitalize()}_{base_name}_Report.md"
         output_path = os.path.join(output_dir, report_name) 
@@ -169,7 +179,6 @@ def main():
         except Exception as e:
             print(f"❌ Failed to save report: {e}")
             
-    # --- G. GRACEFUL EXIT ---
     if not processed_any_file:
         print("\n⏸️ No valid data files found in data/raw/. Pipeline sleeping safely.")
 
