@@ -1,63 +1,128 @@
+"""
+Regulatory submissions, approvals, and market authorization metrics.
+"""
 import pandas as pd
-from .reliability import evaluate_kpi_confidence
-from utils.validator import SemanticValidator
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns: return col
-    return None
+from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 
 def calc_regulatory_metrics(df):
-    """Computes FDA/EMA submission lead times and compliance status."""
+    """Calculates regulatory and approval KPIs."""
     kpis = []
-    total_rows = len(df)
-    if total_rows == 0: return kpis
-
-    sub_col = _first_column(df, ["submission_date", "nda_submission"])
-    app_col = _first_column(df, ["approval_date", "fda_approval"])
-    status_col = _first_column(df, ["regulatory_status", "compliance_status"])
-
-    # For dates, we validate by checking if Pandas can successfully parse them
-    if sub_col and app_col:
-        conf, warns = evaluate_kpi_confidence(df, [sub_col, app_col])
-        sub_dates = pd.to_datetime(df[sub_col], errors='coerce')
-        app_dates = pd.to_datetime(df[app_col], errors='coerce')
+    
+    if len(df) == 0:
+        return kpis
+    
+    # Regulatory metrics are COUNT (submissions, approvals), not time
+    submission_col = first_column(df, ["submission_id", "regulatory_submission", "dossier_id"])
+    approval_col = first_column(df, ["approval_count", "approved_indications", "approved"])
+    product_col = first_column(df, ["product_id", "drug_name", "product"])
+    region_col = first_column(df, ["region", "regulatory_region", "market"])
+    status_col = first_column(df, ["status", "submission_status", "approval_status"])
+    
+    if not submission_col and not approval_col:
+        return kpis
+    
+    conf, warns = confidence_for(df, [col for col in [submission_col, approval_col, product_col, region_col, status_col] if col])
+    
+    # Total submissions
+    if submission_col:
+        total_submissions = df[submission_col].nunique()
         
-        valid_dates = sub_dates.notna() & app_dates.notna()
-        if valid_dates.any():
-            lead_times = (app_dates[valid_dates] - sub_dates[valid_dates]).dt.days
-            avg_approval = lead_times.mean()
-
-            kpis.append({
-                "category": "⚖️ Regulatory Affairs",
-                "name": "Avg FDA/EMA Approval Lead Time",
-                "value": f"{avg_approval:.0f} days",
-                "formula": "AVG(approval_date - submission_date)",
-                "source": f"`{sub_col}`, `{app_col}`",
-                "confidence": conf,
-                "warnings": "Approval timelines exceeding 365 days" if avg_approval > 365 else warns
-            })
-        else:
-            kpis.append({
-                "category": "⚖️ Regulatory Affairs", "name": "Avg FDA/EMA Approval Lead Time",
-                "value": "EXCLUDED", "formula": "N/A", "source": f"`{sub_col}`, `{app_col}`",
-                "confidence": "Low", "warnings": "Unparseable date formats detected."
-            })
-
+        kpis.append(safe_kpi(
+            category="📋 Regulatory",
+            name="Total Regulatory Submissions",
+            value=f"{total_submissions:,}",
+            formula="Count(Distinct Submissions)",
+            source=f"`{submission_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+    
+    # Approvals
+    if approval_col and pd.api.types.is_numeric_dtype(df[approval_col]):
+        total_approvals = df[approval_col].sum()
+        
+        kpis.append(safe_kpi(
+            category="📋 Regulatory",
+            name="Total Regulatory Approvals",
+            value=f"{total_approvals:,}",
+            formula="Sum(Approvals)",
+            source=f"`{approval_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+        
+        # Approval rate
+        if submission_col:
+            total_submissions = df[submission_col].nunique()
+            
+            if total_submissions > 0:
+                approval_rate = (total_approvals / total_submissions * 100)
+                
+                kpis.append(safe_kpi(
+                    category="📋 Regulatory",
+                    name="Submission Approval Rate",
+                    value=f"{approval_rate:.2f}%",
+                    formula="(Approvals / Submissions) * 100",
+                    source=f"`{approval_col}`, `{submission_col}`",
+                    confidence=conf,
+                    warnings=warns
+                ))
+    
+    # Status breakdown
     if status_col:
-        holds = df[status_col].astype(str).str.lower().str.contains("hold|pending|rejected|flagged", na=False).sum()
-        hold_rate = (holds / total_rows) * 100
-        # If the regulatory status column exists, we evaluate confidence for it
-        conf, warns = evaluate_kpi_confidence(df, [status_col])
+        status_lower = df[status_col].astype(str).str.lower()
         
-        kpis.append({
-            "category": "⚖️ Regulatory Affairs",
-            "name": "Regulatory Hold / Rejection Rate",
-            "value": f"{hold_rate:.2f}%",
-            "formula": "(COUNT(Holds) / TOTAL) * 100",
-            "source": f"`{status_col}`",
-            "confidence": conf,
-            "warnings": "High regulatory friction detected" if hold_rate > 10 else warns
-        })
-
+        approved = status_lower.str.contains("approved|granted", na=False).sum()
+        pending = status_lower.str.contains("pending|under review|submitted", na=False).sum()
+        rejected = status_lower.str.contains("rejected|refused", na=False).sum()
+        
+        kpis.append(safe_kpi(
+            category="📋 Regulatory",
+            name="Approved Submissions",
+            value=f"{approved:,}",
+            formula="Count(Status = Approved)",
+            source=f"`{status_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+        
+        kpis.append(safe_kpi(
+            category="📋 Regulatory",
+            name="Pending Submissions",
+            value=f"{pending:,}",
+            formula="Count(Status = Pending)",
+            source=f"`{status_col}`",
+            confidence=conf,
+            warnings="High pending submissions - Follow up" if pending > 5 else warns
+        ))
+        
+        if rejected > 0:
+            kpis.append(safe_kpi(
+                category="📋 Regulatory",
+                name="Rejected Submissions",
+                value=f"{rejected:,}",
+                formula="Count(Status = Rejected)",
+                source=f"`{status_col}`",
+                confidence=conf,
+                warnings="⚠️ Review rejection reasons" if rejected > 0 else warns
+            ))
+    
+    # Top product
+    if product_col and approval_col and pd.api.types.is_numeric_dtype(df[approval_col]):
+        product_approvals = df.groupby(product_col)[approval_col].sum().sort_values(ascending=False)
+        
+        if not product_approvals.empty:
+            top_product = product_approvals.idxmax()
+            top_approvals = product_approvals.max()
+            
+            kpis.append(safe_kpi(
+                category="📋 Regulatory",
+                name="Most Approved Product",
+                value=f"{top_product} ({top_approvals:,} approvals)",
+                formula="Product with max approvals",
+                source=f"`{product_col}`, `{approval_col}`",
+                confidence=conf,
+                warnings=warns
+            ))
+    
     return kpis
