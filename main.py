@@ -6,7 +6,7 @@ from openai import OpenAI
 # 1. IMPORT OUR UNIVERSAL UTILITIES
 from utils.cleaner import load_and_clean, universal_clean
 from utils.profiler import generate_payload
-from utils.llm_router import execute_with_fallback  # 🛡️ THE NEW FALLBACK ENGINE
+from utils.llm_router import execute_with_fallback  
 
 # 2. HIGH-AVAILABILITY CLIENT SETUP
 print("🔌 Initializing Multi-API Client Router...")
@@ -119,11 +119,9 @@ def main():
     for file_name in os.listdir(raw_dir):
         
         if file_name.startswith('.') or file_name.lower() == 'process':
-            print(f"⏭️ Skipping placeholder file: {file_name}")
             continue
             
         if not file_name.endswith(('.csv', '.zip', '.xls', '.xlsx')):
-            print(f"⏭️ Skipping unsupported file type: {file_name}")
             continue
 
         file_path = os.path.join(raw_dir, file_name)
@@ -144,7 +142,6 @@ def main():
         
         print(f"🔀 Routing to {industry} module...")
         
-        # 🛡️ UPDATED: Added hr and ecommerce to the switchboard
         ROUTER_MAP = {
             "logistics":     ("industries.logistics.pipeline", "run_logistics_analysis"),
             "retail":        ("industries.retail.pipeline",    "run_retail_analysis"),
