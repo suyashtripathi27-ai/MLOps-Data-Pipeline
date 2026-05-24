@@ -16,7 +16,7 @@ def calc_account_metrics(df):
     balance_col = first_column(df, ["balance", "account_balance", "ending_balance"])
     date_col = first_column(df, ["transaction_date", "date", "posting_date"])
 
-    if not account_col or not amount_col:
+    if not account_col and not amount_col:
         return kpis
 
     # Ensure amount is numeric (removed the buggy is_valid_duration check)
