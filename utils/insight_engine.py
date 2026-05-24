@@ -248,7 +248,7 @@ def generate_signal(kpi, industry):
     category = kpi.get("category", "General")
     name = kpi.get("name", "Metric")
     value = kpi.get("value", "")
-    conf_label = kpi.get("confidence", "Medium")
+    conf_label = str(kpi.get("confidence", "Medium"))
     
     # Pass the industry down to the mapper
     cluster, impacts, related, criticality = map_to_ontology(category, name, industry)
