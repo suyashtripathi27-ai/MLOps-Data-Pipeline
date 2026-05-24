@@ -11,7 +11,7 @@ def calc_fee_metrics(df):
     amount_col = first_column(df, ["amount", "transaction_amount", "revenue"])
     fee_type_col = first_column(df, ["fee_type", "charge_type", "fee_category"])
 
-    if not fee_col or not amount_col:
+    if not fee_col and not amount_col:
         return kpis
 
     # Ensure fee is numeric instead of duration validation
