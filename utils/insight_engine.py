@@ -2,9 +2,10 @@ import hashlib
 import re
 
 # ==========================================
-# LAYER 1: THE MASTER ONTOLOGY (Multi-Industry)
+# LAYER 1: THE MASTER ONTOLOGY (Multi-Industry + Future State)
 # ==========================================
 INDUSTRY_ONTOLOGIES = {
+    # 🏭 EXISTING: Manufacturing
     "manufacturing": {
         "production_instability_cluster": {
             "keywords": ["downtime", "maintenance", "oee", "efficiency", "utilization", "delay", "idle"],
@@ -37,6 +38,8 @@ INDUSTRY_ONTOLOGIES = {
             "criticality": "internal_operational"
         }
     },
+    
+    # 🛒 EXISTING: E-commerce
     "ecommerce": {
         "fulfillment_risk_cluster": {
             "keywords": ["delivery", "shipping", "delay", "fulfillment", "transit", "logistics"],
@@ -50,8 +53,9 @@ INDUSTRY_ONTOLOGIES = {
             "related_signals": ["fulfillment_risk_cluster"],
             "criticality": "internal_operational"
         }
-        # You can add more E-commerce clusters here later
     },
+    
+    # 👥 EXISTING: HR
     "hr": {
         "retention_risk_cluster": {
             "keywords": ["turnover", "attrition", "flight risk", "resignation", "tenure"],
@@ -59,7 +63,9 @@ INDUSTRY_ONTOLOGIES = {
             "related_signals": ["employee_engagement_cluster"],
             "criticality": "internal_operational"
         }
-    }
+    },
+    
+    # 🧬 EXISTING: Pharma
     "pharma": {
         "compliance_risk_cluster": {
             "keywords": ["fda", "audit", "gmp", "deviation", "sterility", "temperature", "excursion"],
@@ -74,6 +80,8 @@ INDUSTRY_ONTOLOGIES = {
             "criticality": "internal_operational"
         }
     },
+    
+    # 📈 EXISTING: Finance
     "finance": {
         "liquidity_risk_cluster": {
             "keywords": ["cash flow", "working capital", "dscr", "burn rate", "runway", "receivables"],
@@ -88,6 +96,8 @@ INDUSTRY_ONTOLOGIES = {
             "criticality": "internal_operational"
         }
     },
+    
+    # 🏦 EXISTING: Banking
     "banking": {
         "credit_risk_cluster": {
             "keywords": ["npl", "default", "delinquency", "charge off", "fico", "ltv"],
@@ -102,6 +112,8 @@ INDUSTRY_ONTOLOGIES = {
             "criticality": "customer_facing"
         }
     },
+    
+    # 🏪 EXISTING: Retail
     "retail": {
         "store_performance_cluster": {
             "keywords": ["footfall", "conversion", "basket size", "upt", "shrinkage", "theft"],
@@ -116,6 +128,8 @@ INDUSTRY_ONTOLOGIES = {
             "criticality": "internal_operational"
         }
     },
+    
+    # 🚚 EXISTING: Logistics
     "logistics": {
         "network_bottleneck_cluster": {
             "keywords": ["transit time", "delay", "detention", "demurrage", "port", "routing"],
@@ -127,6 +141,74 @@ INDUSTRY_ONTOLOGIES = {
             "keywords": ["fuel", "spot rate", "carrier", "lane cost", "accessorial"],
             "impact_areas": ["margin_erosion", "contract_profitability"],
             "related_signals": ["network_bottleneck_cluster"],
+            "criticality": "internal_operational"
+        }
+    },
+
+    # ==========================================
+    # 🚀 FUTURE ROADMAP INDUSTRIES 
+    # ==========================================
+
+    # 🏥 FUTURE: Healthcare & Hospital Operations
+    "healthcare": {
+        "patient_flow_cluster": {
+            "keywords": ["wait time", "los", "length of stay", "bed", "occupancy", "discharge", "er"],
+            "impact_areas": ["patient_experience", "care_bottlenecks", "facility_throughput"],
+            "related_signals": ["clinical_outcomes_cluster"],
+            "criticality": "customer_facing"
+        },
+        "clinical_outcomes_cluster": {
+            "keywords": ["readmission", "mortality", "infection", "complication", "incident", "hais"],
+            "impact_areas": ["quality_of_care", "compliance_penalty", "liability_risk"],
+            "related_signals": ["patient_flow_cluster"],
+            "criticality": "customer_facing"
+        }
+    },
+
+    # ⚡ FUTURE: Energy & Utilities
+    "energy": {
+        "grid_stability_cluster": {
+            "keywords": ["outage", "downtime", "load", "capacity", "frequency", "voltage", "saidi", "saifi"],
+            "impact_areas": ["service_reliability", "regulatory_fines", "customer_trust"],
+            "related_signals": ["asset_degradation_cluster"],
+            "criticality": "customer_facing"
+        },
+        "asset_degradation_cluster": {
+            "keywords": ["maintenance", "failure", "degradation", "transformer", "turbine", "lifecycle"],
+            "impact_areas": ["capex_efficiency", "operational_hazards"],
+            "related_signals": ["grid_stability_cluster"],
+            "criticality": "internal_operational"
+        }
+    },
+
+    # 📡 FUTURE: Telecommunications
+    "telecom": {
+        "network_reliability_cluster": {
+            "keywords": ["latency", "packet loss", "uptime", "drop rate", "bandwidth", "congestion"],
+            "impact_areas": ["sla_breach", "subscriber_churn", "infrastructure_stress"],
+            "related_signals": ["subscriber_health_cluster"],
+            "criticality": "customer_facing"
+        },
+        "subscriber_health_cluster": {
+            "keywords": ["churn", "arpu", "cac", "mrr", "downgrade", "activation"],
+            "impact_areas": ["revenue_retention", "market_share", "acquisition_roi"],
+            "related_signals": ["network_reliability_cluster"],
+            "criticality": "internal_operational"
+        }
+    },
+
+    # 💻 FUTURE: SaaS & Cloud Technology
+    "saas": {
+        "platform_health_cluster": {
+            "keywords": ["uptime", "error rate", "api", "latency", "timeout", "bug", "incident"],
+            "impact_areas": ["sla_breach", "user_trust", "engineering_velocity"],
+            "related_signals": ["customer_success_cluster"],
+            "criticality": "customer_facing"
+        },
+        "customer_success_cluster": {
+            "keywords": ["nrr", "churn", "dau", "mau", "active users", "adoption", "engagement"],
+            "impact_areas": ["recurring_revenue", "valuation_multiple", "account_expansion"],
+            "related_signals": ["platform_health_cluster"],
             "criticality": "internal_operational"
         }
     }
