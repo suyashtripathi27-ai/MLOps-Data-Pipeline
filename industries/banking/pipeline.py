@@ -1,9 +1,7 @@
-from utils.insight_engine import synthesize_operational_signals
-from utils.report_cleaner import clean_report_text
-from utils.governance_engine import validate_operational_claims, inject_reliability_warning
-import json
 import os
-from utils.llm_router import execute_with_fallback
+from utils.master_orchestrator import run_master_orchestrator
+
+# Import your local microservices
 from .account_analysis import calc_account_metrics
 from .balance_analysis import calc_balance_metrics
 from .deposit_analysis import calc_deposit_metrics
@@ -46,46 +44,21 @@ def build_markdown_table(kpis):
 
 
 def run_banking_analysis(payload, clients, df):
-    # 1. Generate Raw Data
+    # 1. Generate KPIs locally
     kpi_list = generate_dynamic_kpis(df)
     kpi_markdown = build_markdown_table(kpi_list)
     
-    # 2. Extract and Prioritize Signals
-    signals_dict = synthesize_operational_signals(kpi_list, industry="banking")
-    
-    # 🔥 TOP CLUSTER FILTERING (NARRATIVE PRIORITIZATION) 🔥
-    narrative_blocks = signals_dict.get("PRIORITIZED_NARRATIVE_BLOCKS", {})
-    top_3_clusters = dict(list(narrative_blocks.items())[:3])
-    
-    confidences = [data.get('aggregated_confidence', 1.0) for data in top_3_clusters.values()]
-    avg_confidence = sum(confidences) / len(confidences) if confidences else 1.0
-    
-    if isinstance(payload, str):
-        try: payload = json.loads(payload)
-        except: payload = {"raw_data": payload}
-            
-    payload['prioritized_signals'] = {"PRIORITIZED_NARRATIVE_BLOCKS": top_3_clusters}
-    
-    # 3. Load Prompts
+    # 2. Define Paths
     prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
     sys_prompt_path = os.path.join(os.path.dirname(__file__), 'system_prompt.txt')
     
-    with open(prompt_path, 'r', encoding='utf-8') as f:
-        final_prompt = f.read().replace('{data_payload}', json.dumps(payload, indent=2))
-        
-    with open(sys_prompt_path, 'r', encoding='utf-8') as f:
-        system_prompt = f.read()
-    
-    # 4. Generate AI Report
-    print("🧠 Consulting AI Banking Analyst...")
-    try:
-        raw_report = execute_with_fallback(clients, system_prompt, final_prompt)
-    except Exception as e:
-        return f"❌ CRITICAL API ERROR: {str(e)}\n\n### Backup Data Table\n{kpi_markdown}"
-        
-    # 5. POST-PROCESSING: Governance & Readability Cleaners
-    clean_report = clean_report_text(raw_report)
-    safe_report = validate_operational_claims(clean_report)
-    final_report = inject_reliability_warning(safe_report, avg_confidence)
-    
-    return f"{final_report}\n\n---\n### 📊 Technical Appendix: Operational KPIs\n{kpi_markdown}"
+    # 3. Hand off to the Master Orchestrator
+    return run_master_orchestrator(
+        industry_name="banking",
+        kpi_list=kpi_list,
+        kpi_markdown=kpi_markdown,
+        payload=payload,
+        clients=clients,
+        prompt_path=prompt_path,
+        sys_prompt_path=sys_prompt_path
+    )
