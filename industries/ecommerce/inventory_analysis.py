@@ -1,52 +1,104 @@
+"""
+Stock levels, inventory turnover, and stockout metrics.
+"""
 import pandas as pd
-from utils.validator import SemanticValidator
 from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 
 def calc_inventory_metrics(df):
+    """Calculates inventory management KPIs."""
     kpis = []
-    inventory_col = first_column(df, ["inventory_level", "stock_level", "on_hand_inventory", "on_hand"])
-    sold_col = first_column(df, ["units_sold", "quantity_sold", "sales_units", "units_ordered"])
-    received_col = first_column(df, ["units_received", "quantity_received", "units_purchased", "replenished_units"])
-    cogs_col = first_column(df, ["cogs", "cost_of_goods_sold", "cost"])
-    stockout_col = first_column(df, ["stockout_flag", "is_stockout", "out_of_stock"])
-    if not inventory_col:
+    
+    if len(df) == 0:
         return kpis
-
-    inv_valid, reason = SemanticValidator.is_valid_duration(df[inventory_col])
-    if not inv_valid:
-        return [safe_kpi("📦 Inventory Analysis", "Inventory Metrics", "EXCLUDED", "N/A", f"`{inventory_col}`", "Low", reason)]
-
-    conf, warns = confidence_for(df, [inventory_col, sold_col, received_col, cogs_col, stockout_col])
-    avg_inventory = df[inventory_col].dropna().mean()
-    if avg_inventory and avg_inventory > 0 and sold_col and df[sold_col].fillna(0).sum() > 0:
-        turnover = df[sold_col].fillna(0).sum() / avg_inventory
-        days_inventory = 365 / turnover if turnover > 0 else 0
-        kpis.append(safe_kpi("📦 Inventory Analysis", "Inventory Turnover Ratio", f"{turnover:.2f}", "Total Units Sold / Avg Inventory", f"`{sold_col}`, `{inventory_col}`", conf, warns))
-        kpis.append(safe_kpi("📦 Inventory Analysis", "Days of Inventory", f"{days_inventory:.1f} days", "365 / Inventory Turnover", f"`{sold_col}`, `{inventory_col}`", conf, warns))
-
-    if sold_col:
-        zero_sales_ratio = (df[sold_col].fillna(0) <= 0).mean() * 100
-        kpis.append(safe_kpi("📦 Inventory Analysis", "Zero-Sales Item Rate", f"{zero_sales_ratio:.2f}%", "Rows with zero sold units / Total rows * 100", f"`{sold_col}`", conf, warns))
-
-    if inventory_col:
-        in_stock = df[inventory_col].fillna(0) > 0
-        dead_stock = in_stock.sum()
-        dead_stock_pct = ((df[sold_col].fillna(0) <= 0).sum() / dead_stock * 100) if sold_col and dead_stock > 0 else 0
-        kpis.append(safe_kpi("📦 Inventory Analysis", "Dead Stock %", f"{dead_stock_pct:.2f}%", "Items with inventory but no sales / In-stock items * 100", f"`{inventory_col}`" + (f", `{sold_col}`" if sold_col else ""), conf, warns))
-
-    if stockout_col:
-        stockout_series = df[stockout_col].astype(str).str.lower().isin(["true", "1", "yes", "y"])
-        stockout_freq = stockout_series.mean() * 100
-    else:
-        stockout_freq = (df[inventory_col].fillna(0) <= 0).mean() * 100
-    kpis.append(safe_kpi("📦 Inventory Analysis", "Stockout Frequency", f"{stockout_freq:.2f}%", "Stockout events / Total observations * 100", f"`{stockout_col}`" if stockout_col else f"`{inventory_col}`", conf, warns))
-
-    if sold_col and received_col:
-        received_total = df[received_col].fillna(0).sum()
-        sell_through = (df[sold_col].fillna(0).sum() / received_total) * 100 if received_total > 0 else 0
-        kpis.append(safe_kpi("📦 Inventory Analysis", "Sell-Through Rate", f"{sell_through:.2f}%", "Units Sold / Units Received * 100", f"`{sold_col}`, `{received_col}`", conf, warns))
-    elif cogs_col and avg_inventory > 0:
-        turnover = df[cogs_col].fillna(0).sum() / avg_inventory
-        kpis.append(safe_kpi("📦 Inventory Analysis", "COGS Turnover Ratio", f"{turnover:.2f}", "COGS / Avg Inventory", f"`{cogs_col}`, `{inventory_col}`", conf, warns))
-
+    
+    product_col = first_column(df, ["product_id", "sku", "product_code", "product_key"])
+    stock_col = first_column(df, ["stock_level", "quantity_on_hand", "inventory_count", "available_qty"])
+    sales_col = first_column(df, ["sales_quantity", "units_sold", "qty_sold", "quantity_sold"])
+    
+    if not product_col or not stock_col:
+        return kpis
+    
+    conf, warns = confidence_for(df, [col for col in [product_col, stock_col, sales_col] if col])
+    
+    total_products = df[product_col].nunique()
+    
+    kpis.append(safe_kpi(
+        category="📦 Inventory",
+        name="Total Products",
+        value=f"{total_products:,}",
+        formula="Count(Distinct Products)",
+        source=f"`{product_col}`",
+        confidence=conf,
+        warnings=warns
+    ))
+    
+    if pd.api.types.is_numeric_dtype(df[stock_col]):
+        total_stock = df[stock_col].sum()
+        avg_stock = df[stock_col].mean()
+        
+        kpis.append(safe_kpi(
+            category="📦 Inventory",
+            name="Total Inventory Units",
+            value=f"{total_stock:,.0f}",
+            formula="Sum(Stock Level)",
+            source=f"`{stock_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+        
+        kpis.append(safe_kpi(
+            category="📦 Inventory",
+            name="Avg Stock per Product",
+            value=f"{avg_stock:,.0f}",
+            formula="Mean(Stock Level)",
+            source=f"`{stock_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+        
+        # Stockout items
+        stockout_count = (df[stock_col] == 0).sum()
+        stockout_rate = (stockout_count / len(df) * 100) if len(df) > 0 else 0
+        
+        kpis.append(safe_kpi(
+            category="📦 Inventory",
+            name="Out-of-Stock Items",
+            value=f"{stockout_count:,} ({stockout_rate:.2f}%)",
+            formula="Count(Stock = 0) / Total * 100",
+            source=f"`{stock_col}`",
+            confidence=conf,
+            warnings="High stockout rate" if stockout_rate > 20 else warns
+        ))
+        
+        # Low stock
+        low_stock_threshold = df[stock_col].quantile(0.25) if len(df) > 0 else 0
+        low_stock_count = (df[stock_col] < low_stock_threshold).sum()
+        
+        kpis.append(safe_kpi(
+            category="📦 Inventory",
+            name="Low Stock Items (Bottom 25%)",
+            value=f"{low_stock_count:,}",
+            formula="Count(Stock < 25th Percentile)",
+            source=f"`{stock_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+    
+    # Inventory turnover
+    if sales_col and pd.api.types.is_numeric_dtype(df[sales_col]) and pd.api.types.is_numeric_dtype(df[stock_col]):
+        total_sales = df[sales_col].fillna(0).sum()
+        avg_stock_val = df[stock_col].mean()
+        
+        turnover = (total_sales / (avg_stock_val + 0.0001)) if avg_stock_val > 0 else 0
+        
+        kpis.append(safe_kpi(
+            category="📦 Inventory",
+            name="Inventory Turnover Ratio",
+            value=f"{turnover:.2f}x",
+            formula="Sum(Units Sold) / Mean(Stock)",
+            source=f"`{sales_col}`, `{stock_col}`",
+            confidence=conf,
+            warnings="Low turnover - Excess stock" if turnover < 2 else warns
+        ))
+    
     return kpis
