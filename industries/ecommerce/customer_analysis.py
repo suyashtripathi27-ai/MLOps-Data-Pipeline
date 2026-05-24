@@ -17,7 +17,7 @@ def calc_customer_metrics(df):
     revenue_col = first_column(df, ["revenue", "sales", "order_value", "total_sales", "gmv"])
     date_col = first_column(df, ["date", "transaction_date", "order_date", "timestamp", "purchase_date"])
     
-    if not customer_col or not revenue_col:
+    if not customer_col and not revenue_col:
         return kpis
     
     conf, warns = confidence_for(df, [col for col in [customer_col, revenue_col, date_col] if col])
