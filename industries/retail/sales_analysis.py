@@ -1,71 +1,172 @@
+"""
+Retail sales, revenue trends, growth, and demand spikes.
+"""
 import pandas as pd
-from .reliability import evaluate_kpi_confidence
+from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
 
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
-
-def _safe_kpi(name, value, formula, source, confidence, warnings):
-    return {
-        "category": "💰 Sales Analysis",
-        "name": name,
-        "value": value,
-        "formula": formula,
-        "source": source,
-        "confidence": confidence,
-        "warnings": warnings,
-    }
-
-
 def calc_sales_metrics(df):
-    """Calculates retail sales KPIs, trend metrics, and demand spikes."""
+    """Calculates retail sales and revenue KPIs."""
     kpis = []
-    revenue_col = _first_column(df, ["revenue", "sales", "weekly_sales", "total_sales"])
-    date_col = _first_column(df, ["date", "transaction_date", "order_date", "week_date", "timestamp"])
-
+    
+    if len(df) == 0:
+        return kpis
+    
+    # Revenue is MONEY, not time
+    revenue_col = first_column(df, ["revenue", "sales", "weekly_sales", "total_sales", "order_value"])
+    date_col = first_column(df, ["date", "transaction_date", "order_date", "week_date", "timestamp"])
+    store_col = first_column(df, ["store_id", "store_name", "location"])
+    
     if not revenue_col:
         return kpis
-
-    is_valid, reason = SemanticValidator.is_valid_duration(df[revenue_col])
-    if not is_valid:
-        kpis.append(_safe_kpi("Sales Metrics", "EXCLUDED", "N/A", f"`{revenue_col}`", "Low", reason))
+    
+    # Revenue is MONEY, not duration
+    if not pd.api.types.is_numeric_dtype(df[revenue_col]):
+        kpis.append(safe_kpi(
+            category="💰 Sales",
+            name="Sales Metrics",
+            value="EXCLUDED",
+            formula="N/A",
+            source=f"`{revenue_col}`",
+            confidence="Low",
+            warnings="Revenue column contains non-numeric data."
+        ))
         return kpis
-
+    
+    conf, warns = confidence_for(df, [col for col in [revenue_col, date_col, store_col] if col])
+    
+    # Total revenue
     valid_revenue = df[revenue_col].dropna()
-    if valid_revenue.empty:
-        return kpis
-
-    conf, warns = evaluate_kpi_confidence(df, [revenue_col])
-    kpis.append(_safe_kpi("Total Revenue", f"${valid_revenue.sum():,.2f}", "Sum(revenue)", f"`{revenue_col}`", conf, warns))
-    kpis.append(_safe_kpi("Avg Weekly Sales", f"${valid_revenue.mean():,.2f}", "Mean(revenue)", f"`{revenue_col}`", conf, warns))
-    kpis.append(_safe_kpi("Median Sales", f"${valid_revenue.median():,.2f}", "Median(revenue)", f"`{revenue_col}`", conf, warns))
-    kpis.append(_safe_kpi("Sales Variance", f"{valid_revenue.var():,.2f}", "Var(revenue)", f"`{revenue_col}`", conf, warns))
-
+    
+    if not valid_revenue.empty:
+        total_revenue = valid_revenue.sum()
+        avg_revenue = valid_revenue.mean()
+        median_revenue = valid_revenue.median()
+        
+        kpis.append(safe_kpi(
+            category="💰 Sales",
+            name="Total Revenue",
+            value=f"${total_revenue:,.2f}",
+            formula="Sum(Revenue)",
+            source=f"`{revenue_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+        
+        kpis.append(safe_kpi(
+            category="💰 Sales",
+            name="Avg Transaction Value",
+            value=f"${avg_revenue:,.2f}",
+            formula="Mean(Revenue)",
+            source=f"`{revenue_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+        
+        kpis.append(safe_kpi(
+            category="💰 Sales",
+            name="Median Transaction Value",
+            value=f"${median_revenue:,.2f}",
+            formula="Median(Revenue)",
+            source=f"`{revenue_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+        
+        # Revenue variance
+        revenue_std = valid_revenue.std()
+        
+        kpis.append(safe_kpi(
+            category="💰 Sales",
+            name="Revenue Std Dev",
+            value=f"${revenue_std:,.2f}",
+            formula="StdDev(Revenue)",
+            source=f"`{revenue_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+    
+    # Date-based analysis (⏱️ EXACT DATES - validate as datetime, not duration)
     if date_col:
-        dt_series = pd.to_datetime(df[date_col], errors="coerce")
-        dt_valid, dt_reason = SemanticValidator.is_valid_datetime(dt_series.dropna())
-        if dt_valid and dt_series.notna().sum() > 1:
-            trend_df = pd.DataFrame({"date": dt_series, "revenue": df[revenue_col]}).dropna()
-            weekly = trend_df.set_index("date")["revenue"].resample("W").sum().dropna()
-            if not weekly.empty:
-                first_week = weekly.iloc[0]
-                last_week = weekly.iloc[-1]
-                growth = ((last_week - first_week) / first_week) * 100 if first_week != 0 else 0
-                top_period = weekly.idxmax().strftime("%Y-%m-%d")
-                moving_avg = weekly.rolling(window=4, min_periods=1).mean().iloc[-1]
-                spike_threshold = weekly.mean() + (2 * weekly.std(ddof=0))
-                demand_spikes = int((weekly > spike_threshold).sum()) if pd.notnull(spike_threshold) else 0
-                conf_trend, warns_trend = evaluate_kpi_confidence(df, [revenue_col, date_col])
-                kpis.append(_safe_kpi("Revenue Growth %", f"{growth:.2f}%", "((Last - First) / First) * 100", f"`{revenue_col}`, `{date_col}`", conf_trend, warns_trend))
-                kpis.append(_safe_kpi("Top Revenue Period", top_period, "ArgMax(Weekly Revenue)", f"`{revenue_col}`, `{date_col}`", conf_trend, warns_trend))
-                kpis.append(_safe_kpi("4-Week Moving Average", f"${moving_avg:,.2f}", "RollingMean(Weekly Revenue, 4)", f"`{revenue_col}`, `{date_col}`", conf_trend, warns_trend))
-                kpis.append(_safe_kpi("Demand Spikes", f"{demand_spikes}", "Count(Weekly Revenue > Mean + 2*Std)", f"`{revenue_col}`, `{date_col}`", conf_trend, warns_trend))
+        date_series = pd.to_datetime(df[date_col], errors="coerce")
+        dt_valid, reason = SemanticValidator.is_valid_datetime(date_series.dropna())
+        
+        if dt_valid and date_series.notna().sum() > 1:
+            try:
+                trend_df = pd.DataFrame({
+                    "date": date_series,
+                    "revenue": df[revenue_col]
+                }).dropna()
+                
+                # Weekly aggregation
+                weekly = trend_df.set_index("date")["revenue"].resample("W").sum().dropna()
+                
+                if not weekly.empty:
+                    first_week = weekly.iloc[0]
+                    last_week = weekly.iloc[-1]
+                    growth = ((last_week - first_week) / first_week * 100) if first_week != 0 else 0
+                    
+                    kpis.append(safe_kpi(
+                        category="📈 Sales Trends",
+                        name="Revenue Growth %",
+                        value=f"{growth:.2f}%",
+                        formula="((Last Week - First Week) / First Week) * 100",
+                        source=f"`{revenue_col}`, `{date_col}`",
+                        confidence=conf,
+                        warnings=warns
+                    ))
+                    
+                    # Top period
+                    top_period = weekly.idxmax()
+                    top_revenue = weekly.max()
+                    
+                    kpis.append(safe_kpi(
+                        category="📈 Sales Trends",
+                        name="Peak Sales Period",
+                        value=f"{top_period.strftime('%Y-%m-%d')} (${top_revenue:,.2f})",
+                        formula="Period with max weekly revenue",
+                        source=f"`{revenue_col}`, `{date_col}`",
+                        confidence=conf,
+                        warnings=warns
+                    ))
+                    
+                    # Moving average
+                    moving_avg = weekly.rolling(window=4, min_periods=1).mean().iloc[-1]
+                    
+                    kpis.append(safe_kpi(
+                        category="📈 Sales Trends",
+                        name="4-Week Moving Average",
+                        value=f"${moving_avg:,.2f}",
+                        formula="RollingMean(Weekly Revenue, 4 weeks)",
+                        source=f"`{revenue_col}`, `{date_col}`",
+                        confidence=conf,
+                        warnings=warns
+                    ))
+                    
+                    # Demand spikes
+                    spike_threshold = weekly.mean() + (2 * weekly.std())
+                    demand_spikes = (weekly > spike_threshold).sum() if pd.notnull(spike_threshold) else 0
+                    
+                    kpis.append(safe_kpi(
+                        category="📈 Sales Trends",
+                        name="Demand Spikes Detected",
+                        value=f"{demand_spikes:,}",
+                        formula="Count(Weekly Revenue > Mean + 2*StdDev)",
+                        source=f"`{revenue_col}`, `{date_col}`",
+                        confidence=conf,
+                        warnings=warns
+                    ))
+            except Exception:
+                pass
         else:
-            kpis.append(_safe_kpi("Trend Metrics", "EXCLUDED", "N/A", f"`{date_col}`", "Low", dt_reason))
-
+            kpis.append(safe_kpi(
+                category="📈 Sales Trends",
+                name="Trend Metrics",
+                value="EXCLUDED",
+                formula="N/A",
+                source=f"`{date_col}`",
+                confidence="Low",
+                warnings=f"Invalid dates: {reason}"
+            ))
+    
     return kpis
