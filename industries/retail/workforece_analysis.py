@@ -1,77 +1,105 @@
-import pandasd as pd
-from .reliability import evaluate_kpi_confidence
-from utils.validator import SemanticValidator
-
-
-def _first_column(df, candidates):
-    for col in candidates:
-        if col in df.columns:
-            return col
-    return None
-
+"""
+Employee productivity, staffing, and labor efficiency metrics.
+"""
+import pandas as pd
+from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 
 def calc_workforce_metrics(df):
-    """Calculates labor efficiency and productivity KPIs."""
+    """Calculates workforce and labor KPIs."""
     kpis = []
-    revenue_col = _first_column(df, ["revenue", "sales", "weekly_sales", "total_sales"])
-    employees_col = _first_column(df, ["employee_count", "employees", "staff_count"])
-    labor_cost_col = _first_column(df, ["labor_cost", "staff_cost", "payroll_cost"])
-    hours_col = _first_column(df, ["labor_hours", "hours_worked", "staff_hours"])
-    if not revenue_col or not employees_col:
+    
+    if len(df) == 0:
         return kpis
-
-    rev_valid, rev_reason = SemanticValidator.is_valid_duration(df[revenue_col])
-    emp_valid, emp_reason = SemanticValidator.is_valid_duration(df[employees_col])
-    if not rev_valid or not emp_valid:
-        return [{
-            "category": "👷 Workforce Analysis",
-            "name": "Workforce Metrics",
-            "value": "EXCLUDED",
-            "formula": "N/A",
-            "source": f"`{revenue_col}`, `{employees_col}`",
-            "confidence": "Low",
-            "warnings": f"Revenue: {rev_reason} | Employees: {emp_reason}",
-        }]
-
-    conf, warns = evaluate_kpi_confidence(df, [revenue_col, employees_col] + ([labor_cost_col] if labor_cost_col else []))
-    avg_employees = df[employees_col].replace(0, float("nan")).dropna().mean()
-    if avg_employees and avg_employees > 0:
-        sales_per_employee = df[revenue_col].sum() / avg_employees
-        kpis.append({
-            "category": "👷 Workforce Analysis",
-            "name": "Sales per Employee",
-            "value": f"${sales_per_employee:,.2f}",
-            "formula": "Total Revenue / Avg Employee Count",
-            "source": f"`{revenue_col}`, `{employees_col}`",
-            "confidence": conf,
-            "warnings": warns,
-        })
-
-    if labor_cost_col:
-        total_revenue = df[revenue_col].sum()
-        labor_cost_ratio = (df[labor_cost_col].sum() / total_revenue * 100) if total_revenue > 0 else 0
-        kpis.append({
-            "category": "👷 Workforce Analysis",
-            "name": "Labor Cost Ratio",
-            "value": f"{labor_cost_ratio:.2f}%",
-            "formula": "Labor Cost / Revenue * 100",
-            "source": f"`{labor_cost_col}`, `{revenue_col}`",
-            "confidence": conf,
-            "warnings": warns,
-        })
-
-    if hours_col:
-        valid_hours = df[hours_col].replace(0, float("nan")).dropna()
+    
+    # Workforce metrics
+    employee_col = first_column(df, ["employee_id", "employee", "staff_id", "worker"])
+    sales_col = first_column(df, ["sales", "revenue", "daily_sales"])
+    hours_col = first_column(df, ["hours_worked", "shift_hours", "labor_hours"])
+    store_col = first_column(df, ["store_id", "store", "location"])
+    
+    if not employee_col:
+        return kpis
+    
+    conf, warns = confidence_for(df, [col for col in [employee_col, sales_col, hours_col, store_col] if col])
+    
+    # Total employees
+    total_employees = df[employee_col].nunique()
+    
+    kpis.append(safe_kpi(
+        category="👥 Workforce",
+        name="Total Employees",
+        value=f"{total_employees:,}",
+        formula="Count(Distinct Employees)",
+        source=f"`{employee_col}`",
+        confidence=conf,
+        warnings=warns
+    ))
+    
+    # Sales per employee
+    if sales_col and pd.api.types.is_numeric_dtype(df[sales_col]):
+        total_sales = df[sales_col].sum()
+        sales_per_employee = total_sales / total_employees if total_employees > 0 else 0
+        
+        kpis.append(safe_kpi(
+            category="👥 Workforce",
+            name="Sales per Employee",
+            value=f"${sales_per_employee:,.2f}",
+            formula="Total Sales / Total Employees",
+            source=f"`{sales_col}`, `{employee_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+    
+    # Productivity
+    if hours_col and sales_col and pd.api.types.is_numeric_dtype(df[hours_col]) and pd.api.types.is_numeric_dtype(df[sales_col]):
+        valid_hours = df[hours_col].dropna()
+        
         if not valid_hours.empty:
-            productivity = df[revenue_col].sum() / valid_hours.sum()
-            kpis.append({
-                "category": "👷 Workforce Analysis",
-                "name": "Workforce Productivity",
-                "value": f"${productivity:,.2f}/hour",
-                "formula": "Total Revenue / Total Labor Hours",
-                "source": f"`{revenue_col}`, `{hours_col}`",
-                "confidence": conf,
-                "warnings": warns,
-            })
-
+            total_hours = valid_hours.sum()
+            total_sales = df[sales_col].sum()
+            
+            productivity = total_sales / total_hours if total_hours > 0 else 0
+            
+            kpis.append(safe_kpi(
+                category="👥 Workforce",
+                name="Sales per Labor Hour",
+                value=f"${productivity:,.2f}",
+                formula="Total Sales / Total Hours Worked",
+                source=f"`{sales_col}`, `{hours_col}`",
+                confidence=conf,
+                warnings=warns
+            ))
+    
+    # Top performer
+    if sales_col and pd.api.types.is_numeric_dtype(df[sales_col]):
+        employee_sales = df.groupby(employee_col)[sales_col].sum().sort_values(ascending=False)
+        
+        if not employee_sales.empty:
+            top_employee = employee_sales.idxmax()
+            top_sales = employee_sales.max()
+            
+            kpis.append(safe_kpi(
+                category="👥 Workforce",
+                name="Top Performing Employee",
+                value=f"{top_employee} (${top_sales:,.2f})",
+                formula="Employee with max sales",
+                source=f"`{employee_col}`, `{sales_col}`",
+                confidence=conf,
+                warnings=warns
+            ))
+    
+    # By store
+    if store_col:
+        emp_per_store = df.groupby(store_col)[employee_col].nunique()
+        
+        kpis.append(safe_kpi(
+            category="👥 Workforce",
+            name="Avg Employees per Store",
+            value=f"{emp_per_store.mean():.0f}",
+            formula="Mean(Employees per Store)",
+            source=f"`{store_col}`, `{employee_col}`",
+            confidence=conf,
+            warnings=warns
+        ))
+    
     return kpis
