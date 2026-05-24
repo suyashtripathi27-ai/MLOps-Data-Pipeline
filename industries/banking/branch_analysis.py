@@ -7,7 +7,7 @@ def calc_branch_metrics(df):
     branch_col = first_column(df, ["branch_id", "branch_code", "location", "Geography"])
     amount_col = first_column(df, ["amount", "balance", "transaction_amount"])
 
-    if not branch_col or not amount_col:
+    if not branch_col and not amount_col:
         return kpis
 
     conf, warns = confidence_for(df, [branch_col, amount_col])
