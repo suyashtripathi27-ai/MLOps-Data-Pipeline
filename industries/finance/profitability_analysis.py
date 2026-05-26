@@ -1,118 +1,109 @@
 """
-Profitability, margins, and EBITDA metrics for financial analysis.
+Profitability margins and earnings metrics.
 """
 import pandas as pd
-from utils.kpi_helpers import first_column, safe_kpi, confidence_for
+from utils.kpi_engine import KPIEngine
 
-def calc_profitability_metrics(df):
-    """Calculates profitability and margin KPIs."""
+FINANCE_CONFIG = {
+    "missing_data_threshold": 3,
+    "score_deduction_for_warning": 20,
+    "low_confidence_threshold": 50,
+}
+
+def calc_profitability_metrics(df, enable_debug=False):
+    """
+    Calculate profitability KPIs with optional execution tracing.
+    
+    Args:
+        df: Input DataFrame
+        enable_debug: If True, prints execution trace log for observability
+    
+    Returns:
+        List of KPI dictionaries
+    """
+
+    engine = KPIEngine(df, industry_config=FINANCE_CONFIG)
+    if enable_debug:
+        engine.enable_tracing()
+    
     kpis = []
     
     if len(df) == 0:
         return kpis
     
-    revenue_col = first_column(df, ["revenue", "sales", "gross_revenue", "income", "turnover"])
-    net_col = first_column(df, ["net_income", "net_profit", "bottom_line", "net_earnings"])
-    ebitda_col = first_column(df, ["ebitda", "operating_profit_before_depreciation", "ebit"])
-    gross_profit_col = first_column(df, ["gross_profit", "gross_margin", "gross_income"])
+    revenue_col, revenue_series = engine.get_numeric(["revenue", "sales", "gross_revenue", "income", "turnover"])
+    net_col, net_series = engine.get_numeric(["net_income", "net_profit", "bottom_line", "net_earnings"])
+    ebitda_col, ebitda_series = engine.get_numeric(["ebitda", "operating_profit_before_depreciation", "ebit"])
+    gross_profit_col, gross_profit_series = engine.get_numeric(["gross_profit", "gross_margin", "gross_income"])
     
-    if not revenue_col:
+    if revenue_col is None:
+        kpis.append(engine.log_missing("💰 Profitability & Margins", "Revenue Metrics", "Missing numeric 'revenue'."))
         return kpis
     
-    # Revenue is MONEY, not duration
-    if not pd.api.types.is_numeric_dtype(df[revenue_col]):
-        kpis.append(safe_kpi(
-            category="💰 Profitability & Margins",
-            name="Revenue Metrics",
-            value="EXCLUDED",
-            formula="N/A",
-            source=f"`{revenue_col}`",
-            confidence="Low",
-            warnings="Revenue column contains non-numeric data."
-        ))
-        return kpis
+    # Revenue
+    total_revenue = revenue_series.sum()
+    avg_revenue = revenue_series.mean()
     
-    conf, warns = confidence_for(df, [col for col in [revenue_col, net_col, ebitda_col, gross_profit_col] if col])
-    
-    # Total revenue
-    total_revenue = df[revenue_col].sum()
-    
-    kpis.append(safe_kpi(
-        category="💰 Profitability & Margins",
-        name="Total Revenue",
-        value=f"${total_revenue:,.2f}",
-        formula="Sum(Revenue)",
-        source=f"`{revenue_col}`",
-        confidence=conf,
-        warnings=warns
+    kpis.append(engine.build_kpi(
+        category="💰 Profitability & Margins", name="Total Revenue",
+        value=f"${total_revenue:,.2f}", formula="Sum(Revenue)", source=f"`{revenue_col}`"
     ))
     
-    # Gross profit margin
-    if gross_profit_col and pd.api.types.is_numeric_dtype(df[gross_profit_col]) and total_revenue > 0:
-        total_gross = df[gross_profit_col].sum()
-        gross_margin = (total_gross / total_revenue) * 100
+    kpis.append(engine.build_kpi(
+        category="💰 Profitability & Margins", name="Avg Revenue",
+        value=f"${avg_revenue:,.2f}", formula="Mean(Revenue)", source=f"`{revenue_col}`"
+    ))
+    
+    # Net income & margin
+    if net_col is not None:
+        total_net = net_series.sum()
+        net_margin = (total_net / total_revenue * 100) if total_revenue > 0 else 0
         
-        kpis.append(safe_kpi(
-            category="💰 Profitability & Margins",
-            name="Gross Profit Margin",
-            value=f"{gross_margin:.2f}%",
-            formula="(Gross Profit / Revenue) * 100",
-            source=f"`{gross_profit_col}`, `{revenue_col}`",
-            confidence=conf,
-            warnings=warns
+        warn_msg = "Negative profitability" if total_net < 0 else "None"
+        kpis.append(engine.build_kpi(
+            category="💰 Profitability & Margins", name="Total Net Income",
+            value=f"${total_net:,.2f}", formula="Sum(Net Income)", source=f"`{net_col}`",
+            warnings=warn_msg
+        ))
+        
+        warn_msg = "Low net margin (<5%)" if net_margin < 5 else "None"
+        kpis.append(engine.build_kpi(
+            category="💰 Profitability & Margins", name="Net Profit Margin %",
+            value=f"{net_margin:.2f}%", formula="(Net Income / Revenue) * 100", source=f"`{net_col}`, `{revenue_col}`",
+            warnings=warn_msg
         ))
     
-    # Net profit margin
-    if net_col and pd.api.types.is_numeric_dtype(df[net_col]) and total_revenue > 0:
-        total_net = df[net_col].sum()
-        net_margin = (total_net / total_revenue) * 100
+    # Gross profit & margin
+    if gross_profit_col is not None:
+        total_gross = gross_profit_series.sum()
+        gross_margin = (total_gross / total_revenue * 100) if total_revenue > 0 else 0
         
-        kpis.append(safe_kpi(
-            category="💰 Profitability & Margins",
-            name="Net Profit Margin",
-            value=f"{net_margin:.2f}%",
-            formula="(Net Income / Revenue) * 100",
-            source=f"`{net_col}`, `{revenue_col}`",
-            confidence=conf,
-            warnings="Critical margin compression" if net_margin < 5 else warns
+        kpis.append(engine.build_kpi(
+            category="💰 Profitability & Margins", name="Total Gross Profit",
+            value=f"${total_gross:,.2f}", formula="Sum(Gross Profit)", source=f"`{gross_profit_col}`"
         ))
         
-        kpis.append(safe_kpi(
-            category="💰 Profitability & Margins",
-            name="Total Net Income",
-            value=f"${total_net:,.2f}",
-            formula="Sum(Net Income)",
-            source=f"`{net_col}`",
-            confidence=conf,
-            warnings="Negative net income" if total_net < 0 else warns
+        kpis.append(engine.build_kpi(
+            category="💰 Profitability & Margins", name="Gross Profit Margin %",
+            value=f"{gross_margin:.2f}%", formula="(Gross Profit / Revenue) * 100", source=f"`{gross_profit_col}`, `{revenue_col}`"
         ))
     
     # EBITDA
-    if ebitda_col and pd.api.types.is_numeric_dtype(df[ebitda_col]):
-        total_ebitda = df[ebitda_col].sum()
+    if ebitda_col is not None:
+        total_ebitda = ebitda_series.sum()
+        ebitda_margin = (total_ebitda / total_revenue * 100) if total_revenue > 0 else 0
         
-        kpis.append(safe_kpi(
-            category="💰 Profitability & Margins",
-            name="Total EBITDA",
-            value=f"${total_ebitda:,.2f}",
-            formula="Sum(EBITDA)",
-            source=f"`{ebitda_col}`",
-            confidence=conf,
-            warnings="Negative EBITDA - Cash burn" if total_ebitda < 0 else warns
+        kpis.append(engine.build_kpi(
+            category="💰 Profitability & Margins", name="Total EBITDA",
+            value=f"${total_ebitda:,.2f}", formula="Sum(EBITDA)", source=f"`{ebitda_col}`"
         ))
         
-        # EBITDA margin
-        if total_revenue > 0:
-            ebitda_margin = (total_ebitda / total_revenue) * 100
-            
-            kpis.append(safe_kpi(
-                category="💰 Profitability & Margins",
-                name="EBITDA Margin",
-                value=f"{ebitda_margin:.2f}%",
-                formula="(EBITDA / Revenue) * 100",
-                source=f"`{ebitda_col}`, `{revenue_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
+        kpis.append(engine.build_kpi(
+            category="💰 Profitability & Margins", name="EBITDA Margin %",
+            value=f"{ebitda_margin:.2f}%", formula="(EBITDA / Revenue) * 100", source=f"`{ebitda_col}`, `{revenue_col}`"
+        ))
+    
+    if enable_debug:
+        engine.print_execution_log()
     
     return kpis
