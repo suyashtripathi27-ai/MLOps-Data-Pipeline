@@ -4,12 +4,10 @@ Loan product and portfolio risk KPIs.
 import pandas as pd
 from utils.kpi_engine import KPIEngine
 
-# Banking industry configuration
-# Stricter than default - regulatory compliance demands accuracy
 BANKING_CONFIG = {
-    "missing_data_threshold": 5,        # ✅ Stricter than default 10% - banking is risk-sensitive
-    "score_deduction_for_warning": 20,  # ✅ Higher penalty for quality issues
-    "low_confidence_threshold": 25,     # ✅ Lower threshold = easier to flag as "Low"
+    "missing_data_threshold": 5,        
+    "score_deduction_for_warning": 20,  
+    "low_confidence_threshold": 25,     
 }
 
 def calc_loan_metrics(df, enable_debug=False):
@@ -23,10 +21,8 @@ def calc_loan_metrics(df, enable_debug=False):
     Returns:
         List of KPI dictionaries
     """
-    # ✅ OPTION 2: Initialize with banking industry config for stricter validation
-    engine = KPIEngine(df, industry_config=BANKING_CONFIG)
     
-    # ✅ OPTION 1: Enable tracing for enterprise observability
+    engine = KPIEngine(df, industry_config=BANKING_CONFIG)
     if enable_debug:
         engine.enable_tracing()
     
@@ -84,7 +80,6 @@ def calc_loan_metrics(df, enable_debug=False):
     else:
         kpis.append(engine.log_missing("💰 Loan Analysis", "Interest Rate", "Missing numeric 'rate' column."))
 
-    # ✅ OPTION 1: Print execution trace for debugging
     if enable_debug:
         engine.print_execution_log()
     
