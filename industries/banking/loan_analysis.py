@@ -2,78 +2,62 @@
 Loan product and portfolio risk KPIs.
 """
 import pandas as pd
-from utils.kpi_helpers import (
-    first_column, safe_kpi, excluded_kpi, confidence_for, safe_exists, safe_numeric, safe_numeric_series
-)
+from utils.kpi_engine import KPIEngine
 
 def calc_loan_metrics(df):
+    engine = KPIEngine(df)
     kpis = []
-    missing_capabilities = []
-    if len(df) == 0: return kpis
     
-    loan_status_col = first_column(df, ["loan_status", "status", "payment_status"])
-    outstanding_col = first_column(df, ["outstanding_balance", "loan_balance", "remaining_balance"])
-    disbursed_col = first_column(df, ["disbursed_amount", "loan_amount", "principal"])
-    rate_col = first_column(df, ["interest_rate", "rate", "apr"])
-
-    conf, warns = confidence_for(df, [loan_status_col, outstanding_col, disbursed_col, rate_col])
+    if len(df) == 0: 
+        return kpis
     
-    if safe_numeric(df, outstanding_col):
-        clean_outstanding = safe_numeric_series(df, outstanding_col).fillna(0)
-        total_outstanding = clean_outstanding.sum()
+    status_col, status_series = engine.get_column(["loan_status", "status", "payment_status"])
+    out_col, out_series = engine.get_numeric(["outstanding_balance", "loan_balance", "remaining_balance"])
+    disb_col, disb_series = engine.get_numeric(["disbursed_amount", "loan_amount", "principal"])
+    rate_col, rate_series = engine.get_numeric(["interest_rate", "rate", "apr"])
 
-        kpis.append(safe_kpi(
+    if out_col is not None:
+        total_outstanding = out_series.fillna(0).sum()
+        kpis.append(engine.build_kpi(
             category="💰 Loan Analysis", name="Total Outstanding Balance",
-            value=f"${total_outstanding:,.2f}", formula="Sum(Outstanding Balance)",
-            source=f"`{outstanding_col}`", confidence=conf, warnings=warns
+            value=f"${total_outstanding:,.2f}", formula="Sum(Outstanding Balance)", source=f"`{out_col}`"
         ))
 
-        if safe_numeric(df, disbursed_col):
-            clean_disbursed = safe_numeric_series(df, disbursed_col).fillna(0)
-            total_disbursed = clean_disbursed.sum()
+        if disb_col is not None:
+            total_disbursed = disb_series.fillna(0).sum()
             recovery_rate = (total_outstanding / total_disbursed * 100) if total_disbursed > 0 else 0
-            
-            kpis.append(safe_kpi(
+            kpis.append(engine.build_kpi(
                 category="💰 Loan Analysis", name="Loan Recovery Rate",
-                value=f"{recovery_rate:.2f}%", formula="Outstanding / Disbursed * 100",
-                source=f"`{outstanding_col}`, `{disbursed_col}`", confidence=conf, warnings=warns
+                value=f"{recovery_rate:.2f}%", formula="Outstanding / Disbursed * 100", source=f"`{out_col}`, `{disb_col}`"
             ))
         else:
-            missing_capabilities.append("Recovery Rate unavailable: Missing numeric 'disbursed' column.")
+            kpis.append(engine.log_missing("💰 Loan Analysis", "Recovery Rate", "Missing numeric 'disbursed' column."))
     else:
-        missing_capabilities.append("Outstanding Balance Analytics unavailable: Missing numeric 'outstanding' column.")
+        kpis.append(engine.log_missing("💰 Loan Analysis", "Outstanding Balance", "Missing numeric 'outstanding' column."))
 
-    if safe_exists(df, loan_status_col):
-        total_loans = df[loan_status_col].nunique()
-        kpis.append(safe_kpi(
+    if status_col is not None:
+        kpis.append(engine.build_kpi(
             category="💰 Loan Analysis", name="Total Active Loans",
-            value=f"{total_loans}", formula="Count(Distinct Loan Status)",
-            source=f"`{loan_status_col}`", confidence=conf, warnings=warns
+            value=f"{status_series.nunique()}", formula="Count(Distinct Loan Status)", source=f"`{status_col}`"
         ))
 
-        status_col_values = df[loan_status_col].astype(str).str.lower()
-        if "default" in status_col_values.unique() or "defaulted" in status_col_values.unique():
-            default_count = status_col_values.isin(["default", "defaulted"]).sum()
+        lower_status = status_series.astype(str).str.lower()
+        if "default" in lower_status.unique() or "defaulted" in lower_status.unique():
+            default_count = lower_status.isin(["default", "defaulted"]).sum()
             default_rate = (default_count / len(df) * 100) if len(df) > 0 else 0
-            kpis.append(safe_kpi(
+            kpis.append(engine.build_kpi(
                 category="💰 Loan Analysis", name="Loan Default Rate",
-                value=f"{default_rate:.2f}%", formula="Defaulted / Total * 100",
-                source=f"`{loan_status_col}`", confidence=conf, warnings=warns
+                value=f"{default_rate:.2f}%", formula="Defaulted / Total * 100", source=f"`{status_col}`"
             ))
     else:
-        missing_capabilities.append("Loan Status Analytics unavailable: Missing 'status' column.")
+        kpis.append(engine.log_missing("💰 Loan Analysis", "Loan Status", "Missing 'status' column."))
 
-    if safe_numeric(df, rate_col):
-        clean_rate = safe_numeric_series(df, rate_col)
-        kpis.append(safe_kpi(
+    if rate_col is not None:
+        kpis.append(engine.build_kpi(
             category="💰 Loan Analysis", name="Avg Interest Rate",
-            value=f"{clean_rate.mean():.2f}%", formula="Mean(Interest Rate)",
-            source=f"`{rate_col}`", confidence=conf, warnings=warns
+            value=f"{rate_series.mean():.2f}%", formula="Mean(Interest Rate)", source=f"`{rate_col}`"
         ))
     else:
-        missing_capabilities.append("Interest Rate Analytics unavailable: Missing numeric 'rate' column.")
-
-    for missing in missing_capabilities:
-        kpis.append(excluded_kpi(category="⚠️ System Audit", name="Data Gap Detected", source="Diagnostic", reason=missing))
+        kpis.append(engine.log_missing("💰 Loan Analysis", "Interest Rate", "Missing numeric 'rate' column."))
 
     return kpis
