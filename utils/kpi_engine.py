@@ -33,7 +33,6 @@ class KPIEngine:
                 - custom_industry_checks (callable for domain-specific validation)
         """
         self.df = df
-        # ✅ ISSUE 1 FIX: Use set instead of list to prevent duplicates
         self.used_columns: Set[str] = set()
         
         # Per-industry confidence configuration
@@ -55,8 +54,6 @@ class KPIEngine:
         
         # KPI template registry (ONLY for highly repeated patterns)
         self.kpi_templates: Dict[str, Callable] = {}
-        
-        # ✅ ISSUE 5 FIX: Execution tracing for observability
         self.execution_log: List[Dict[str, Any]] = []
         self._trace_enabled = False
     
@@ -135,7 +132,7 @@ class KPIEngine:
         if col:
             series = safe_numeric_series(self.df, col)
             if series is not None:
-                self.used_columns.add(col)  # ✅ ISSUE 1 FIX: set prevents duplicates
+                self.used_columns.add(col)  
                 non_null_count = len(series)
                 total_count = len(self.df)
                 coercion_failure_rate = ((total_count - non_null_count) / total_count * 100) if total_count > 0 else 0
@@ -170,9 +167,9 @@ class KPIEngine:
         """
         col = first_column(self.df, candidates)
         if col:
-            series = safe_datetime_series(self.df, col)  # ✅ ISSUE 2: Confirmed dependency exists
+            series = safe_datetime_series(self.df, col)  
             if series is not None:
-                self.used_columns.add(col)  # ✅ ISSUE 1 FIX: set prevents duplicates
+                self.used_columns.add(col)  
                 self._log_trace("datetime_coercion_applied", {
                     "col": col,
                     "candidates": candidates,
@@ -244,37 +241,6 @@ class KPIEngine:
         warnings: str = "None",
         **kwargs
     ) -> Dict[str, Any]:
-        """
-        Build a standardized KPI dictionary with automatic confidence scoring.
-        
-        ✅ ISSUE 3 NOTE: Confidence config (missing_data_threshold, score_deduction_for_warning)
-           is passed to evaluate_kpi_confidence(). Full integration roadmap:
-           - Phase 1 (current): confidence_engine respects config thresholds
-           - Phase 2 (future): governance_engine uses these thresholds
-           - Phase 3 (future): narrative weighting adjusts based on industry confidence profile
-        
-        Args:
-            category: KPI category/group (e.g., "💳 Account Analysis")
-            name: KPI name (e.g., "Total Active Accounts")
-            value: Formatted value (e.g., "1,234" or "$5,678.90")
-            formula: Calculation formula (e.g., "Sum(Amount)")
-            source: Source column(s) (e.g., "`account_id`, `amount`")
-            confidence: Manual confidence override (High/Medium/Low). If None, auto-calculated.
-            warnings: Custom warning message. Auto-warnings from confidence engine are appended.
-            **kwargs: Additional fields to include in KPI dict
-            
-        Returns:
-            Standardized KPI dictionary with confidence and warnings
-            
-        Example:
-            kpi = engine.build_kpi(
-                category="💳 Account Analysis",
-                name="Total Active Accounts",
-                value="1,234",
-                formula="Count(Distinct Account IDs)",
-                source="`account_id`"
-            )
-        """
         # Auto-calculate confidence if not provided
         if confidence is None:
             confidence, auto_warn = evaluate_kpi_confidence(
@@ -341,48 +307,7 @@ class KPIEngine:
     # ==========================================
     
     def build_from_template(self, template_name: str, **overrides) -> Dict[str, Any]:
-        """
-        Build a KPI using a registered template with custom overrides.
-        
-        ⚠️ ISSUE 4 WARNING: Use ONLY for highly repeated patterns.
-        Examples of GOOD templates:
-        - sum_metric (Total Revenue, Total Volume, Total Transactions)
-        - avg_metric (Avg Order Value, Avg Account Balance, Avg Processing Time)
-        - count_metric (Active Accounts, Unique Customers, Transactions Count)
-        - growth_rate (Month-over-month growth, Year-over-year growth)
-        
-        Examples of BAD templates:
-        - Anything specific to one KPI or calculation
-        - Complex business logic unique to one industry
-        
-        Args:
-            template_name: Name of the registered template
-            **overrides: Values to override template defaults
-            
-        Returns:
-            Calculated KPI dictionary
-            
-        Example:
-            # Register template once (at app startup or in main.py)
-            def sum_metric_template(engine, col_candidates, name, category):
-                col, series = engine.get_numeric(col_candidates)
-                if col is None:
-                    return engine.log_missing(category, name, "Missing numeric column")
-                return engine.build_kpi(
-                    category, name, 
-                    f"${series.sum():,.2f}", 
-                    f"Sum({col})", f"`{col}`"
-                )
-            
-            engine.register_kpi_template("sum_metric", sum_metric_template)
-            
-            # Use template (saves 3 lines of code per KPI)
-            kpi = engine.build_from_template("sum_metric", 
-                col_candidates=["amount", "transaction_amount"],
-                name="Total Volume",
-                category="💳 Account Analysis"
-            )
-        """
+
         if template_name not in self.kpi_templates:
             raise ValueError(
                 f"Template '{template_name}' not found. "
@@ -409,20 +334,6 @@ class KPIEngine:
     # ==========================================
     
     def enable_tracing(self, enabled: bool = True) -> None:
-        """
-        Enable/disable execution tracing.
-        When enabled, every operation is logged for debugging.
-        
-        ✅ ISSUE 5: Execution tracing enables enterprise observability
-        Useful for:
-        - Debugging data pipeline issues
-        - Auditing which columns were used
-        - Identifying coercion failures
-        - Tracking confidence score changes
-        
-        Args:
-            enabled: Whether to enable tracing (default: True)
-        """
         self._trace_enabled = enabled
         self._log_trace("tracing_toggled", {"enabled": enabled})
     
@@ -436,31 +347,6 @@ class KPIEngine:
             })
     
     def get_execution_log(self) -> List[Dict[str, Any]]:
-        """
-        Retrieve the execution trace log.
-        
-        Returns:
-            List of trace events with timestamps
-            
-        Example output:
-            [
-                {
-                    "timestamp": "2026-05-26T10:30:45.123456",
-                    "event_type": "column_mapped",
-                    "details": {"col": "account_id", "type": "object"}
-                },
-                {
-                    "timestamp": "2026-05-26T10:30:45.234567",
-                    "event_type": "numeric_coercion_applied",
-                    "details": {"col": "amount", "coercion_failure_rate": "2.5%"}
-                },
-                {
-                    "timestamp": "2026-05-26T10:30:45.345678",
-                    "event_type": "kpi_built",
-                    "details": {"name": "Total Volume", "confidence": "High"}
-                }
-            ]
-        """
         return self.execution_log.copy()
     
     def clear_execution_log(self) -> None:
@@ -496,10 +382,6 @@ class KPIEngine:
         return sorted(unused)
     
     def debug_info(self) -> Dict[str, Any]:
-        """
-        Return comprehensive debugging information about the engine state.
-        Useful for troubleshooting and understanding data lineage.
-        """
         return {
             "dataframe_shape": self.df.shape,
             "total_columns": len(self.df.columns),
