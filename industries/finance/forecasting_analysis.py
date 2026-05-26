@@ -1,163 +1,92 @@
 """
-Revenue, growth, and ticket value metrics.
+Financial forecasting, projections, and variance analysis.
 """
 import pandas as pd
-from utils.kpi_helpers import first_column, safe_kpi, confidence_for
-from utils.validator import SemanticValidator
+from utils.kpi_engine import KPIEngine
 
-def calc_revenue_metrics(df):
-    """Calculates revenue and growth KPIs."""
+FINANCE_CONFIG = {
+    "missing_data_threshold": 3,
+    "score_deduction_for_warning": 20,
+    "low_confidence_threshold": 50,
+}
+
+def calc_forecasting_metrics(df, enable_debug=False):
+    """
+    Calculate forecasting and variance KPIs with optional execution tracing.
+    
+    Args:
+        df: Input DataFrame
+        enable_debug: If True, prints execution trace log for observability
+    
+    Returns:
+        List of KPI dictionaries
+    """
+    
+    engine = KPIEngine(df, industry_config=FINANCE_CONFIG)
+    if enable_debug:
+        engine.enable_tracing()
+    
     kpis = []
     
     if len(df) == 0:
         return kpis
     
-    revenue_col = first_column(df, ["revenue", "sales", "turnover", "gross_revenue"])
-    date_col = first_column(df, ["date", "period", "transaction_date", "reporting_date"])
-    ticket_col = first_column(df, ["avg_ticket", "ticket_value", "amount", "transaction_value"])
-    segment_col = first_column(df, ["segment", "business_unit", "revenue_source", "product_line"])
+    forecast_col, forecast_series = engine.get_numeric(["forecast", "projected", "budget", "estimate"])
+    actual_col, actual_series = engine.get_numeric(["actual", "realized", "actuals", "true_value"])
     
-    if not revenue_col:
+    if forecast_col is None or actual_col is None:
+        kpis.append(engine.log_missing("🔮 Forecasting", "Forecast vs Actual", "Missing 'forecast' or 'actual'."))
         return kpis
     
-    # Revenue is MONEY, not duration
-    if not pd.api.types.is_numeric_dtype(df[revenue_col]):
-        kpis.append(safe_kpi(
-            category="📈 Revenue",
-            name="Revenue Metrics",
-            value="EXCLUDED",
-            formula="N/A",
-            source=f"`{revenue_col}`",
-            confidence="Low",
-            warnings="Revenue column contains non-numeric data."
+    # Forecast accuracy
+    df_temp = pd.concat([forecast_series, actual_series], axis=1).dropna()
+    
+    if len(df_temp) > 0:
+        variance = df_temp[actual_col] - df_temp[forecast_col]
+        pct_variance = (variance / (df_temp[actual_col] + 0.0001)) * 100
+        
+        avg_variance = variance.mean()
+        avg_pct_variance = pct_variance.mean()
+        abs_pct_variance = pct_variance.abs().mean()
+        
+        kpis.append(engine.build_kpi(
+            category="🔮 Forecasting", name="Avg Forecast Variance $",
+            value=f"${avg_variance:,.2f}", formula="Mean(Actual - Forecast)", 
+            source=f"`{actual_col}`, `{forecast_col}`"
         ))
-        return kpis
-    
-    conf, warns = confidence_for(df, [col for col in [revenue_col, date_col, ticket_col, segment_col] if col])
-    
-    # Total revenue
-    total_revenue = df[revenue_col].sum()
-    avg_revenue = df[revenue_col].mean()
-    
-    kpis.append(safe_kpi(
-        category="📈 Revenue",
-        name="Total Revenue",
-        value=f"${total_revenue:,.2f}",
-        formula="Sum(Revenue)",
-        source=f"`{revenue_col}`",
-        confidence=conf,
-        warnings=warns
-    ))
-    
-    kpis.append(safe_kpi(
-        category="📈 Revenue",
-        name="Average Revenue (per Period/Record)",
-        value=f"${avg_revenue:,.2f}",
-        formula="Mean(Revenue)",
-        source=f"`{revenue_col}`",
-        confidence=conf,
-        warnings=warns
-    ))
-    
-    # Ticket metrics
-    if ticket_col and pd.api.types.is_numeric_dtype(df[ticket_col]):
-        valid_ticket = df[ticket_col].dropna()
         
-        if not valid_ticket.empty:
-            avg_ticket = valid_ticket.mean()
-            max_ticket = valid_ticket.max()
-            
-            kpis.append(safe_kpi(
-                category="📈 Revenue",
-                name="Avg Ticket Value",
-                value=f"${avg_ticket:,.2f}",
-                formula="Mean(Ticket Value)",
-                source=f"`{ticket_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
-            
-            kpis.append(safe_kpi(
-                category="📈 Revenue",
-                name="Max Ticket Value",
-                value=f"${max_ticket:,.2f}",
-                formula="Max(Ticket Value)",
-                source=f"`{ticket_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
-    
-    # Revenue by segment
-    if segment_col:
-        segment_revenue = df.groupby(segment_col)[revenue_col].sum().sort_values(ascending=False)
+        warn_msg = "High forecast error (>10%)" if abs_pct_variance > 10 else "Moderate error (>5%)" if abs_pct_variance > 5 else "None"
+        kpis.append(engine.build_kpi(
+            category="🔮 Forecasting", name="Forecast Accuracy %",
+            value=f"{100 - abs_pct_variance:.2f}%", formula="100 - Mean(|Actual-Forecast|/Actual*100)", 
+            source=f"`{actual_col}`, `{forecast_col}`",
+            warnings=warn_msg
+        ))
         
-        if not segment_revenue.empty:
-            top_segment = segment_revenue.idxmax()
-            top_segment_revenue = segment_revenue.max()
-            top_segment_share = (top_segment_revenue / total_revenue * 100) if total_revenue > 0 else 0
-            
-            kpis.append(safe_kpi(
-                category="📈 Revenue",
-                name="Top Revenue Segment",
-                value=f"{top_segment} (${top_segment_revenue:,.2f})",
-                formula="Segment with max revenue",
-                source=f"`{segment_col}`, `{revenue_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
-            
-            kpis.append(safe_kpi(
-                category="📈 Revenue",
-                name="Top Segment Revenue Share",
-                value=f"{top_segment_share:.2f}%",
-                formula="Top Segment / Total Revenue * 100",
-                source=f"`{segment_col}`, `{revenue_col}`",
-                confidence=conf,
-                warnings="High concentration" if top_segment_share > 40 else warns
-            ))
-    
-    # Growth metrics (if date exists)
-    if date_col:
-        date_df = df.copy()
-        date_df["_date"] = pd.to_datetime(df[date_col], errors="coerce")
-        date_df = date_df.dropna(subset=["_date"])
+        # High and low variance items
+        high_variance_items = (pct_variance.abs() > pct_variance.abs().quantile(0.75)).sum()
+        high_variance_pct = (high_variance_items / len(df_temp) * 100) if len(df_temp) > 0 else 0
         
-        if not date_df.empty:
-            # Check if date is valid
-            dt_valid, _ = SemanticValidator.is_valid_datetime(date_df["_date"])
-            
-            if dt_valid:
-                try:
-                    date_df_indexed = date_df.set_index("_date")
-                    monthly_revenue = date_df_indexed[revenue_col].resample('ME').sum()
-                    
-                    if len(monthly_revenue) >= 2:
-                        first_month = monthly_revenue.iloc[0]
-                        last_month = monthly_revenue.iloc[-1]
-                        growth = ((last_month - first_month) / first_month * 100) if first_month > 0 else 0
-                        
-                        kpis.append(safe_kpi(
-                            category="📈 Revenue",
-                            name="Revenue Growth %",
-                            value=f"{growth:.2f}%",
-                            formula="((Last Month - First Month) / First Month) * 100",
-                            source=f"`{revenue_col}`, `{date_col}`",
-                            confidence=conf,
-                            warnings=warns
-                        ))
-                        
-                        avg_monthly_growth = monthly_revenue.pct_change().dropna().mean() * 100
-                        
-                        kpis.append(safe_kpi(
-                            category="📈 Revenue",
-                            name="Avg Monthly Growth Rate",
-                            value=f"{avg_monthly_growth:.2f}%",
-                            formula="Mean(Monthly % Change)",
-                            source=f"`{revenue_col}`, `{date_col}`",
-                            confidence=conf,
-                            warnings=warns
-                        ))
-                except Exception:
-                    pass
+        kpis.append(engine.build_kpi(
+            category="🔮 Forecasting", name="High Variance Items (Top 25%)",
+            value=f"{high_variance_pct:.2f}%", formula="(|Variance| > 75th Percentile) / Total * 100", 
+            source=f"`{actual_col}`, `{forecast_col}`"
+        ))
+        
+        # Total budget vs actual
+        total_forecast = forecast_series.sum()
+        total_actual = actual_series.sum()
+        total_variance_pct = ((total_actual - total_forecast) / total_forecast * 100) if total_forecast > 0 else 0
+        
+        warn_msg = "Budget overrun (>5%)" if total_variance_pct > 5 else "Budget underrun (>5%)" if total_variance_pct < -5 else "None"
+        kpis.append(engine.build_kpi(
+            category="🔮 Forecasting", name="Total Budget Variance %",
+            value=f"{total_variance_pct:.2f}%", formula="((Total Actual - Total Forecast) / Forecast) * 100", 
+            source=f"`{actual_col}`, `{forecast_col}`",
+            warnings=warn_msg
+        ))
+
+    if enable_debug:
+        engine.print_execution_log()
     
     return kpis
