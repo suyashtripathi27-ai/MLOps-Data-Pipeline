@@ -2,103 +2,101 @@
 Stock levels, inventory turnover, and stockout metrics.
 """
 import pandas as pd
-from utils.kpi_helpers import first_column, safe_kpi, confidence_for
+from utils.kpi_engine import KPIEngine
 
-def calc_inventory_metrics(df):
-    """Calculates inventory management KPIs."""
+# Ecommerce industry configuration
+# Moderate thresholds - focus on growth velocity vs strict compliance
+ECOMMERCE_CONFIG = {
+    "missing_data_threshold": 8,        # ✅ Moderate - tech platforms have data quality
+    "score_deduction_for_warning": 12,  # ✅ Lower penalty - more lenient than banking
+    "low_confidence_threshold": 35,     # ✅ Higher threshold = harder to flag "Low"
+}
+
+def calc_inventory_metrics(df, enable_debug=False):
+    """
+    Calculate inventory management KPIs with optional execution tracing.
+    
+    Args:
+        df: Input DataFrame
+        enable_debug: If True, prints execution trace log for observability
+    
+    Returns:
+        List of KPI dictionaries
+    """
+    # ✅ OPTION 2: Initialize with ecommerce industry config
+    engine = KPIEngine(df, industry_config=ECOMMERCE_CONFIG)
+    
+    # ✅ OPTION 1: Enable tracing for enterprise observability
+    if enable_debug:
+        engine.enable_tracing()
+    
     kpis = []
     
     if len(df) == 0:
         return kpis
     
-    product_col = first_column(df, ["product_id", "sku", "product_code", "product_key"])
-    stock_col = first_column(df, ["stock_level", "quantity_on_hand", "inventory_count", "available_qty"])
-    sales_col = first_column(df, ["sales_quantity", "units_sold", "qty_sold", "quantity_sold"])
+    product_col, product_series = engine.get_column(["product_id", "sku", "product_code", "product_key"])
+    stock_col, stock_series = engine.get_numeric(["stock_level", "quantity_on_hand", "inventory_count", "available_qty"])
+    sales_col, sales_series = engine.get_numeric(["sales_quantity", "units_sold", "qty_sold", "quantity_sold"])
     
-    if not product_col or not stock_col:
-        return kpis
-    
-    conf, warns = confidence_for(df, [col for col in [product_col, stock_col, sales_col] if col])
-    
-    total_products = df[product_col].nunique()
-    
-    kpis.append(safe_kpi(
-        category="📦 Inventory",
-        name="Total Products",
-        value=f"{total_products:,}",
-        formula="Count(Distinct Products)",
-        source=f"`{product_col}`",
-        confidence=conf,
-        warnings=warns
-    ))
-    
-    if pd.api.types.is_numeric_dtype(df[stock_col]):
-        total_stock = df[stock_col].sum()
-        avg_stock = df[stock_col].mean()
+    if product_col is not None and stock_col is not None:
+        total_products = product_series.nunique()
         
-        kpis.append(safe_kpi(
-            category="📦 Inventory",
-            name="Total Inventory Units",
-            value=f"{total_stock:,.0f}",
-            formula="Sum(Stock Level)",
-            source=f"`{stock_col}`",
-            confidence=conf,
-            warnings=warns
+        kpis.append(engine.build_kpi(
+            category="📖 Inventory", name="Total Products",
+            value=f"{total_products:,}", formula="Count(Distinct Products)", source=f"`{product_col}`"
         ))
         
-        kpis.append(safe_kpi(
-            category="📦 Inventory",
-            name="Avg Stock per Product",
-            value=f"{avg_stock:,.0f}",
-            formula="Mean(Stock Level)",
-            source=f"`{stock_col}`",
-            confidence=conf,
-            warnings=warns
+        total_stock = stock_series.sum()
+        avg_stock = stock_series.mean()
+        
+        kpis.append(engine.build_kpi(
+            category="📖 Inventory", name="Total Inventory Units",
+            value=f"{total_stock:,.0f}", formula="Sum(Stock Level)", source=f"`{stock_col}`"
+        ))
+        
+        kpis.append(engine.build_kpi(
+            category="📖 Inventory", name="Avg Stock per Product",
+            value=f"{avg_stock:,.0f}", formula="Mean(Stock Level)", source=f"`{stock_col}`"
         ))
         
         # Stockout items
-        stockout_count = (df[stock_col] == 0).sum()
+        stockout_count = (stock_series == 0).sum()
         stockout_rate = (stockout_count / len(df) * 100) if len(df) > 0 else 0
+        warn_msg = "High stockout rate" if stockout_rate > 20 else "None"
         
-        kpis.append(safe_kpi(
-            category="📦 Inventory",
-            name="Out-of-Stock Items",
-            value=f"{stockout_count:,} ({stockout_rate:.2f}%)",
-            formula="Count(Stock = 0) / Total * 100",
-            source=f"`{stock_col}`",
-            confidence=conf,
-            warnings="High stockout rate" if stockout_rate > 20 else warns
+        kpis.append(engine.build_kpi(
+            category="📖 Inventory", name="Out-of-Stock Items",
+            value=f"{stockout_count:,} ({stockout_rate:.2f}%)", formula="Count(Stock = 0) / Total * 100", source=f"`{stock_col}`",
+            warnings=warn_msg
         ))
         
         # Low stock
-        low_stock_threshold = df[stock_col].quantile(0.25) if len(df) > 0 else 0
-        low_stock_count = (df[stock_col] < low_stock_threshold).sum()
+        low_stock_threshold = stock_series.quantile(0.25) if len(df) > 0 else 0
+        low_stock_count = (stock_series < low_stock_threshold).sum()
         
-        kpis.append(safe_kpi(
-            category="📦 Inventory",
-            name="Low Stock Items (Bottom 25%)",
-            value=f"{low_stock_count:,}",
-            formula="Count(Stock < 25th Percentile)",
-            source=f"`{stock_col}`",
-            confidence=conf,
-            warnings=warns
+        kpis.append(engine.build_kpi(
+            category="📖 Inventory", name="Low Stock Items (Bottom 25%)",
+            value=f"{low_stock_count:,}", formula="Count(Stock < 25th Percentile)", source=f"`{stock_col}`"
         ))
+        
+        # Inventory turnover
+        if sales_col is not None:
+            total_sales = sales_series.sum()
+            avg_stock_val = stock_series.mean()
+            turnover = (total_sales / (avg_stock_val + 0.0001)) if avg_stock_val > 0 else 0
+            warn_msg = "Low turnover - Excess stock" if turnover < 2 else "None"
+            
+            kpis.append(engine.build_kpi(
+                category="📖 Inventory", name="Inventory Turnover Ratio",
+                value=f"{turnover:.2f}x", formula="Sum(Units Sold) / Mean(Stock)", source=f"`{sales_col}`, `{stock_col}`",
+                warnings=warn_msg
+            ))
+    else:
+        kpis.append(engine.log_missing("📖 Inventory", "Inventory Metrics", "Missing 'product_id' or numeric 'stock_level'."))
     
-    # Inventory turnover
-    if sales_col and pd.api.types.is_numeric_dtype(df[sales_col]) and pd.api.types.is_numeric_dtype(df[stock_col]):
-        total_sales = df[sales_col].fillna(0).sum()
-        avg_stock_val = df[stock_col].mean()
-        
-        turnover = (total_sales / (avg_stock_val + 0.0001)) if avg_stock_val > 0 else 0
-        
-        kpis.append(safe_kpi(
-            category="📦 Inventory",
-            name="Inventory Turnover Ratio",
-            value=f"{turnover:.2f}x",
-            formula="Sum(Units Sold) / Mean(Stock)",
-            source=f"`{sales_col}`, `{stock_col}`",
-            confidence=conf,
-            warnings="Low turnover - Excess stock" if turnover < 2 else warns
-        ))
+    # ✅ OPTION 1: Print execution trace for debugging
+    if enable_debug:
+        engine.print_execution_log()
     
     return kpis

@@ -2,92 +2,85 @@
 Shopping cart metrics and abandonment analysis.
 """
 import pandas as pd
-from utils.kpi_helpers import first_column, safe_kpi, confidence_for
+from utils.kpi_engine import KPIEngine
 
-def calc_cart_metrics(df):
-    """Calculates shopping cart and abandonment KPIs."""
+# Ecommerce industry configuration
+# Moderate thresholds - focus on growth velocity vs strict compliance
+ECOMMERCE_CONFIG = {
+    "missing_data_threshold": 8,        # ✅ Moderate - tech platforms have data quality
+    "score_deduction_for_warning": 12,  # ✅ Lower penalty - more lenient than banking
+    "low_confidence_threshold": 35,     # ✅ Higher threshold = harder to flag "Low"
+}
+
+def calc_cart_metrics(df, enable_debug=False):
+    """
+    Calculate cart-level KPIs with optional execution tracing.
+    
+    Args:
+        df: Input DataFrame
+        enable_debug: If True, prints execution trace log for observability
+    
+    Returns:
+        List of KPI dictionaries
+    """
+    # ✅ OPTION 2: Initialize with ecommerce industry config
+    engine = KPIEngine(df, industry_config=ECOMMERCE_CONFIG)
+    
+    # ✅ OPTION 1: Enable tracing for enterprise observability
+    if enable_debug:
+        engine.enable_tracing()
+    
     kpis = []
     
     if len(df) == 0:
         return kpis
     
-    cart_value_col = first_column(df, ["cart_value", "basket_value", "cart_total", "basket_total"])
-    abandoned_rate_col = first_column(df, ["cart_abandonment_rate", "abandonment_rate", "abandoned_rate"])
-    cart_items_col = first_column(df, ["cart_items", "items_in_cart", "basket_items"])
+    cart_value_col, cart_value_series = engine.get_numeric(["cart_value", "basket_value", "cart_total", "basket_total"])
+    abandoned_rate_col, abandoned_rate_series = engine.get_numeric(["cart_abandonment_rate", "abandonment_rate", "abandoned_rate"])
+    cart_items_col, cart_items_series = engine.get_numeric(["cart_items", "items_in_cart", "basket_items"])
     
-    if not cart_value_col and not abandoned_rate_col:
-        return kpis
-    
-    conf, warns = confidence_for(df, [col for col in [cart_value_col, abandoned_rate_col, cart_items_col] if col])
-    
-    if cart_value_col and pd.api.types.is_numeric_dtype(df[cart_value_col]):
-        valid_cart = df[cart_value_col].dropna()
+    if cart_value_col is not None:
+        kpis.append(engine.build_kpi(
+            category="🛑 Cart Analysis", name="Avg Cart Value",
+            value=f"${cart_value_series.mean():,.2f}", formula="Mean(Cart Value)", source=f"`{cart_value_col}`"
+        ))
         
-        if not valid_cart.empty:
-            avg_cart = valid_cart.mean()
-            median_cart = valid_cart.median()
-            max_cart = valid_cart.max()
-            
-            kpis.append(safe_kpi(
-                category="🛍️ Cart Analysis",
-                name="Avg Cart Value",
-                value=f"${avg_cart:,.2f}",
-                formula="Mean(Cart Value)",
-                source=f"`{cart_value_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
-            
-            kpis.append(safe_kpi(
-                category="🛍️ Cart Analysis",
-                name="Median Cart Value",
-                value=f"${median_cart:,.2f}",
-                formula="Median(Cart Value)",
-                source=f"`{cart_value_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
-            
-            kpis.append(safe_kpi(
-                category="🛍️ Cart Analysis",
-                name="Max Cart Value",
-                value=f"${max_cart:,.2f}",
-                formula="Max(Cart Value)",
-                source=f"`{cart_value_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
-    
-    if abandoned_rate_col and pd.api.types.is_numeric_dtype(df[abandoned_rate_col]):
-        valid_abandon = df[abandoned_rate_col].dropna()
+        kpis.append(engine.build_kpi(
+            category="🛑 Cart Analysis", name="Median Cart Value",
+            value=f"${cart_value_series.median():,.2f}", formula="Median(Cart Value)", source=f"`{cart_value_col}`"
+        ))
         
-        if not valid_abandon.empty:
-            avg_abandonment = valid_abandon.mean()
-            
-            kpis.append(safe_kpi(
-                category="🛍️ Cart Analysis",
-                name="Cart Abandonment Rate",
-                value=f"{avg_abandonment:.2f}%",
-                formula="Mean(Abandonment Rate)",
-                source=f"`{abandoned_rate_col}`",
-                confidence=conf,
-                warnings="High abandonment rate" if avg_abandonment > 70 else warns
-            ))
+        kpis.append(engine.build_kpi(
+            category="🛑 Cart Analysis", name="Max Cart Value",
+            value=f"${cart_value_series.max():,.2f}", formula="Max(Cart Value)", source=f"`{cart_value_col}`"
+        ))
+    else:
+        kpis.append(engine.log_missing("🛑 Cart Analysis", "Cart Value", "Missing numeric 'cart_value' column."))
     
-    if cart_items_col and pd.api.types.is_numeric_dtype(df[cart_items_col]):
-        valid_items = df[cart_items_col].dropna()
+    if abandoned_rate_col is not None:
+        avg_abandonment = abandoned_rate_series.mean()
+        warn_msg = "High abandonment rate" if avg_abandonment > 70 else "None"
         
-        if not valid_items.empty:
-            avg_items = valid_items.mean()
-            
-            kpis.append(safe_kpi(
-                category="🛍️ Cart Analysis",
-                name="Avg Items per Cart",
-                value=f"{avg_items:.2f}",
-                formula="Mean(Cart Items)",
-                source=f"`{cart_items_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
+        kpis.append(engine.build_kpi(
+            category="🛑 Cart Analysis", name="Cart Abandonment Rate",
+            value=f"{avg_abandonment:.2f}%", formula="Mean(Abandonment Rate)", source=f"`{abandoned_rate_col}`",
+            warnings=warn_msg
+        ))
+    else:
+        kpis.append(engine.log_missing("🛑 Cart Analysis", "Abandonment Rate", "Missing numeric 'abandonment_rate' column."))
+    
+    if cart_items_col is not None:
+        avg_items = cart_items_series.mean()
+        
+        kpis.append(engine.build_kpi(
+            category="🛑 Cart Analysis", name="Avg Items per Cart",
+            value=f"{avg_items:.2f}", formula="Mean(Cart Items)", source=f"`{cart_items_col}`"
+        ))
+    else:
+        kpis.append(engine.log_missing("🛑 Cart Analysis", "Items per Cart", "Missing numeric 'cart_items' column."))
+    
+    # ✅ OPTION 1: Print execution trace for debugging
+    if enable_debug:
+        engine.print_execution_log()
     
     return kpis
