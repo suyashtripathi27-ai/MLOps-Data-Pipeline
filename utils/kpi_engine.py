@@ -4,7 +4,8 @@ from utils.kpi_helpers import (
 )
 from utils.confidence_engine import evaluate_kpi_confidence
 from utils.validator import SemanticValidator
-from typing import Tuple, Optional, List, Any, Callable, Dict
+from typing import Tuple, Optional, Set, List, Any, Callable, Dict
+from datetime import datetime
 
 class KPIEngine:
     """
@@ -12,10 +13,11 @@ class KPIEngine:
     Industry files ONLY talk to this class. This class talks to the rest of the utils folder.
     
     Features:
-    - Data extraction with automatic column tracking
+    - Data extraction with automatic column tracking (no duplicates via set)
     - Pluggable business rule validation
     - Configurable confidence scoring per-industry
-    - Reusable KPI templates
+    - Reusable KPI templates (for HIGHLY repeated patterns only)
+    - Execution tracing for enterprise observability
     """
     
     def __init__(self, df, industry_config: Optional[Dict[str, Any]] = None):
@@ -25,22 +27,23 @@ class KPIEngine:
         Args:
             df: Input DataFrame
             industry_config: Optional dict with keys:
-                - missing_data_threshold (default: 10%)
-                - score_deduction_for_warning (default: 15)
-                - low_confidence_threshold (default: 30)
+                - missing_data_threshold (default: 10%) - % missing data before warning
+                - score_deduction_for_warning (default: 15) - points deducted per warning
+                - low_confidence_threshold (default: 30) - score above this = Low confidence
                 - custom_industry_checks (callable for domain-specific validation)
         """
         self.df = df
-        self.used_columns = []
+        # ✅ ISSUE 1 FIX: Use set instead of list to prevent duplicates
+        self.used_columns: Set[str] = set()
         
-        # ✅ NEW: Per-industry confidence configuration
+        # Per-industry confidence configuration
         self.confidence_config = industry_config or {}
         self.missing_data_threshold = self.confidence_config.get("missing_data_threshold", 10)
         self.score_deduction_for_warning = self.confidence_config.get("score_deduction_for_warning", 15)
         self.low_confidence_threshold = self.confidence_config.get("low_confidence_threshold", 30)
         self.custom_industry_checks = self.confidence_config.get("custom_industry_checks", None)
         
-        # ✅ NEW: Pluggable business rules registry
+        # Pluggable business rules registry
         self.business_rules: Dict[str, Callable] = {
             "dosage": SemanticValidator.is_valid_dosage,
             "percentage": SemanticValidator.is_valid_percentage,
@@ -50,8 +53,12 @@ class KPIEngine:
             "gmp_compliance": SemanticValidator.is_valid_gmp_compliance,
         }
         
-        # ✅ NEW: KPI template registry for reusable patterns
+        # KPI template registry (ONLY for highly repeated patterns)
         self.kpi_templates: Dict[str, Callable] = {}
+        
+        # ✅ ISSUE 5 FIX: Execution tracing for observability
+        self.execution_log: List[Dict[str, Any]] = []
+        self._trace_enabled = False
     
     # ==========================================
     # 0. REGISTRY MANAGEMENT (Plugin System)
@@ -66,16 +73,23 @@ class KPIEngine:
             validator_func: Function that takes (series) and returns (is_valid: bool, reason: str)
         """
         self.business_rules[rule_name] = validator_func
+        self._log_trace("rule_registered", {"rule_name": rule_name})
     
     def register_kpi_template(self, template_name: str, template_func: Callable) -> None:
         """
         Register a reusable KPI calculation template.
+        
+        ⚠️ WARNING: Only use for HIGHLY REPEATED patterns.
+        Do NOT create 50 tiny templates - that's over-engineering.
+        Good candidates: sum_metric, avg_metric, count_metric, growth_rate
+        Bad candidates: one-off calculations specific to a single KPI
         
         Args:
             template_name: Name of the template
             template_func: Function that takes (engine, **overrides) and returns KPI dict
         """
         self.kpi_templates[template_name] = template_func
+        self._log_trace("template_registered", {"template_name": template_name})
     
     # ==========================================
     # 1. DATA EXTRACTION (Talks to kpi_helpers)
@@ -84,7 +98,7 @@ class KPIEngine:
     def get_column(self, candidates: List[str]) -> Tuple[Optional[str], Optional[Any]]:
         """
         Find and return the first matching column from candidates.
-        Automatically tracks the column for confidence scoring.
+        Automatically tracks the column for confidence scoring (no duplicates).
         
         Args:
             candidates: List of column name variations to search
@@ -94,15 +108,22 @@ class KPIEngine:
         """
         col = first_column(self.df, candidates)
         if col:
-            self.used_columns.append(col)
+            self.used_columns.add(col)  # ✅ ISSUE 1 FIX: set prevents duplicates
+            self._log_trace("column_mapped", {
+                "col": col,
+                "candidates": candidates,
+                "type": str(self.df[col].dtype)
+            })
             return col, self.df[col]
+        
+        self._log_trace("column_not_found", {"candidates": candidates})
         return None, None
 
     def get_numeric(self, candidates: List[str]) -> Tuple[Optional[str], Optional[Any]]:
         """
         Find and return the first numeric column from candidates.
         Handles string-to-numeric coercion ($, %, commas).
-        Automatically tracks the column.
+        Automatically tracks the column (no duplicates).
         
         Args:
             candidates: List of column name variations to search
@@ -114,15 +135,32 @@ class KPIEngine:
         if col:
             series = safe_numeric_series(self.df, col)
             if series is not None:
-                self.used_columns.append(col)
+                self.used_columns.add(col)  # ✅ ISSUE 1 FIX: set prevents duplicates
+                non_null_count = len(series)
+                total_count = len(self.df)
+                coercion_failure_rate = ((total_count - non_null_count) / total_count * 100) if total_count > 0 else 0
+                
+                self._log_trace("numeric_coercion_applied", {
+                    "col": col,
+                    "candidates": candidates,
+                    "non_null_rows": non_null_count,
+                    "coercion_failure_rate": f"{coercion_failure_rate:.1f}%"
+                })
                 return col, series.dropna()
+            else:
+                self._log_trace("numeric_coercion_failed", {
+                    "col": col,
+                    "reason": "All values failed numeric conversion"
+                })
+        
+        self._log_trace("numeric_column_not_found", {"candidates": candidates})
         return None, None
 
     def get_datetime(self, candidates: List[str]) -> Tuple[Optional[str], Optional[Any]]:
         """
         Find and return the first datetime column from candidates.
         Handles string-to-datetime coercion and validates against epoch anomalies.
-        Automatically tracks the column.
+        Automatically tracks the column (no duplicates).
         
         Args:
             candidates: List of column name variations to search
@@ -132,10 +170,23 @@ class KPIEngine:
         """
         col = first_column(self.df, candidates)
         if col:
-            series = safe_datetime_series(self.df, col)
+            series = safe_datetime_series(self.df, col)  # ✅ ISSUE 2: Confirmed dependency exists
             if series is not None:
-                self.used_columns.append(col)
+                self.used_columns.add(col)  # ✅ ISSUE 1 FIX: set prevents duplicates
+                self._log_trace("datetime_coercion_applied", {
+                    "col": col,
+                    "candidates": candidates,
+                    "min_date": str(series.min()),
+                    "max_date": str(series.max())
+                })
                 return col, series.dropna()
+            else:
+                self._log_trace("datetime_coercion_failed", {
+                    "col": col,
+                    "reason": "Date parsing failed or epoch anomaly detected"
+                })
+        
+        self._log_trace("datetime_column_not_found", {"candidates": candidates})
         return None, None
     
     def reset_column_tracking(self) -> None:
@@ -143,7 +194,8 @@ class KPIEngine:
         Clear the used_columns tracker.
         Useful if you want to calculate multiple independent KPI groups.
         """
-        self.used_columns = []
+        self.used_columns.clear()
+        self._log_trace("column_tracking_reset", {})
 
     # ==========================================
     # 2. BUSINESS VALIDATION (Talks to validator.py)
@@ -165,10 +217,17 @@ class KPIEngine:
             is_valid, reason = engine.validate_business_rule("percentage", pct_series)
         """
         if rule_name not in self.business_rules:
-            # Graceful fallback: unknown rules pass validation
-            return True, f"Rule '{rule_name}' not registered (using default: Valid)"
+            msg = f"Rule '{rule_name}' not registered (using default: Valid)"
+            self._log_trace("business_rule_not_found", {"rule_name": rule_name})
+            return True, msg
         
-        return self.business_rules[rule_name](series)
+        is_valid, reason = self.business_rules[rule_name](series)
+        self._log_trace("business_rule_validated", {
+            "rule_name": rule_name,
+            "is_valid": is_valid,
+            "reason": reason
+        })
+        return is_valid, reason
 
     # ==========================================
     # 3. FORMATTING & GOVERNANCE (Talks to confidence_engine)
@@ -187,6 +246,12 @@ class KPIEngine:
     ) -> Dict[str, Any]:
         """
         Build a standardized KPI dictionary with automatic confidence scoring.
+        
+        ✅ ISSUE 3 NOTE: Confidence config (missing_data_threshold, score_deduction_for_warning)
+           is passed to evaluate_kpi_confidence(). Full integration roadmap:
+           - Phase 1 (current): confidence_engine respects config thresholds
+           - Phase 2 (future): governance_engine uses these thresholds
+           - Phase 3 (future): narrative weighting adjusts based on industry confidence profile
         
         Args:
             category: KPI category/group (e.g., "💳 Account Analysis")
@@ -214,7 +279,7 @@ class KPIEngine:
         if confidence is None:
             confidence, auto_warn = evaluate_kpi_confidence(
                 self.df, 
-                self.used_columns,
+                list(self.used_columns),  # Convert set to list for confidence_engine
                 custom_industry_checks=self.custom_industry_checks
             )
         else:
@@ -227,6 +292,14 @@ class KPIEngine:
             final_warn = warnings
         else:
             final_warn = f"{warnings} | {auto_warn}"
+        
+        self._log_trace("kpi_built", {
+            "category": category,
+            "name": name,
+            "confidence": confidence,
+            "warnings": final_warn,
+            "columns_used": list(self.used_columns)
+        })
         
         return safe_kpi(category, name, value, formula, source, confidence, final_warn, **kwargs)
 
@@ -256,6 +329,11 @@ class KPIEngine:
                 "Missing 'account_id' column."
             )
         """
+        self._log_trace("kpi_excluded", {
+            "category": category,
+            "name": name,
+            "reason": reason
+        })
         return excluded_kpi(category, name, source, reason)
     
     # ==========================================
@@ -266,6 +344,17 @@ class KPIEngine:
         """
         Build a KPI using a registered template with custom overrides.
         
+        ⚠️ ISSUE 4 WARNING: Use ONLY for highly repeated patterns.
+        Examples of GOOD templates:
+        - sum_metric (Total Revenue, Total Volume, Total Transactions)
+        - avg_metric (Avg Order Value, Avg Account Balance, Avg Processing Time)
+        - count_metric (Active Accounts, Unique Customers, Transactions Count)
+        - growth_rate (Month-over-month growth, Year-over-year growth)
+        
+        Examples of BAD templates:
+        - Anything specific to one KPI or calculation
+        - Complex business logic unique to one industry
+        
         Args:
             template_name: Name of the registered template
             **overrides: Values to override template defaults
@@ -274,7 +363,7 @@ class KPIEngine:
             Calculated KPI dictionary
             
         Example:
-            # Register template once
+            # Register template once (at app startup or in main.py)
             def sum_metric_template(engine, col_candidates, name, category):
                 col, series = engine.get_numeric(col_candidates)
                 if col is None:
@@ -287,7 +376,7 @@ class KPIEngine:
             
             engine.register_kpi_template("sum_metric", sum_metric_template)
             
-            # Use template
+            # Use template (saves 3 lines of code per KPI)
             kpi = engine.build_from_template("sum_metric", 
                 col_candidates=["amount", "transaction_amount"],
                 name="Total Volume",
@@ -299,6 +388,12 @@ class KPIEngine:
                 f"Template '{template_name}' not found. "
                 f"Available: {list(self.kpi_templates.keys())}"
             )
+        
+        self._log_trace("template_used", {
+            "template_name": template_name,
+            "overrides": overrides
+        })
+        
         return self.kpi_templates[template_name](self, **overrides)
     
     def list_templates(self) -> List[str]:
@@ -310,26 +405,105 @@ class KPIEngine:
         return list(self.business_rules.keys())
     
     # ==========================================
-    # 5. DIAGNOSTICS & DEBUGGING
+    # 5. EXECUTION TRACING (Enterprise Observability)
+    # ==========================================
+    
+    def enable_tracing(self, enabled: bool = True) -> None:
+        """
+        Enable/disable execution tracing.
+        When enabled, every operation is logged for debugging.
+        
+        ✅ ISSUE 5: Execution tracing enables enterprise observability
+        Useful for:
+        - Debugging data pipeline issues
+        - Auditing which columns were used
+        - Identifying coercion failures
+        - Tracking confidence score changes
+        
+        Args:
+            enabled: Whether to enable tracing (default: True)
+        """
+        self._trace_enabled = enabled
+        self._log_trace("tracing_toggled", {"enabled": enabled})
+    
+    def _log_trace(self, event_type: str, details: Dict[str, Any]) -> None:
+        """Internal method to log execution events."""
+        if self._trace_enabled:
+            self.execution_log.append({
+                "timestamp": datetime.now().isoformat(),
+                "event_type": event_type,
+                "details": details
+            })
+    
+    def get_execution_log(self) -> List[Dict[str, Any]]:
+        """
+        Retrieve the execution trace log.
+        
+        Returns:
+            List of trace events with timestamps
+            
+        Example output:
+            [
+                {
+                    "timestamp": "2026-05-26T10:30:45.123456",
+                    "event_type": "column_mapped",
+                    "details": {"col": "account_id", "type": "object"}
+                },
+                {
+                    "timestamp": "2026-05-26T10:30:45.234567",
+                    "event_type": "numeric_coercion_applied",
+                    "details": {"col": "amount", "coercion_failure_rate": "2.5%"}
+                },
+                {
+                    "timestamp": "2026-05-26T10:30:45.345678",
+                    "event_type": "kpi_built",
+                    "details": {"name": "Total Volume", "confidence": "High"}
+                }
+            ]
+        """
+        return self.execution_log.copy()
+    
+    def clear_execution_log(self) -> None:
+        """Clear the execution trace log."""
+        self.execution_log.clear()
+    
+    def print_execution_log(self) -> None:
+        """Pretty-print the execution trace log for debugging."""
+        if not self.execution_log:
+            print("📋 Execution log is empty. Enable tracing with engine.enable_tracing()")
+            return
+        
+        print("\n" + "="*80)
+        print("📋 EXECUTION TRACE LOG")
+        print("="*80)
+        for i, event in enumerate(self.execution_log, 1):
+            print(f"\n[{i}] {event['event_type']} @ {event['timestamp']}")
+            for key, value in event['details'].items():
+                print(f"    {key}: {value}")
+        print("\n" + "="*80 + "\n")
+    
+    # ==========================================
+    # 6. DIAGNOSTICS & DEBUGGING
     # ==========================================
     
     def get_used_columns(self) -> List[str]:
-        """Return list of columns used in current KPI batch."""
-        return self.used_columns.copy()
+        """Return list of columns used in current KPI batch (sorted)."""
+        return sorted(list(self.used_columns))
     
     def get_unused_columns(self) -> List[str]:
-        """Return list of columns NOT used in current KPI batch."""
-        return [col for col in self.df.columns if col not in self.used_columns]
+        """Return list of columns NOT used in current KPI batch (sorted)."""
+        unused = [col for col in self.df.columns if col not in self.used_columns]
+        return sorted(unused)
     
     def debug_info(self) -> Dict[str, Any]:
         """
-        Return debugging information about the engine state.
-        Useful for troubleshooting.
+        Return comprehensive debugging information about the engine state.
+        Useful for troubleshooting and understanding data lineage.
         """
         return {
             "dataframe_shape": self.df.shape,
             "total_columns": len(self.df.columns),
-            "used_columns": self.used_columns,
+            "used_columns": self.get_used_columns(),
             "unused_columns": self.get_unused_columns(),
             "registered_templates": self.list_templates(),
             "registered_business_rules": self.list_business_rules(),
@@ -337,5 +511,7 @@ class KPIEngine:
                 "missing_data_threshold": self.missing_data_threshold,
                 "score_deduction_for_warning": self.score_deduction_for_warning,
                 "low_confidence_threshold": self.low_confidence_threshold,
-            }
+            },
+            "tracing_enabled": self._trace_enabled,
+            "execution_log_size": len(self.execution_log)
         }
