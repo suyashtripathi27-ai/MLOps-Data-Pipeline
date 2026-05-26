@@ -4,9 +4,7 @@ GOVERNANCE: Operational capability metrics ONLY.
 """
 import pandas as pd
 from utils.kpi_engine import KPIEngine
-from utils.validator import SemanticValidator
 
-# HR Industry Configuration
 HR_CONFIG = {
     "missing_data_threshold": 12,
     "score_deduction_for_warning": 10,
@@ -14,127 +12,65 @@ HR_CONFIG = {
 }
 
 def calc_training_metrics(df, enable_debug=False):
-    """Calculates training and skill development KPIs."""
     kpis = []
+    if len(df) == 0: return kpis
     
-    if len(df) == 0:
-        return kpis
-    
-    # Initialize engine with HR config
     engine = KPIEngine(df, industry_config=HR_CONFIG)
-    if enable_debug:
-        engine.enable_tracing()
+    if enable_debug: engine.enable_tracing()
     
-    # Training metrics
-    employee_col, employee_series = engine.get_column(["employee_id", "emp_id", "staff_id"])
-    training_col, training_series = engine.get_column(["training_id", "course_id", "program_id"])
-    completed_col, completed_series = engine.get_column(["completed", "completion_flag", "passed"])
-    # Training duration is ELAPSED TIME (hours/days of training)
-    duration_col, duration_series = engine.get_numeric(["training_hours", "hours", "duration_days"])
-    completion_date_col, completion_date_series = engine.get_column(["completion_date", "finish_date", "date_completed"])
-    skill_col, skill_series = engine.get_column(["skill_name", "skill", "competency"])
-    certification_col, certification_series = engine.get_column(["certified", "certification_obtained", "cert_flag"])
+    emp_col, emp_series = engine.get_column(["employee_id", "emp_id", "staff_id"])
+    trn_col, trn_series = engine.get_column(["training_id", "course_id", "program_id"])
+    comp_col, comp_series = engine.get_column(["completed", "completion_flag", "passed"])
+    dur_col, dur_series = engine.get_numeric(["training_hours", "hours", "duration_days"])
+    cert_col, cert_series = engine.get_column(["certified", "certification_obtained", "cert_flag"])
     
-    if not employee_col:
+    if emp_col is not None:
+        kpis.append(engine.build_kpi(
+            category="👥 Workforce", name="Total Employees Trained",
+            value=f"{emp_series.nunique():,}", formula="Count(Distinct Employees)", source=f"`{emp_col}`"
+        ))
+    else:
+        kpis.append(engine.log_missing("👥 Workforce", "Employees Trained", "Missing employee ID."))
         return kpis
-    
-    # Total employees
-    total_employees = employee_series.nunique()
-    
-    kpis.append(engine.build_kpi(
-        category="👥 Workforce",
-        name="Total Employees Trained",
-        value=f"{total_employees:,}",
-        formula="Count(Distinct Employees)",
-        source=f"`{employee_col}`"
-    ))
-    
-    # Training programs
-    if training_col:
-        total_trainings = training_series.nunique()
-        
+
+    if trn_col is not None:
         kpis.append(engine.build_kpi(
-            category="📚 Training",
-            name="Total Training Programs",
-            value=f"{total_trainings}",
-            formula="Count(Distinct Trainings)",
-            source=f"`{training_col}`"
+            category="📚 Training", name="Total Training Programs",
+            value=f"{trn_series.nunique()}", formula="Count(Distinct Trainings)", source=f"`{trn_col}`"
         ))
-    
-    # Completion rate
-    if completed_col and not completed_series.empty:
-        completed_mask = completed_series.astype(str).str.lower().isin(['1', 'true', 'yes', 'completed', 'passed'])
-        completed_count = completed_mask.sum()
-        completion_rate = (completed_count / len(df) * 100) if len(df) > 0 else 0
-        
+    else:
+        kpis.append(engine.log_missing("📚 Training", "Training Programs", "Missing training ID."))
+
+    if comp_col is not None:
+        comp_mask = comp_series.astype(str).str.lower().isin(['1', 'true', 'yes', 'completed', 'passed'])
+        comp_rate = (comp_mask.sum() / len(df) * 100) if len(df) > 0 else 0
         kpis.append(engine.build_kpi(
-            category="📚 Training",
-            name="Training Completion Count",
-            value=f"{completed_count:,}",
-            formula="Count(Completed = True)",
-            source=f"`{completed_col}`"
+            category="📚 Training", name="Training Completion Rate",
+            value=f"{comp_rate:.2f}%", formula="(Completed / Total) * 100", 
+            source=f"`{comp_col}`", warnings="Low completion (<80%)" if comp_rate < 80 else "None"
         ))
-        
-        kpis.append(engine.build_kpi(
-            category="📚 Training",
-            name="Training Completion Rate",
-            value=f"{completion_rate:.2f}%",
-            formula="(Completed / Total) * 100",
-            source=f"`{completed_col}`",
-            warnings="Low completion (<80%)" if completion_rate < 80 else None
-        ))
-    
-    # Training duration (⏱️ ELAPSED TIME - hours spent in training)
-    if duration_col and not duration_series.empty:
-        is_valid, reason = SemanticValidator.is_valid_duration(duration_series)
-        
+    else:
+        kpis.append(engine.log_missing("📚 Training", "Completion Rate", "Missing completion flag."))
+
+    if dur_col is not None and not dur_series.empty:
+        is_valid, reason = engine.validate_business_rule("duration", dur_series)
         if is_valid:
-            valid_duration = duration_series.dropna()
-            
-            if not valid_duration.empty:
-                total_hours = valid_duration.sum()
-                avg_hours = valid_duration.mean()
-                
-                kpis.append(engine.build_kpi(
-                    category="📚 Training",
-                    name="Total Training Hours",
-                    value=f"{total_hours:,.0f} hours",
-                    formula="Sum(Training Hours)",
-                    source=f"`{duration_col}`"
-                ))
-                
-                kpis.append(engine.build_kpi(
-                    category="📚 Training",
-                    name="Avg Training Hours per Person",
-                    value=f"{avg_hours:.2f} hours",
-                    formula="Mean(Training Hours)",
-                    source=f"`{duration_col}`"
-                ))
-    
-    # Skills developed
-    if skill_col:
-        unique_skills = skill_series.nunique()
-        
+            kpis.append(engine.build_kpi(
+                category="📚 Training", name="Total Training Hours",
+                value=f"{dur_series.sum():,.0f} hours", formula="Sum(Training Hours)", source=f"`{dur_col}`"
+            ))
+        else:
+            kpis.append(engine.log_missing("📚 Training", "Training Hours", f"Data corrupted: {reason}"))
+    else:
+        kpis.append(engine.log_missing("📚 Training", "Training Hours", "Missing duration data."))
+
+    if cert_col is not None:
+        cert_mask = cert_series.astype(str).str.lower().isin(['1', 'true', 'yes', 'certified'])
         kpis.append(engine.build_kpi(
-            category="🎯 Skills",
-            name="Unique Skills Developed",
-            value=f"{unique_skills}",
-            formula="Count(Distinct Skills)",
-            source=f"`{skill_col}`"
+            category="🎯 Skills", name="Employees Certified",
+            value=f"{cert_mask.sum():,}", formula="Count(Certified = True)", source=f"`{cert_col}`"
         ))
-    
-    # Certifications
-    if certification_col and not certification_series.empty:
-        certified_mask = certification_series.astype(str).str.lower().isin(['1', 'true', 'yes', 'certified'])
-        certified_count = certified_mask.sum()
-        certification_rate = (certified_count / len(df) * 100) if len(df) > 0 else 0
-        
-        kpis.append(engine.build_kpi(
-            category="🎯 Skills",
-            name="Employees Certified",
-            value=f"{certified_count:,} ({certification_rate:.1f}%)",
-            formula="Count(Certified = True)",
-            source=f"`{certification_col}`"
-        ))
-    
+    else:
+        kpis.append(engine.log_missing("🎯 Skills", "Certifications", "Missing certification flag."))
+
     return kpis
