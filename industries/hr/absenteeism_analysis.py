@@ -23,7 +23,6 @@ def calc_absenteeism_metrics(df, enable_debug=False):
     if len(df) == 0:
         return kpis
     
-    # 1. Route all data through the Engine
     emp_col, emp_series = engine.get_column(["employee_id", "emp_id", "staff_id"])
     abs_col, abs_series = engine.get_numeric(["absence_count", "absent_days", "total_absences"])
     unp_col, unp_series = engine.get_column(["unplanned_absence", "sick_leave", "unexpected_leave"])
@@ -41,7 +40,7 @@ def calc_absenteeism_metrics(df, enable_debug=False):
         ))
     else:
         kpis.append(engine.log_missing("👥 Workforce", "Total Employees", "Missing 'employee_id' column."))
-        return kpis # Hard stop: We can't calculate per-employee metrics without employees!
+        return kpis 
     
     # ==========================================
     # 2. ABSENCE FREQUENCY
@@ -82,7 +81,6 @@ def calc_absenteeism_metrics(df, enable_debug=False):
     # 4. ABSENCE DURATION (Using Engine Business Rules!)
     # ==========================================
     if dur_col is not None:
-        # Notice we are routing this through the Engine now!
         is_valid, reason = engine.validate_business_rule("duration", dur_series)
         
         if is_valid:
