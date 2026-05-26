@@ -4,12 +4,10 @@ Stock levels, inventory turnover, and stockout metrics.
 import pandas as pd
 from utils.kpi_engine import KPIEngine
 
-# Ecommerce industry configuration
-# Moderate thresholds - focus on growth velocity vs strict compliance
 ECOMMERCE_CONFIG = {
-    "missing_data_threshold": 8,        # ✅ Moderate - tech platforms have data quality
-    "score_deduction_for_warning": 12,  # ✅ Lower penalty - more lenient than banking
-    "low_confidence_threshold": 35,     # ✅ Higher threshold = harder to flag "Low"
+    "missing_data_threshold": 8,        
+    "score_deduction_for_warning": 12,  
+    "low_confidence_threshold": 35,     
 }
 
 def calc_inventory_metrics(df, enable_debug=False):
@@ -23,10 +21,8 @@ def calc_inventory_metrics(df, enable_debug=False):
     Returns:
         List of KPI dictionaries
     """
-    # ✅ OPTION 2: Initialize with ecommerce industry config
-    engine = KPIEngine(df, industry_config=ECOMMERCE_CONFIG)
     
-    # ✅ OPTION 1: Enable tracing for enterprise observability
+    engine = KPIEngine(df, industry_config=ECOMMERCE_CONFIG)
     if enable_debug:
         engine.enable_tracing()
     
@@ -95,7 +91,6 @@ def calc_inventory_metrics(df, enable_debug=False):
     else:
         kpis.append(engine.log_missing("📖 Inventory", "Inventory Metrics", "Missing 'product_id' or numeric 'stock_level'."))
     
-    # ✅ OPTION 1: Print execution trace for debugging
     if enable_debug:
         engine.print_execution_log()
     
