@@ -4,8 +4,32 @@ Account-level deposit and balance trend KPIs.
 import pandas as pd
 from utils.kpi_engine import KPIEngine
 
-def calc_account_metrics(df):
-    engine = KPIEngine(df)
+# Banking industry configuration
+# Stricter than default - regulatory compliance demands accuracy
+BANKING_CONFIG = {
+    "missing_data_threshold": 5,        # ✅ Stricter than default 10% - banking is risk-sensitive
+    "score_deduction_for_warning": 20,  # ✅ Higher penalty for quality issues
+    "low_confidence_threshold": 25,     # ✅ Lower threshold = easier to flag as "Low"
+}
+
+def calc_account_metrics(df, enable_debug=False):
+    """
+    Calculate account-level KPIs with optional execution tracing.
+    
+    Args:
+        df: Input DataFrame
+        enable_debug: If True, prints execution trace log for observability
+    
+    Returns:
+        List of KPI dictionaries
+    """
+    # ✅ OPTION 2: Initialize with banking industry config for stricter validation
+    engine = KPIEngine(df, industry_config=BANKING_CONFIG)
+    
+    # ✅ OPTION 1: Enable tracing for enterprise observability
+    if enable_debug:
+        engine.enable_tracing()
+    
     kpis = []
     
     if len(df) == 0: 
@@ -76,4 +100,8 @@ def calc_account_metrics(df):
     else:
         kpis.append(engine.log_missing("💳 Account Analysis", "Account Growth", "Requires valid 'date' and 'amount'."))
 
+    # ✅ OPTION 1: Print execution trace for debugging
+    if enable_debug:
+        engine.print_execution_log()
+    
     return kpis
