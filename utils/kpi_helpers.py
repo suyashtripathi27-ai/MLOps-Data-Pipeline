@@ -1,12 +1,63 @@
 import pandas as pd
 from utils.confidence_engine import evaluate_kpi_confidence
 
+# ==========================================
+# 1. SMART COLUMN ROUTING
+# ==========================================
+
 def first_column(df, candidates):
-    """Finds the first matching column in the dataframe from a list of candidates."""
-    for col in candidates:
-        if col in df.columns:
-            return col
+    """
+    Finds the first matching column in the dataframe from a list of candidates.
+    100% CASE-INSENSITIVE to prevent data-mapping failures.
+    """
+    if df is None or df.empty:
+        return None
+        
+    lower_candidates = [str(col).lower().strip() for col in candidates]
+    
+    for actual_col in df.columns:
+        if str(actual_col).lower().strip() in lower_candidates:
+            return actual_col 
+            
     return None
+
+
+# ==========================================
+# 2. SAFETY MIDDLEWARE (Crash Prevention)
+# ==========================================
+
+def safe_exists(df, col):
+    """Safely checks if a column alias was found AND exists in the DataFrame."""
+    return col is not None and col in df.columns
+
+def safe_numeric(df, col):
+    """Safely checks if a column exists and is inherently numeric."""
+    return safe_exists(df, col) and pd.api.types.is_numeric_dtype(df[col])
+
+def safe_datetime(df, col):
+    """Safely checks if a column exists and can be parsed as dates."""
+    if not safe_exists(df, col):
+        return False
+        
+    # Fast-path: Already a datetime object
+    if pd.api.types.is_datetime64_any_dtype(df[col]):
+        return True
+        
+    # Safe check: Attempt to convert a tiny sample without crashing
+    first_valid = df[col].dropna().iloc[0:1]
+    if first_valid.empty:
+        return False
+        
+    try:
+        pd.to_datetime(first_valid, errors='raise')
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+# ==========================================
+# 3. KPI FORMATTING & DATA CLEANING
+# ==========================================
 
 def safe_kpi(category, name, value, formula, source, confidence, warnings):
     """Standardizes the dictionary output for every KPI across all industries."""
