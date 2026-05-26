@@ -1,137 +1,105 @@
 """
-Risk metrics, exposure, and compliance analysis.
+Financial risk metrics, volatility, and default indicators.
 """
 import pandas as pd
-from utils.kpi_helpers import first_column, safe_kpi, confidence_for
+from utils.kpi_engine import KPIEngine
 
-def calc_risk_metrics(df):
-    """Calculates risk and exposure KPIs."""
+FINANCE_CONFIG = {
+    "missing_data_threshold": 3,
+    "score_deduction_for_warning": 20,
+    "low_confidence_threshold": 50,
+}
+
+def calc_risk_metrics(df, enable_debug=False):
+    """
+    Calculate risk KPIs with optional execution tracing.
+    
+    Args:
+        df: Input DataFrame
+        enable_debug: If True, prints execution trace log for observability
+    
+    Returns:
+        List of KPI dictionaries
+    """
+    
+    engine = KPIEngine(df, industry_config=FINANCE_CONFIG)
+    if enable_debug:
+        engine.enable_tracing()
+    
     kpis = []
     
     if len(df) == 0:
         return kpis
     
-    risk_score_col = first_column(df, ["risk_score", "exposure_score", "risk_rating"])
-    loss_col = first_column(df, ["loss", "potential_loss", "expected_loss"])
-    probability_col = first_column(df, ["probability", "default_probability", "risk_probability"])
-    exposure_col = first_column(df, ["exposure", "at_risk", "credit_exposure", "market_exposure"])
-    compliance_col = first_column(df, ["compliance_score", "compliance_status", "risk_compliant"])
+    return_col, return_series = engine.get_numeric(["return", "roi", "pct_return", "investment_return"])
+    volatility_col, volatility_series = engine.get_numeric(["volatility", "std_dev", "variance"])
+    risk_score_col, risk_score_series = engine.get_numeric(["risk_score", "risk_rating", "credit_score"])
+    default_col, default_series = engine.get_column(["default_flag", "defaulted", "is_default", "loan_default"])
+    loss_col, loss_series = engine.get_numeric(["loss", "loss_amount", "expected_loss"])
     
-    if not risk_score_col and not exposure_col:
-        return kpis
-    
-    conf, warns = confidence_for(df, [col for col in [risk_score_col, loss_col, probability_col, exposure_col, compliance_col] if col])
-    
-    # Risk score analysis
-    if risk_score_col and pd.api.types.is_numeric_dtype(df[risk_score_col]):
-        valid_risk = df[risk_score_col].dropna()
+    # Return metrics
+    if return_col is not None:
+        avg_return = return_series.mean()
+        std_return = return_series.std()
         
-        if not valid_risk.empty:
-            avg_risk = valid_risk.mean()
-            max_risk = valid_risk.max()
-            
-            kpis.append(safe_kpi(
-                category="⚠️ Risk",
-                name="Avg Risk Score",
-                value=f"{avg_risk:.2f}",
-                formula="Mean(Risk Score)",
-                source=f"`{risk_score_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
-            
-            kpis.append(safe_kpi(
-                category="⚠️ Risk",
-                name="Max Risk Score",
-                value=f"{max_risk:.2f}",
-                formula="Max(Risk Score)",
-                source=f"`{risk_score_col}`",
-                confidence=conf,
-                warnings="Critical risk detected" if max_risk > 80 else warns
-            ))
-            
-            # High-risk items
-            high_risk_threshold = valid_risk.quantile(0.75)
-            high_risk_count = (valid_risk >= high_risk_threshold).sum()
-            high_risk_pct = (high_risk_count / len(valid_risk) * 100) if len(valid_risk) > 0 else 0
-            
-            kpis.append(safe_kpi(
-                category="⚠️ Risk",
-                name="High-Risk Items (Top 25%)",
-                value=f"{high_risk_count:,} ({high_risk_pct:.2f}%)",
-                formula="Count(Risk >= 75th Percentile)",
-                source=f"`{risk_score_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
+        kpis.append(engine.build_kpi(
+            category="⚠️ Risk", name="Avg Return %",
+            value=f"{avg_return:.2f}%", formula="Mean(Return)", source=f"`{return_col}`"
+        ))
+        
+        kpis.append(engine.build_kpi(
+            category="⚠️ Risk", name="Return Volatility (Std Dev)",
+            value=f"{std_return:.2f}%", formula="StdDev(Return)", source=f"`{return_col}`"
+        ))
+    
+    # Risk score
+    if risk_score_col is not None:
+        avg_risk = risk_score_series.mean()
+        high_risk = (risk_score_series > risk_score_series.quantile(0.75)).sum()
+        high_risk_pct = (high_risk / len(df) * 100) if len(df) > 0 else 0
+        
+        warn_msg = "High portfolio risk" if high_risk_pct > 50 else "None"
+        kpis.append(engine.build_kpi(
+            category="⚠️ Risk", name="Avg Risk Score",
+            value=f"{avg_risk:.2f}", formula="Mean(Risk Score)", source=f"`{risk_score_col}`",
+            warnings=warn_msg
+        ))
+        
+        kpis.append(engine.build_kpi(
+            category="⚠️ Risk", name="High Risk Items %",
+            value=f"{high_risk_pct:.2f}%", formula="(Risk > 75th Percentile) / Total * 100", 
+            source=f"`{risk_score_col}`"
+        ))
+    
+    # Default rate
+    if default_col is not None:
+        default_mask = default_series.astype(str).str.lower().isin(['1', 'true', 'yes', 'defaulted', 'default'])
+        default_count = default_mask.sum()
+        default_rate = (default_count / len(df) * 100) if len(df) > 0 else 0
+        
+        warn_msg = "CRITICAL: High default rate (>5%)" if default_rate > 5 else "Elevated default rate (>2%)" if default_rate > 2 else "None"
+        kpis.append(engine.build_kpi(
+            category="⚠️ Risk", name="Default Rate %",
+            value=f"{default_rate:.2f}%", formula="(Defaulted / Total) * 100", source=f"`{default_col}`",
+            warnings=warn_msg
+        ))
     
     # Expected loss
-    if loss_col and pd.api.types.is_numeric_dtype(df[loss_col]):
-        total_loss = df[loss_col].sum()
-        avg_loss = df[loss_col].mean()
+    if loss_col is not None:
+        total_loss = loss_series.sum()
+        avg_loss = loss_series.mean()
         
-        kpis.append(safe_kpi(
-            category="⚠️ Risk",
-            name="Total Expected Loss",
-            value=f"${total_loss:,.2f}",
-            formula="Sum(Loss)",
-            source=f"`{loss_col}`",
-            confidence=conf,
-            warnings=warns
+        kpis.append(engine.build_kpi(
+            category="⚠️ Risk", name="Total Expected Loss",
+            value=f"${total_loss:,.2f}", formula="Sum(Loss)", source=f"`{loss_col}`"
         ))
         
-        kpis.append(safe_kpi(
-            category="⚠️ Risk",
-            name="Avg Expected Loss",
-            value=f"${avg_loss:,.2f}",
-            formula="Mean(Loss)",
-            source=f"`{loss_col}`",
-            confidence=conf,
-            warnings=warns
+        kpis.append(engine.build_kpi(
+            category="⚠️ Risk", name="Avg Expected Loss",
+            value=f"${avg_loss:,.2f}", formula="Mean(Loss)", source=f"`{loss_col}`"
         ))
     
-    # Credit exposure
-    if exposure_col and pd.api.types.is_numeric_dtype(df[exposure_col]):
-        total_exposure = df[exposure_col].sum()
-        
-        kpis.append(safe_kpi(
-            category="⚠️ Risk",
-            name="Total Credit Exposure",
-            value=f"${total_exposure:,.2f}",
-            formula="Sum(Exposure)",
-            source=f"`{exposure_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
-        
-        # Concentration risk
-        exposure_concentration = df[exposure_col].nlargest(3).sum()
-        concentration_pct = (exposure_concentration / total_exposure * 100) if total_exposure > 0 else 0
-        
-        kpis.append(safe_kpi(
-            category="⚠️ Risk",
-            name="Top 3 Exposure Concentration",
-            value=f"{concentration_pct:.2f}%",
-            formula="(Top 3 / Total Exposure) * 100",
-            source=f"`{exposure_col}`",
-            confidence=conf,
-            warnings="High concentration risk" if concentration_pct > 40 else warns
-        ))
-    
-    # Compliance status
-    if compliance_col:
-        compliance_mask = df[compliance_col].astype(str).str.lower().isin(['1', 'true', 'yes', 'compliant'])
-        compliant_count = compliance_mask.sum()
-        compliant_pct = (compliant_count / len(df) * 100) if len(df) > 0 else 0
-        
-        kpis.append(safe_kpi(
-            category="⚠️ Risk",
-            name="Compliance Rate",
-            value=f"{compliant_pct:.2f}%",
-            formula="(Compliant / Total) * 100",
-            source=f"`{compliance_col}`",
-            confidence=conf,
-            warnings="Low compliance rate" if compliant_pct < 80 else warns
-        ))
+    if enable_debug:
+        engine.print_execution_log()
     
     return kpis
