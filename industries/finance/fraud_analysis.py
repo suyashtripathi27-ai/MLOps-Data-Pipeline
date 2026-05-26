@@ -11,25 +11,11 @@ FINANCE_CONFIG = {
 }
 
 def calc_fraud_metrics(df, enable_debug=False):
-    """
-    Calculate fraud detection KPIs with optional execution tracing.
-    
-    Args:
-        df: Input DataFrame
-        enable_debug: If True, prints execution trace log for observability
-    
-    Returns:
-        List of KPI dictionaries
-    """
-    
     engine = KPIEngine(df, industry_config=FINANCE_CONFIG)
-    if enable_debug:
-        engine.enable_tracing()
+    if enable_debug: engine.enable_tracing()
     
     kpis = []
-    
-    if len(df) == 0:
-        return kpis
+    if len(df) == 0: return kpis
     
     fraud_col, fraud_series = engine.get_column(["fraud_flag", "is_fraud", "fraud_indicator", "flagged"])
     amount_col, amount_series = engine.get_numeric(["transaction_amount", "amount", "value", "transaction_value"])
@@ -43,11 +29,9 @@ def calc_fraud_metrics(df, enable_debug=False):
         warn_msg = "CRITICAL: High fraud rate (>1%)" if fraud_rate > 1 else "Elevated fraud rate (>0.5%)" if fraud_rate > 0.5 else "None"
         kpis.append(engine.build_kpi(
             category="🚨 Fraud Detection", name="Fraud Flag Rate %",
-            value=f"{fraud_rate:.2f}%", formula="(Fraudulent / Total) * 100", source=f"`{fraud_col}`",
-            warnings=warn_msg
+            value=f"{fraud_rate:.2f}%", formula="(Fraudulent / Total) * 100", source=f"`{fraud_col}`", warnings=warn_msg
         ))
         
-        # Fraud dollar impact
         if amount_col is not None:
             fraudulent_amount = amount_series[fraud_mask].sum()
             total_amount = amount_series.sum()
@@ -57,11 +41,13 @@ def calc_fraud_metrics(df, enable_debug=False):
             kpis.append(engine.build_kpi(
                 category="🚨 Fraud Detection", name="Fraud Dollar %",
                 value=f"{fraud_dollar_pct:.2f}%", formula="(Fraud $ / Total $) * 100", 
-                source=f"`{fraud_col}`, `{amount_col}`",
-                warnings=warn_msg
+                source=f"`{fraud_col}`, `{amount_col}`", warnings=warn_msg
             ))
+        else:
+            kpis.append(engine.log_missing("🚨 Fraud Detection", "Fraud Dollar Impact", "Missing numeric 'amount'."))
+    else:
+        kpis.append(engine.log_missing("🚨 Fraud Detection", "Fraud Rate", "Missing 'fraud_flag' column."))
     
-    # Anomaly score
     if anomaly_col is not None:
         avg_anomaly = anomaly_series.mean()
         high_anomaly = (anomaly_series > anomaly_series.quantile(0.90)).sum()
@@ -76,11 +62,10 @@ def calc_fraud_metrics(df, enable_debug=False):
         kpis.append(engine.build_kpi(
             category="🚨 Fraud Detection", name="High Anomaly Items %",
             value=f"{high_anomaly_pct:.2f}%", formula="(Anomaly > 90th Percentile) / Total * 100", 
-            source=f"`{anomaly_col}`",
-            warnings=warn_msg
+            source=f"`{anomaly_col}`", warnings=warn_msg
         ))
+    else:
+        kpis.append(engine.log_missing("🚨 Fraud Detection", "Anomaly Scores", "Missing numeric 'anomaly_score'."))
     
-    if enable_debug:
-        engine.print_execution_log()
-    
+    if enable_debug: engine.print_execution_log()
     return kpis
