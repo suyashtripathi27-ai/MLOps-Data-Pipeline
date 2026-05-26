@@ -2,145 +2,127 @@
 Operating cash flow, free cash flow, and runway metrics.
 """
 import pandas as pd
-from utils.kpi_helpers import first_column, safe_kpi, confidence_for
+from utils.kpi_engine import KPIEngine
 
-def calc_cashflow_metrics(df):
-    """Calculates cash flow and runway KPIs."""
+FINANCE_CONFIG = {
+    "missing_data_threshold": 3,       
+    "score_deduction_for_warning": 20,  
+    "low_confidence_threshold": 50,    
+}
+
+def calc_cashflow_metrics(df, enable_debug=False):
+    """
+    Calculate cash flow KPIs with optional execution tracing.
+    
+    Args:
+        df: Input DataFrame
+        enable_debug: If True, prints execution trace log for observability
+    
+    Returns:
+        List of KPI dictionaries
+    """
+    
+    engine = KPIEngine(df, industry_config=FINANCE_CONFIG)
+    if enable_debug:
+        engine.enable_tracing()
+    
     kpis = []
     
     if len(df) == 0:
         return kpis
     
-    ocf_col = first_column(df, ["cash_flow_operating", "ocf", "operating_cash_flow", "operating_cf"])
-    capex_col = first_column(df, ["capital_expenditure", "capex", "capital_investments", "investing_cf"])
-    cash_col = first_column(df, ["cash_balance", "cash", "cash_on_hand", "liquid_cash"])
-    burn_col = first_column(df, ["monthly_burn_rate", "burn_rate", "monthly_burn", "cash_burn"])
-    fcf_col = first_column(df, ["free_cash_flow", "fcf"])
+    ocf_col, ocf_series = engine.get_numeric(["cash_flow_operating", "ocf", "operating_cash_flow", "operating_cf"])
+    capex_col, capex_series = engine.get_numeric(["capital_expenditure", "capex", "capital_investments", "investing_cf"])
+    cash_col, cash_series = engine.get_numeric(["cash_balance", "cash", "cash_on_hand", "liquid_cash"])
+    burn_col, burn_series = engine.get_numeric(["monthly_burn_rate", "burn_rate", "monthly_burn", "cash_burn"])
+    fcf_col, fcf_series = engine.get_numeric(["free_cash_flow", "fcf"])
     
-    if not ocf_col:
+    if ocf_col is None:
+        kpis.append(engine.log_missing("💸 Cash Flow", "Cash Flow Metrics", "Missing numeric 'operating_cash_flow'."))
         return kpis
-    
-    # OCF is MONEY, not duration
-    if not pd.api.types.is_numeric_dtype(df[ocf_col]):
-        kpis.append(safe_kpi(
-            category="💸 Cash Flow",
-            name="Cash Flow Metrics",
-            value="EXCLUDED",
-            formula="N/A",
-            source=f"`{ocf_col}`",
-            confidence="Low",
-            warnings="OCF column contains non-numeric data."
-        ))
-        return kpis
-    
-    conf, warns = confidence_for(df, [col for col in [ocf_col, capex_col, cash_col, burn_col, fcf_col] if col])
     
     # Operating cash flow
-    total_ocf = df[ocf_col].sum()
-    avg_ocf = df[ocf_col].mean()
+    total_ocf = ocf_series.sum()
+    avg_ocf = ocf_series.mean()
     
-    kpis.append(safe_kpi(
-        category="💸 Cash Flow",
-        name="Total Operating Cash Flow",
-        value=f"${total_ocf:,.2f}",
-        formula="Sum(OCF)",
-        source=f"`{ocf_col}`",
-        confidence=conf,
-        warnings="Negative OCF - Cash burn from operations" if total_ocf < 0 else warns
+    warn_msg = "Negative OCF - Cash burn from operations" if total_ocf < 0 else "None"
+    kpis.append(engine.build_kpi(
+        category="💸 Cash Flow", name="Total Operating Cash Flow",
+        value=f"${total_ocf:,.2f}", formula="Sum(OCF)", source=f"`{ocf_col}`",
+        warnings=warn_msg
     ))
     
-    kpis.append(safe_kpi(
-        category="💸 Cash Flow",
-        name="Avg Monthly OCF",
-        value=f"${avg_ocf:,.2f}",
-        formula="Mean(OCF)",
-        source=f"`{ocf_col}`",
-        confidence=conf,
-        warnings=warns
+    kpis.append(engine.build_kpi(
+        category="💸 Cash Flow", name="Avg Monthly OCF",
+        value=f"${avg_ocf:,.2f}", formula="Mean(OCF)", source=f"`{ocf_col}`"
     ))
     
     # Free cash flow
-    if fcf_col and pd.api.types.is_numeric_dtype(df[fcf_col]):
-        total_fcf = df[fcf_col].sum()
+    if fcf_col is not None:
+        total_fcf = fcf_series.sum()
         
-        kpis.append(safe_kpi(
-            category="💸 Cash Flow",
-            name="Total Free Cash Flow",
-            value=f"${total_fcf:,.2f}",
-            formula="Sum(FCF)",
-            source=f"`{fcf_col}`",
-            confidence=conf,
-            warnings="Negative FCF" if total_fcf < 0 else warns
+        warn_msg = "Negative FCF" if total_fcf < 0 else "None"
+        kpis.append(engine.build_kpi(
+            category="💸 Cash Flow", name="Total Free Cash Flow",
+            value=f"${total_fcf:,.2f}", formula="Sum(FCF)", source=f"`{fcf_col}`",
+            warnings=warn_msg
         ))
-    elif capex_col and pd.api.types.is_numeric_dtype(df[capex_col]):
-        total_capex = df[capex_col].sum()
+    elif capex_col is not None:
+        total_capex = capex_series.sum()
         fcf = total_ocf - abs(total_capex)
         
-        kpis.append(safe_kpi(
-            category="💸 Cash Flow",
-            name="Free Cash Flow (OCF - CapEx)",
-            value=f"${fcf:,.2f}",
-            formula="OCF - CapEx",
-            source=f"`{ocf_col}`, `{capex_col}`",
-            confidence=conf,
-            warnings="Negative FCF" if fcf < 0 else warns
+        warn_msg = "Negative FCF" if fcf < 0 else "None"
+        kpis.append(engine.build_kpi(
+            category="💸 Cash Flow", name="Free Cash Flow (OCF - CapEx)",
+            value=f"${fcf:,.2f}", formula="OCF - CapEx", source=f"`{ocf_col}`, `{capex_col}`",
+            warnings=warn_msg
         ))
         
-        kpis.append(safe_kpi(
-            category="💸 Cash Flow",
-            name="Total CapEx",
-            value=f"${total_capex:,.2f}",
-            formula="Sum(Capital Expenditures)",
-            source=f"`{capex_col}`",
-            confidence=conf,
-            warnings=warns
+        kpis.append(engine.build_kpi(
+            category="💸 Cash Flow", name="Total CapEx",
+            value=f"${total_capex:,.2f}", formula="Sum(Capital Expenditures)", source=f"`{capex_col}`"
         ))
     
     # Cash balance
-    if cash_col and pd.api.types.is_numeric_dtype(df[cash_col]):
-        total_cash = df[cash_col].sum()
-        avg_cash = df[cash_col].mean()
+    if cash_col is not None:
+        total_cash = cash_series.sum()
+        avg_cash = cash_series.mean()
         
-        kpis.append(safe_kpi(
-            category="💸 Cash Flow",
-            name="Total Cash Balance",
-            value=f"${total_cash:,.2f}",
-            formula="Sum(Cash)",
-            source=f"`{cash_col}`",
-            confidence=conf,
-            warnings=warns
+        kpis.append(engine.build_kpi(
+            category="💸 Cash Flow", name="Total Cash Balance",
+            value=f"${total_cash:,.2f}", formula="Sum(Cash)", source=f"`{cash_col}`"
         ))
         
-        kpis.append(safe_kpi(
-            category="💸 Cash Flow",
-            name="Avg Cash Balance",
-            value=f"${avg_cash:,.2f}",
-            formula="Mean(Cash)",
-            source=f"`{cash_col}`",
-            confidence=conf,
-            warnings=warns
+        kpis.append(engine.build_kpi(
+            category="💸 Cash Flow", name="Avg Cash Balance",
+            value=f"${avg_cash:,.2f}", formula="Mean(Cash)", source=f"`{cash_col}`"
         ))
     
-    # Runway estimation
-    if cash_col and burn_col and pd.api.types.is_numeric_dtype(df[cash_col]) and pd.api.types.is_numeric_dtype(df[burn_col]):
-        valid_cash = df[cash_col].dropna()
-        valid_burn = df[burn_col].dropna()
+    # Runway estimation (critical for financial planning)
+    if cash_col is not None and burn_col is not None:
+        df_temp = pd.concat([cash_series, burn_series], axis=1).dropna()
         
-        if not valid_cash.empty and not valid_burn.empty:
-            avg_cash = valid_cash.mean()
-            avg_burn = valid_burn.mean()
+        if len(df_temp) > 0:
+            avg_cash = cash_series.mean()
+            avg_burn = burn_series.mean()
             
             if avg_burn > 0:
                 runway_months = avg_cash / avg_burn
                 
-                kpis.append(safe_kpi(
-                    category="💸 Cash Flow",
-                    name="Estimated Cash Runway",
-                    value=f"{runway_months:.1f} months",
-                    formula="Avg Cash / Avg Monthly Burn",
+                warn_msg = "CRITICAL: < 6 months runway"
+                if runway_months >= 6 and runway_months < 12:
+                    warn_msg = "Low runway - < 12 months"
+                elif runway_months >= 12:
+                    warn_msg = "None"
+                
+                kpis.append(engine.build_kpi(
+                    category="💸 Cash Flow", name="Estimated Cash Runway",
+                    value=f"{runway_months:.1f} months", formula="Avg Cash / Avg Monthly Burn", 
                     source=f"`{cash_col}`, `{burn_col}`",
-                    confidence=conf,
-                    warnings="CRITICAL: < 6 months runway" if runway_months < 6 else "Low runway - < 12 months" if runway_months < 12 else warns
+                    warnings=warn_msg
                 ))
+    
+    if enable_debug:
+        engine.print_execution_log()
     
     return kpis
