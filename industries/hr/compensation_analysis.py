@@ -4,198 +4,152 @@ GOVERNANCE: EXTREMELY SENSITIVE - Operational payroll metrics ONLY.
 DO NOT infer discrimination, protected attributes, or demographic conclusions.
 """
 import pandas as pd
-from utils.kpi_helpers import first_column, safe_kpi, confidence_for
+from utils.kpi_engine import KPIEngine
 
-def calc_compensation_metrics(df):
+# HR Industry Configuration  
+HR_CONFIG = {
+    "missing_data_threshold": 12,
+    "score_deduction_for_warning": 10,
+    "low_confidence_threshold": 40,
+}
+
+def calc_compensation_metrics(df, enable_debug=False):
     """Calculates compensation and payroll KPIs."""
     kpis = []
     
     if len(df) == 0:
         return kpis
     
+    # Initialize engine with HR config
+    engine = KPIEngine(df, industry_config=HR_CONFIG)
+    if enable_debug:
+        engine.enable_tracing()
+    
     # Compensation metrics - OPERATIONAL only
-    employee_col = first_column(df, ["employee_id", "emp_id", "staff_id"])
-    salary_col = first_column(df, ["salary", "base_salary", "annual_salary"])
-    bonus_col = first_column(df, ["bonus", "bonus_amount", "performance_bonus"])
-    overtime_col = first_column(df, ["overtime_cost", "overtime_hours", "extra_pay"])
-    benefits_col = first_column(df, ["benefits_cost", "healthcare_cost", "benefits_value"])
+    employee_col, employee_series = engine.get_column(["employee_id", "emp_id", "staff_id"])
+    salary_col, salary_series = engine.get_numeric(["salary", "base_salary", "annual_salary"])
+    bonus_col, bonus_series = engine.get_numeric(["bonus", "bonus_amount", "performance_bonus"])
+    overtime_col, overtime_series = engine.get_numeric(["overtime_cost", "overtime_hours", "extra_pay"])
+    benefits_col, benefits_series = engine.get_numeric(["benefits_cost", "healthcare_cost", "benefits_value"])
     
     if not employee_col or not salary_col:
         return kpis
     
-    # Salary is MONEY, not duration
-    if not pd.api.types.is_numeric_dtype(df[salary_col]):
-        kpis.append(safe_kpi(
-            category="💰 Compensation",
-            name="Compensation Metrics",
-            value="EXCLUDED",
-            formula="N/A",
-            source=f"`{salary_col}`",
-            confidence="Low",
-            warnings="Salary column contains non-numeric data."
-        ))
-        return kpis
-    
-    conf, warns = confidence_for(df, [col for col in [employee_col, salary_col, bonus_col, overtime_col, benefits_col] if col])
-    
     # Total headcount
-    total_employees = df[employee_col].nunique()
+    total_employees = employee_series.nunique()
     
-    kpis.append(safe_kpi(
+    kpis.append(engine.build_kpi(
         category="👥 Compensation",
         name="Total Employees",
         value=f"{total_employees:,}",
         formula="Count(Distinct Employees)",
-        source=f"`{employee_col}`",
-        confidence=conf,
-        warnings=warns
+        source=f"`{employee_col}`"
     ))
     
     # Salary metrics
-    valid_salary = df[salary_col].dropna()
-    
-    if not valid_salary.empty:
-        total_payroll = valid_salary.sum()
-        avg_salary = valid_salary.mean()
-        median_salary = valid_salary.median()
+    if salary_col and not salary_series.empty:
+        valid_salary = salary_series.dropna()
         
-        kpis.append(safe_kpi(
-            category="💰 Compensation",
-            name="Total Payroll",
-            value=f"${total_payroll:,.2f}",
-            formula="Sum(Salary)",
-            source=f"`{salary_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
-        
-        kpis.append(safe_kpi(
-            category="💰 Compensation",
-            name="Avg Salary",
-            value=f"${avg_salary:,.2f}",
-            formula="Mean(Salary)",
-            source=f"`{salary_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
-        
-        kpis.append(safe_kpi(
-            category="💰 Compensation",
-            name="Median Salary",
-            value=f"${median_salary:,.2f}",
-            formula="Median(Salary)",
-            source=f"`{salary_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
+        if not valid_salary.empty:
+            total_payroll = valid_salary.sum()
+            avg_salary = valid_salary.mean()
+            median_salary = valid_salary.median()
+            
+            kpis.append(engine.build_kpi(
+                category="💰 Compensation",
+                name="Total Payroll",
+                value=f"${total_payroll:,.2f}",
+                formula="Sum(Salary)",
+                source=f"`{salary_col}`",
+                sensitivity="HR_SENSITIVE"
+            ))
+            
+            kpis.append(engine.build_kpi(
+                category="💰 Compensation",
+                name="Avg Salary",
+                value=f"${avg_salary:,.2f}",
+                formula="Mean(Salary)",
+                source=f"`{salary_col}`"
+            ))
+            
+            kpis.append(engine.build_kpi(
+                category="💰 Compensation",
+                name="Median Salary",
+                value=f"${median_salary:,.2f}",
+                formula="Median(Salary)",
+                source=f"`{salary_col}`"
+            ))
     
     # Bonus metrics
-    if bonus_col and pd.api.types.is_numeric_dtype(df[bonus_col]):
-        valid_bonus = df[bonus_col].dropna()
+    if bonus_col and not bonus_series.empty:
+        valid_bonus = bonus_series.dropna()
         
         if not valid_bonus.empty:
             total_bonus = valid_bonus.sum()
             avg_bonus = valid_bonus.mean()
-            bonus_rate = (len(valid_bonus[valid_bonus > 0]) / total_employees * 100) if total_employees > 0 else 0
             
-            kpis.append(safe_kpi(
+            kpis.append(engine.build_kpi(
                 category="💰 Compensation",
-                name="Total Bonus Paid",
+                name="Total Bonuses",
                 value=f"${total_bonus:,.2f}",
                 formula="Sum(Bonus)",
-                source=f"`{bonus_col}`",
-                confidence=conf,
-                warnings=warns
+                source=f"`{bonus_col}`"
             ))
             
-            kpis.append(safe_kpi(
+            kpis.append(engine.build_kpi(
                 category="💰 Compensation",
-                name="Avg Bonus Amount",
+                name="Avg Bonus",
                 value=f"${avg_bonus:,.2f}",
                 formula="Mean(Bonus)",
-                source=f"`{bonus_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
-            
-            kpis.append(safe_kpi(
-                category="💰 Compensation",
-                name="Employees Receiving Bonus",
-                value=f"{bonus_rate:.1f}%",
-                formula="(Employees with Bonus > 0 / Total) * 100",
-                source=f"`{bonus_col}`",
-                confidence=conf,
-                warnings=warns
+                source=f"`{bonus_col}`"
             ))
     
-    # Overtime costs
-    if overtime_col and pd.api.types.is_numeric_dtype(df[overtime_col]):
-        valid_ot = df[overtime_col].dropna()
+    # Overtime
+    if overtime_col and not overtime_series.empty:
+        valid_overtime = overtime_series.dropna()
         
-        if not valid_ot.empty:
-            total_ot = valid_ot.sum()
-            avg_ot = valid_ot.mean()
+        if not valid_overtime.empty:
+            total_overtime = valid_overtime.sum()
+            avg_overtime = valid_overtime.mean()
             
-            kpis.append(safe_kpi(
-                category="💰 Payroll",
+            kpis.append(engine.build_kpi(
+                category="⏱️ Overtime",
                 name="Total Overtime Cost",
-                value=f"${total_ot:,.2f}",
-                formula="Sum(Overtime Cost)",
-                source=f"`{overtime_col}`",
-                confidence=conf,
-                warnings="High overtime spending" if total_ot > total_payroll * 0.10 else warns
+                value=f"${total_overtime:,.2f}",
+                formula="Sum(Overtime)",
+                source=f"`{overtime_col}`"
             ))
             
-            kpis.append(safe_kpi(
-                category="💰 Payroll",
+            kpis.append(engine.build_kpi(
+                category="⏱️ Overtime",
                 name="Avg Overtime per Employee",
-                value=f"${avg_ot:,.2f}",
-                formula="Mean(Overtime Cost)",
-                source=f"`{overtime_col}`",
-                confidence=conf,
-                warnings=warns
+                value=f"${avg_overtime:,.2f}",
+                formula="Mean(Overtime)",
+                source=f"`{overtime_col}`"
             ))
     
-    # Benefits costs
-    if benefits_col and pd.api.types.is_numeric_dtype(df[benefits_col]):
-        valid_benefits = df[benefits_col].dropna()
+    # Benefits
+    if benefits_col and not benefits_series.empty:
+        valid_benefits = benefits_series.dropna()
         
         if not valid_benefits.empty:
             total_benefits = valid_benefits.sum()
             avg_benefits = valid_benefits.mean()
             
-            kpis.append(safe_kpi(
-                category="💰 Benefits",
+            kpis.append(engine.build_kpi(
+                category="🎁 Benefits",
                 name="Total Benefits Cost",
                 value=f"${total_benefits:,.2f}",
-                formula="Sum(Benefits Cost)",
-                source=f"`{benefits_col}`",
-                confidence=conf,
-                warnings=warns
+                formula="Sum(Benefits)",
+                source=f"`{benefits_col}`"
             ))
             
-            kpis.append(safe_kpi(
-                category="💰 Benefits",
+            kpis.append(engine.build_kpi(
+                category="🎁 Benefits",
                 name="Avg Benefits per Employee",
                 value=f"${avg_benefits:,.2f}",
-                formula="Mean(Benefits Cost)",
-                source=f"`{benefits_col}`",
-                confidence=conf,
-                warnings=warns
+                formula="Mean(Benefits)",
+                source=f"`{benefits_col}`"
             ))
-    
-    # Total compensation
-    if salary_col and benefits_col:
-        total_comp = total_payroll + (total_benefits if benefits_col and 'total_benefits' in locals() else 0)
-        
-        kpis.append(safe_kpi(
-            category="💰 Compensation",
-            name="Total Compensation Cost",
-            value=f"${total_comp:,.2f}",
-            formula="Total Payroll + Benefits",
-            source=f"`{salary_col}`, `{benefits_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
     
     return kpis
