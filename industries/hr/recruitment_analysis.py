@@ -59,7 +59,6 @@ def calc_recruitment_metrics(df, enable_debug=False):
     else:
         kpis.append(engine.log_missing("✅ Hires", "Hiring Conversion", "Missing hired flag."))
 
-    # 🛑 THE FACADE FIX IS HERE
     if tth_col is not None and not tth_series.empty:
         is_valid, reason = engine.validate_business_rule("duration", tth_series)
         if is_valid:
