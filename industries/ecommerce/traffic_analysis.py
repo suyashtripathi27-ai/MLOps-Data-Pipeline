@@ -2,147 +2,73 @@
 Website traffic, sessions, and user engagement metrics.
 """
 import pandas as pd
-from utils.kpi_helpers import first_column, safe_kpi, confidence_for
+from utils.kpi_engine import KPIEngine
 
-def calc_traffic_metrics(df):
-    """Calculates traffic and engagement KPIs."""
+# Ecommerce industry configuration
+ECOMMERCE_CONFIG = {
+    "missing_data_threshold": 8,
+    "score_deduction_for_warning": 12,
+    "low_confidence_threshold": 35,
+}
+
+def calc_traffic_metrics(df, enable_debug=False):
+    """
+    Calculate traffic KPIs with optional execution tracing.
+    """
+    engine = KPIEngine(df, industry_config=ECOMMERCE_CONFIG)
+    
+    if enable_debug:
+        engine.enable_tracing()
+    
     kpis = []
     
     if len(df) == 0:
         return kpis
     
-    sessions_col = first_column(df, ["sessions", "visits", "page_sessions", "site_sessions"])
-    users_col = first_column(df, ["users", "unique_users", "unique_visitors", "visitors"])
-    pageviews_col = first_column(df, ["pageviews", "page_views", "pages_viewed"])
-    bounce_col = first_column(df, ["bounce_rate", "bounced_rate", "bounce_pct"])
-    avg_session_col = first_column(df, ["avg_session_duration", "avg_session_time", "session_duration"])
-    source_col = first_column(df, ["traffic_source", "source", "channel"])
+    sessions_col, sessions_series = engine.get_numeric(["sessions", "visits", "page_sessions", "site_sessions"])
+    users_col, users_series = engine.get_numeric(["users", "unique_users", "unique_visitors", "visitors"])
+    pageviews_col, pageviews_series = engine.get_numeric(["pageviews", "page_views", "pages_viewed"])
+    bounce_col, bounce_series = engine.get_numeric(["bounce_rate", "bounced_rate", "bounce_pct"])
+    avg_session_col, avg_session_series = engine.get_numeric(["avg_session_duration", "avg_session_time", "session_duration"])
+    source_col, source_series = engine.get_column(["traffic_source", "source", "channel"])
     
-    if not sessions_col and not users_col:
-        return kpis
+    if sessions_col is not None:
+        total_sessions = sessions_series.sum()
+        kpis.append(engine.build_kpi("🌐 Traffic", "Total Sessions", f"{total_sessions:,}", "Sum(Sessions)", f"`{sessions_col}`"))
     
-    conf, warns = confidence_for(df, [col for col in [sessions_col, users_col, pageviews_col, bounce_col, avg_session_col, source_col] if col])
-    
-    # Sessions
-    if sessions_col and pd.api.types.is_numeric_dtype(df[sessions_col]):
-        total_sessions = df[sessions_col].sum()
+    if users_col is not None:
+        total_users = users_series.sum()
+        kpis.append(engine.build_kpi("🌐 Traffic", "Total Unique Users", f"{total_users:,}", "Sum(Unique Users)", f"`{users_col}`"))
         
-        kpis.append(safe_kpi(
-            category="🌐 Traffic",
-            name="Total Sessions",
-            value=f"{total_sessions:,}",
-            formula="Sum(Sessions)",
-            source=f"`{sessions_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
-    
-    # Users
-    if users_col and pd.api.types.is_numeric_dtype(df[users_col]):
-        total_users = df[users_col].sum()
-        
-        kpis.append(safe_kpi(
-            category="🌐 Traffic",
-            name="Total Unique Users",
-            value=f"{total_users:,}",
-            formula="Sum(Unique Users)",
-            source=f"`{users_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
-        
-        # User to session ratio
-        if sessions_col and pd.api.types.is_numeric_dtype(df[sessions_col]):
-            total_sessions = df[sessions_col].sum()
+        if sessions_col is not None:
+            total_sessions = sessions_series.sum()
             user_session_ratio = (total_sessions / total_users) if total_users > 0 else 0
-            
-            kpis.append(safe_kpi(
-                category="🌐 Traffic",
-                name="Sessions per User",
-                value=f"{user_session_ratio:.2f}",
-                formula="Total Sessions / Total Users",
-                source=f"`{sessions_col}`, `{users_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
+            kpis.append(engine.build_kpi("🌐 Traffic", "Sessions per User", f"{user_session_ratio:.2f}", "Total Sessions / Total Users", f"`{sessions_col}`, `{users_col}`"))
     
-    # Pageviews
-    if pageviews_col and pd.api.types.is_numeric_dtype(df[pageviews_col]):
-        total_pageviews = df[pageviews_col].sum()
+    if pageviews_col is not None:
+        total_pageviews = pageviews_series.sum()
+        kpis.append(engine.build_kpi("🌐 Traffic", "Total Pageviews", f"{total_pageviews:,}", "Sum(Pageviews)", f"`{pageviews_col}`"))
         
-        kpis.append(safe_kpi(
-            category="🌐 Traffic",
-            name="Total Pageviews",
-            value=f"{total_pageviews:,}",
-            formula="Sum(Pageviews)",
-            source=f"`{pageviews_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
-        
-        # Pages per session
-        if sessions_col and pd.api.types.is_numeric_dtype(df[sessions_col]):
-            pages_per_session = (total_pageviews / df[sessions_col].sum()) if df[sessions_col].sum() > 0 else 0
-            
-            kpis.append(safe_kpi(
-                category="🌐 Traffic",
-                name="Pages per Session",
-                value=f"{pages_per_session:.2f}",
-                formula="Total Pageviews / Sessions",
-                source=f"`{pageviews_col}`, `{sessions_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
+        if sessions_col is not None:
+            pages_per_session = (total_pageviews / sessions_series.sum()) if sessions_series.sum() > 0 else 0
+            kpis.append(engine.build_kpi("🌐 Traffic", "Pages per Session", f"{pages_per_session:.2f}", "Total Pageviews / Sessions", f"`{pageviews_col}`, `{sessions_col}`"))
     
-    # Bounce rate
-    if bounce_col and pd.api.types.is_numeric_dtype(df[bounce_col]):
-        valid_bounce = df[bounce_col].dropna()
-        
-        if not valid_bounce.empty:
-            avg_bounce = valid_bounce.mean()
-            
-            kpis.append(safe_kpi(
-                category="🌐 Traffic",
-                name="Avg Bounce Rate",
-                value=f"{avg_bounce:.2f}%",
-                formula="Mean(Bounce Rate)",
-                source=f"`{bounce_col}`",
-                confidence=conf,
-                warnings="High bounce rate" if avg_bounce > 60 else warns
-            ))
+    if bounce_col is not None:
+        avg_bounce = bounce_series.mean()
+        warn_msg = "High bounce rate" if avg_bounce > 60 else "None"
+        kpis.append(engine.build_kpi("🌐 Traffic", "Avg Bounce Rate", f"{avg_bounce:.2f}%", "Mean(Bounce Rate)", f"`{bounce_col}`", warnings=warn_msg))
     
-    # Session duration
-    if avg_session_col and pd.api.types.is_numeric_dtype(df[avg_session_col]):
-        valid_duration = df[avg_session_col].dropna()
-        
-        if not valid_duration.empty:
-            avg_duration = valid_duration.mean()
-            
-            kpis.append(safe_kpi(
-                category="🌐 Traffic",
-                name="Avg Session Duration",
-                value=f"{avg_duration:,.0f} sec",
-                formula="Mean(Session Duration)",
-                source=f"`{avg_session_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
+    if avg_session_col is not None:
+        avg_duration = avg_session_series.mean()
+        kpis.append(engine.build_kpi("🌐 Traffic", "Avg Session Duration", f"{avg_duration:,.0f} sec", "Mean(Session Duration)", f"`{avg_session_col}`"))
     
-    # Traffic by source
-    if source_col:
-        source_dist = df[source_col].value_counts().head(3)
-        
-        if not source_dist.empty:
+    if source_col is not None:
+        source_dist = source_series.value_counts().head(3)
+        if len(source_dist) > 0:
             top_source = source_dist.idxmax()
-            
-            kpis.append(safe_kpi(
-                category="🌐 Traffic",
-                name="Top Traffic Source",
-                value=f"{top_source} ({source_dist.max():,} sessions)",
-                formula="Source with max sessions",
-                source=f"`{source_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
+            kpis.append(engine.build_kpi("🌐 Traffic", "Top Traffic Source", f"{top_source} ({source_dist.max():,} sessions)", "Source with max sessions", f"`{source_col}`"))
+    
+    if enable_debug:
+        engine.print_execution_log()
     
     return kpis
