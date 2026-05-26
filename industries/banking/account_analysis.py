@@ -2,117 +2,78 @@
 Account-level deposit and balance trend KPIs.
 """
 import pandas as pd
-from utils.kpi_helpers import (
-    first_column, 
-    safe_kpi, 
-    excluded_kpi, 
-    confidence_for, 
-    safe_exists, 
-    safe_numeric, 
-    safe_datetime
-)
+from utils.kpi_engine import KPIEngine
 
 def calc_account_metrics(df):
-    """Calculates account performance and balance health KPIs."""
+    engine = KPIEngine(df)
     kpis = []
-    missing_capabilities = [] # 🛡️ The Audit Tracker
     
-    if len(df) == 0:
+    if len(df) == 0: 
         return kpis
 
-    account_col = first_column(df, ["account_id", "account_number", "acct_id"])
-    amount_col = first_column(df, ["amount", "transaction_amount", "value"])
-    balance_col = first_column(df, ["balance", "account_balance", "ending_balance"])
-    date_col = first_column(df, ["transaction_date", "date", "posting_date"])
-
-    conf, warns = confidence_for(df, [col for col in [account_col, amount_col, balance_col, date_col] if col])
+    # 1. Grab the Data (The Engine handles routing, safety, coercion, AND tracks columns!)
+    acct_col, acct_series = engine.get_column(["account_id", "account_number", "acct_id"])
+    amt_col, amt_series = engine.get_numeric(["amount", "transaction_amount", "value"])
+    bal_col, bal_series = engine.get_numeric(["balance", "account_balance", "ending_balance"])
+    date_col, date_series = engine.get_datetime(["transaction_date", "date", "posting_date"])
     
     # ==========================================
-    # 1. ACCOUNT ACTIVITY (Requires Account ID)
+    # 1. ACCOUNT ACTIVITY
     # ==========================================
-    if safe_exists(df, account_col):
-        account_activity = df[account_col].nunique()
-        kpis.append(safe_kpi(
+    if acct_col is not None:
+        kpis.append(engine.build_kpi(
             category="💳 Account Analysis", name="Total Active Accounts",
-            value=f"{account_activity:,}", formula="Count(Distinct Account IDs)",
-            source=f"`{account_col}`", confidence=conf, warnings=warns
+            value=f"{acct_series.nunique():,}", formula="Count(Distinct Account IDs)", source=f"`{acct_col}`"
         ))
     else:
-        missing_capabilities.append("Active accounts unavailable: Missing 'account_id' column.")
+        kpis.append(engine.log_missing("💳 Account Analysis", "Active Accounts", "Missing 'account_id' column."))
 
     # ==========================================
-    # 2. TRANSACTION VOLUME (Requires Numeric Amount)
+    # 2. TRANSACTION VOLUME
     # ==========================================
-    if safe_numeric(df, amount_col):
-        total_volume = df[amount_col].sum()
-        avg_transaction = df[amount_col].mean()
-        
-        kpis.append(safe_kpi(
+    if amt_col is not None:
+        kpis.append(engine.build_kpi(
             category="💳 Account Analysis", name="Total Transaction Volume",
-            value=f"${total_volume:,.2f}", formula="Sum(Amount)",
-            source=f"`{amount_col}`", confidence=conf, warnings=warns
+            value=f"${amt_series.sum():,.2f}", formula="Sum(Amount)", source=f"`{amt_col}`"
         ))
-        
-        kpis.append(safe_kpi(
+        kpis.append(engine.build_kpi(
             category="💳 Account Analysis", name="Avg Transaction Size",
-            value=f"${avg_transaction:,.2f}", formula="Mean(Amount)",
-            source=f"`{amount_col}`", confidence=conf, warnings=warns
+            value=f"${amt_series.mean():,.2f}", formula="Mean(Amount)", source=f"`{amt_col}`"
         ))
     else:
-        missing_capabilities.append("Transaction volume unavailable: Missing or invalid 'amount' column.")
+        kpis.append(engine.log_missing("💳 Account Analysis", "Transaction Volume", "Missing or invalid 'amount' column."))
 
     # ==========================================
-    # 3. BALANCE HEALTH (Requires Numeric Balance)
+    # 3. BALANCE HEALTH
     # ==========================================
-    if safe_numeric(df, balance_col):
-        avg_balance = df[balance_col].mean()
-        min_balance = df[balance_col].min()
-        
-        kpis.append(safe_kpi(
+    if bal_col is not None:
+        kpis.append(engine.build_kpi(
             category="💳 Account Analysis", name="Avg Account Balance",
-            value=f"${avg_balance:,.2f}", formula="Mean(Balance)",
-            source=f"`{balance_col}`", confidence=conf, warnings=warns
+            value=f"${bal_series.mean():,.2f}", formula="Mean(Balance)", source=f"`{bal_col}`"
         ))
-        
-        kpis.append(safe_kpi(
+        kpis.append(engine.build_kpi(
             category="💳 Account Analysis", name="Min Account Balance",
-            value=f"${min_balance:,.2f}", formula="Min(Balance)",
-            source=f"`{balance_col}`", confidence=conf, warnings=warns
+            value=f"${bal_series.min():,.2f}", formula="Min(Balance)", source=f"`{bal_col}`"
         ))
     else:
-        missing_capabilities.append("Balance metrics unavailable: Missing or invalid 'balance' column.")
+        kpis.append(engine.log_missing("💳 Account Analysis", "Balance Metrics", "Missing or invalid 'balance' column."))
 
     # ==========================================
-    # 4. TRENDS & GROWTH (Requires Date + Amount)
+    # 4. TRENDS & GROWTH
     # ==========================================
-    if safe_datetime(df, date_col) and safe_numeric(df, amount_col):
-        df_temp = df.dropna(subset=[date_col, amount_col]).copy()
-        df_temp[date_col] = pd.to_datetime(df_temp[date_col], errors="coerce")
-        
-        monthly_volume = df_temp.groupby(pd.Grouper(key=date_col, freq='ME'))[amount_col].sum()
+    if date_col is not None and amt_col is not None:
+        # Re-sync the clean series by index to group them properly
+        df_temp = pd.concat([date_series, amt_series], axis=1).dropna()
+        monthly_volume = df_temp.groupby(pd.Grouper(key=date_col, freq='ME'))[amt_col].sum()
         
         if len(monthly_volume) >= 2:
-            first_val = monthly_volume.iloc[0]
-            last_val = monthly_volume.iloc[-1]
+            first_val, last_val = monthly_volume.iloc[0], monthly_volume.iloc[-1]
             growth = ((last_val - first_val) / first_val * 100) if first_val != 0 else 0
-            
-            kpis.append(safe_kpi(
+            kpis.append(engine.build_kpi(
                 category="💳 Account Analysis", name="Account Growth %",
-                value=f"{growth:.2f}%", formula="((Last Month - First Month) / First) * 100",
-                source=f"`{amount_col}`, `{date_col}`", confidence=conf, warnings=warns
+                value=f"{growth:.2f}%", formula="((Last - First) / First) * 100", source=f"`{amt_col}`, `{date_col}`"
             ))
     else:
-        missing_capabilities.append("Trend analytics unavailable: Requires valid 'date' and 'amount' columns.")
-
-    # ==========================================
-    # 5. TRANSPARENCY AUDIT TRAIL
-    # ==========================================
-    for missing in missing_capabilities:
-        kpis.append(excluded_kpi(
-            category="⚠️ System Audit", 
-            name="Data Gap Detected", 
-            source="Diagnostic", 
-            reason=missing
-        ))
+        kpis.append(engine.log_missing("💳 Account Analysis", "Account Growth", "Requires valid 'date' and 'amount'."))
 
     return kpis
