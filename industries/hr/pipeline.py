@@ -4,6 +4,7 @@ Orchestrates all 8 HR KPI modules with governance filters for sensitive HR data.
 """
 import os
 from utils.master_orchestrator import run_master_orchestrator
+from utils.kpi_engine import KPIEngine  # 👈 IMPORT ADDED HERE
 
 # Import all HR microservices
 from .workforce_stability_analysis import calc_workforce_stability_metrics
@@ -111,8 +112,9 @@ def run_hr_analysis(payload, clients, df):
     Main HR Pipeline Orchestrator
     1. Generate operational KPIs from all 8 modules
     2. Apply HR-specific governance filters
-    3. Build markdown tables
-    4. Hand off to Master Orchestrator for AI synthesis
+    3. Deduplicate missing/excluded metrics (Fixes Issue 5)
+    4. Build markdown tables
+    5. Hand off to Master Orchestrator for AI synthesis
     """
     # 1. Generate KPIs from all modules
     kpi_list = generate_dynamic_kpis(df)
@@ -120,19 +122,21 @@ def run_hr_analysis(payload, clients, df):
     # 2. Apply HR governance (remove individual profiling, discrimination risks)
     safe_kpis = apply_hr_governance_filters(kpi_list)
     
-    # 3. Build markdown table
-    kpi_markdown = build_markdown_table(safe_kpis)
+    # 3. 🛑 DEDUPLICATE HERE 🛑 (This groups all your missing employee IDs!)
+    final_kpis = KPIEngine.deduplicate_diagnostics(safe_kpis)
     
-    # 4. Define prompt paths
+    # 4. Build markdown table using the deduplicated list
+    kpi_markdown = build_markdown_table(final_kpis)
+    
+    # 5. Define prompt paths
     prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
     sys_prompt_path = os.path.join(os.path.dirname(__file__), 'system_prompt.txt')
     
-    # 5. Hand off to the Master Orchestrator
-    # Pass industry_name="hr" so insight_engine uses HR ontology
+    # 6. Hand off to the Master Orchestrator
     return run_master_orchestrator(
         industry_name="hr",
-        kpi_list=safe_kpis,
-        kpi_markdown=kpi_markdown,
+        kpi_list=final_kpis,        # 👈 Pass the clean, deduplicated list
+        kpi_markdown=kpi_markdown,  # 👈 Pass the clean, deduplicated table
         payload=payload,
         clients=clients,
         prompt_path=prompt_path,
