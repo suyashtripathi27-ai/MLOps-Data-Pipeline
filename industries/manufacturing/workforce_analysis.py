@@ -1,113 +1,113 @@
 """
-Labor, workforce productivity, and headcount metrics.
+Labor, workforce productivity, and driver metrics.
 """
 import pandas as pd
-from utils.kpi_helpers import first_column, safe_kpi, confidence_for
+from utils.kpi_engine import KPIEngine
 
-def calc_workforce_metrics(df):
-    """Calculates workforce and labor KPIs."""
+LOGISTICS_CONFIG = {
+    "missing_data_threshold": 6,
+    "score_deduction_for_warning": 15,
+    "low_confidence_threshold": 30,
+}
+
+def calc_workforce_metrics(df, enable_debug=False):
+    """
+    Calculates workforce and labor KPIs with optional execution tracing.
+    
+    Args:
+        df: Input DataFrame
+        enable_debug: If True, prints execution trace log for observability
+    
+    Returns:
+        List of KPI dictionaries
+    """
+    engine = KPIEngine(df, industry_config=LOGISTICS_CONFIG)
+    if enable_debug:
+        engine.enable_tracing()
+    
     kpis = []
     
     if len(df) == 0:
         return kpis
     
     # Workforce metrics - COUNT (headcount, hours), not time
-    employee_col = first_column(df, ["employee_id", "employee", "worker"])
-    labor_hours_col = first_column(df, ["labor_hours", "hours_worked", "total_hours"])
-    output_col = first_column(df, ["units_produced", "output", "production"])
-    wage_col = first_column(df, ["wage", "hourly_rate", "labor_cost"])
+    driver_col, driver_series = engine.get_column(["driver_id", "employee_id", "operator_id", "driver_name"])
+    hours_col, hours_series = engine.get_numeric(["hours_worked", "driving_hours", "total_hours", "labor_hours"])
+    trips_col, trips_series = engine.get_numeric(["trips_completed", "deliveries", "trips", "trip_count"])
+    wage_col, wage_series = engine.get_numeric(["wage", "hourly_rate", "labor_cost", "driver_compensation"])
+    safety_col, safety_series = engine.get_numeric(["safety_score", "driving_safety_rating", "incident_count"])
     
-    if not employee_col and not labor_hours_col:
-        return kpis
-    
-    conf, warns = confidence_for(df, [col for col in [employee_col, labor_hours_col, output_col, wage_col] if col])
-    
-    # Headcount
-    if employee_col:
-        total_employees = df[employee_col].nunique()
+    # ==========================================
+    # 1. DRIVER HEADCOUNT
+    # ==========================================
+    if driver_col is not None:
+        total_drivers = driver_series.nunique()
         
-        kpis.append(safe_kpi(
+        kpis.append(engine.build_kpi(
             category="👥 Workforce",
-            name="Total Active Employees",
-            value=f"{total_employees:,}",
-            formula="Count(Distinct Employees)",
-            source=f"`{employee_col}`",
-            confidence=conf,
-            warnings=warns
+            name="Total Active Drivers",
+            value=f"{total_drivers:,}",
+            formula="Count(Distinct Drivers)",
+            source=f"`{driver_col}`"
         ))
+    else:
+        kpis.append(engine.log_missing("👥 Workforce", "Driver Headcount", "Missing 'driver_id' column."))
     
-    # Labor hours
-    if labor_hours_col and pd.api.types.is_numeric_dtype(df[labor_hours_col]):
-        total_hours = df[labor_hours_col].sum()
-        avg_hours = df[labor_hours_col].mean()
+    # ==========================================
+    # 2. LABOR HOURS
+    # ==========================================
+    if hours_col is not None:
+        # FIX: Drop NaN values BEFORE calculating
+        hours_clean = hours_series.dropna()
         
-        kpis.append(safe_kpi(
-            category="👥 Workforce",
-            name="Total Labor Hours",
-            value=f"{total_hours:,.0f} hours",
-            formula="Sum(Labor Hours)",
-            source=f"`{labor_hours_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
-        
-        kpis.append(safe_kpi(
-            category="👥 Workforce",
-            name="Avg Labor Hours per Record",
-            value=f"{avg_hours:.1f} hours",
-            formula="Mean(Labor Hours)",
-            source=f"`{labor_hours_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
-    
-    # Productivity
-    if output_col and labor_hours_col and pd.api.types.is_numeric_dtype(df[output_col]) and pd.api.types.is_numeric_dtype(df[labor_hours_col]):
-        total_output = df[output_col].sum()
-        total_labor = df[labor_hours_col].sum()
-        
-        if total_labor > 0:
-            productivity = total_output / total_labor
+        if len(hours_clean) > 0:
+            total_hours = hours_clean.sum()
+            avg_hours = hours_clean.mean()
+            max_hours = hours_clean.max()
             
-            kpis.append(safe_kpi(
-                category="👥 Workforce",
-                name="Labor Productivity",
-                value=f"{productivity:.2f} units/hour",
-                formula="Total Output / Total Labor Hours",
-                source=f"`{output_col}`, `{labor_hours_col}`",
-                confidence=conf,
-                warnings=warns
+            kpis.append(engine.build_kpi(
+                category="⏱️ Labor",
+                name="Total Hours Worked",
+                value=f"{total_hours:,.0f} hours",
+                formula="Sum(Hours Worked)",
+                source=f"`{hours_col}`"
             ))
-    
-    # Labor cost
-    if wage_col and pd.api.types.is_numeric_dtype(df[wage_col]):
-        total_wages = df[wage_col].sum()
-        
-        kpis.append(safe_kpi(
-            category="💰 Labor Cost",
-            name="Total Labor Cost",
-            value=f"${total_wages:,.2f}",
-            formula="Sum(Wages)",
-            source=f"`{wage_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
-        
-        # Cost per unit of output
-        if output_col and pd.api.types.is_numeric_dtype(df[output_col]):
-            total_output = df[output_col].sum()
             
-            if total_output > 0:
-                labor_cost_per_unit = total_wages / total_output
-                
-                kpis.append(safe_kpi(
-                    category="💰 Labor Cost",
-                    name="Labor Cost per Unit",
-                    value=f"${labor_cost_per_unit:,.2f}",
-                    formula="Total Labor Cost / Total Output",
-                    source=f"`{wage_col}`, `{output_col}`",
-                    confidence=conf,
-                    warnings=warns
-                ))
+            kpis.append(engine.build_kpi(
+                category="⏱️ Labor",
+                name="Avg Hours per Driver",
+                value=f"{avg_hours:.1f} hours",
+                formula="Mean(Hours Worked)",
+                source=f"`{hours_col}`"
+            ))
+            
+            warn_msg = "High working hours - Fatigue risk (>12 hrs)" if max_hours > 12 else "None"
+            kpis.append(engine.build_kpi(
+                category="⏱️ Labor",
+                name="Max Hours Worked",
+                value=f"{max_hours:.1f} hours",
+                formula="Max(Hours Worked)",
+                source=f"`{hours_col}`",
+                warnings=warn_msg
+            ))
+        else:
+            kpis.append(engine.log_missing("⏱️ Labor", "Hours Worked", "All hours entries are missing/null."))
+    else:
+        kpis.append(engine.log_missing("⏱️ Labor", "Hours Worked", "Missing numeric 'hours_worked' column."))
     
-    return kpis
+    # ==========================================
+    # 3. DRIVER PRODUCTIVITY
+    # ==========================================
+    if trips_col is not None:
+        # FIX: Drop NaN values BEFORE calculating
+        trips_clean = trips_series.dropna()
+        
+        if len(trips_clean) > 0:
+            total_trips = trips_clean.sum()
+            avg_trips = trips_clean.mean()
+            
+            kpis.append(engine.build_kpi(
+                category="👥 Workforce",
+                name="Total Trips Completed",
+                value=f"{total_trips:,.0f}
+
