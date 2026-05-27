@@ -2,92 +2,146 @@
 Equipment efficiency, OEE, and productivity metrics.
 """
 import pandas as pd
-from utils.kpi_helpers import first_column, safe_kpi, confidence_for
+from utils.kpi_engine import KPIEngine
 
-def calc_efficiency_metrics(df):
-    """Calculates equipment efficiency and OEE KPIs."""
+MANUFACTURING_CONFIG = {
+    "missing_data_threshold": 6,
+    "score_deduction_for_warning": 15,
+    "low_confidence_threshold": 30,
+}
+
+def calc_efficiency_metrics(df, enable_debug=False):
+    """
+    Calculates equipment efficiency and OEE KPIs with optional execution tracing.
+    
+    Args:
+        df: Input DataFrame
+        enable_debug: If True, prints execution trace log for observability
+    
+    Returns:
+        List of KPI dictionaries
+    """
+    engine = KPIEngine(df, industry_config=MANUFACTURING_CONFIG)
+    if enable_debug:
+        engine.enable_tracing()
+    
     kpis = []
     
     if len(df) == 0:
         return kpis
     
     # OEE components are percentages (ratios)
-    oee_col = first_column(df, ["oee", "overall_equipment_effectiveness", "overall_effectiveness"])
-    availability_col = first_column(df, ["availability", "uptime_pct", "uptime_percentage"])
-    performance_col = first_column(df, ["performance", "speed_efficiency", "performance_efficiency"])
-    quality_col = first_column(df, ["quality_score", "quality_rate", "quality_pct"])
+    oee_col, oee_series = engine.get_numeric(["oee", "overall_equipment_effectiveness", "overall_effectiveness"])
+    availability_col, availability_series = engine.get_numeric(["availability", "uptime_pct", "uptime_percentage"])
+    performance_col, performance_series = engine.get_numeric(["performance", "speed_efficiency", "performance_efficiency"])
+    quality_col, quality_series = engine.get_numeric(["quality_score", "quality_rate", "quality_pct"])
     
-    if not oee_col and not availability_col:
-        return kpis
-    
-    conf, warns = confidence_for(df, [col for col in [oee_col, availability_col, performance_col, quality_col] if col])
-    
-    # OEE
-    if oee_col and pd.api.types.is_numeric_dtype(df[oee_col]):
-        valid_oee = df[oee_col].dropna()
+    # ==========================================
+    # 1. OVERALL EQUIPMENT EFFECTIVENESS (OEE)
+    # ==========================================
+    if oee_col is not None:
+        # FIX: Drop NaN values BEFORE calculating
+        oee_clean = oee_series.dropna()
         
-        if not valid_oee.empty:
-            avg_oee = valid_oee.mean()
+        if len(oee_clean) > 0:
+            avg_oee = oee_clean.mean()
+            min_oee = oee_clean.min()
             
-            kpis.append(safe_kpi(
+            warn_msg = "Low OEE - Significant efficiency losses (<85%)" if avg_oee < 85 else "None"
+            kpis.append(engine.build_kpi(
                 category="⚙️ Equipment Efficiency",
                 name="Avg Overall Equipment Effectiveness (OEE)",
                 value=f"{avg_oee:.2f}%",
                 formula="Mean(OEE)",
                 source=f"`{oee_col}`",
-                confidence=conf,
-                warnings="Low OEE - Significant efficiency losses" if avg_oee < 85 else "Good OEE" if avg_oee >= 85 else warns
+                warnings=warn_msg
             ))
-    
-    # Availability
-    if availability_col and pd.api.types.is_numeric_dtype(df[availability_col]):
-        valid_avail = df[availability_col].dropna()
-        
-        if not valid_avail.empty:
-            avg_avail = valid_avail.mean()
             
-            kpis.append(safe_kpi(
+            kpis.append(engine.build_kpi(
+                category="⚙️ Equipment Efficiency",
+                name="Min OEE",
+                value=f"{min_oee:.2f}%",
+                formula="Min(OEE)",
+                source=f"`{oee_col}`"
+            ))
+        else:
+            kpis.append(engine.log_missing("⚙️ Equipment Efficiency", "OEE", "All OEE entries are missing/null."))
+    else:
+        kpis.append(engine.log_missing("⚙️ Equipment Efficiency", "OEE", "Missing numeric 'oee' column."))
+    
+    # ==========================================
+    # 2. AVAILABILITY
+    # ==========================================
+    if availability_col is not None:
+        # FIX: Drop NaN values BEFORE calculating
+        availability_clean = availability_series.dropna()
+        
+        if len(availability_clean) > 0:
+            avg_avail = availability_clean.mean()
+            
+            warn_msg = "Low availability - Increase uptime (<85%)" if avg_avail < 85 else "None"
+            kpis.append(engine.build_kpi(
                 category="⚙️ Equipment Efficiency",
                 name="Avg Equipment Availability",
                 value=f"{avg_avail:.2f}%",
                 formula="Mean(Availability)",
                 source=f"`{availability_col}`",
-                confidence=conf,
-                warnings="Low availability - Increase uptime" if avg_avail < 85 else warns
+                warnings=warn_msg
             ))
+        else:
+            kpis.append(engine.log_missing("⚙️ Equipment Efficiency", "Availability", "All availability entries are missing/null."))
+    else:
+        kpis.append(engine.log_missing("⚙️ Equipment Efficiency", "Availability", "Missing 'availability' column."))
     
-    # Performance
-    if performance_col and pd.api.types.is_numeric_dtype(df[performance_col]):
-        valid_perf = df[performance_col].dropna()
+    # ==========================================
+    # 3. PERFORMANCE
+    # ==========================================
+    if performance_col is not None:
+        # FIX: Drop NaN values BEFORE calculating
+        performance_clean = performance_series.dropna()
         
-        if not valid_perf.empty:
-            avg_perf = valid_perf.mean()
+        if len(performance_clean) > 0:
+            avg_perf = performance_clean.mean()
             
-            kpis.append(safe_kpi(
+            warn_msg = "Low performance - Optimize settings (<85%)" if avg_perf < 85 else "None"
+            kpis.append(engine.build_kpi(
                 category="⚙️ Equipment Efficiency",
                 name="Avg Equipment Performance",
                 value=f"{avg_perf:.2f}%",
                 formula="Mean(Performance)",
                 source=f"`{performance_col}`",
-                confidence=conf,
-                warnings="Low performance - Optimize settings" if avg_perf < 85 else warns
+                warnings=warn_msg
             ))
+        else:
+            kpis.append(engine.log_missing("⚙️ Equipment Efficiency", "Performance", "All performance entries are missing/null."))
+    else:
+        kpis.append(engine.log_missing("⚙️ Equipment Efficiency", "Performance", "Missing 'performance' column."))
     
-    # Quality score
-    if quality_col and pd.api.types.is_numeric_dtype(df[quality_col]):
-        valid_qual = df[quality_col].dropna()
+    # ==========================================
+    # 4. QUALITY SCORE
+    # ==========================================
+    if quality_col is not None:
+        # FIX: Drop NaN values BEFORE calculating
+        quality_clean = quality_series.dropna()
         
-        if not valid_qual.empty:
-            avg_qual = valid_qual.mean()
+        if len(quality_clean) > 0:
+            avg_qual = quality_clean.mean()
             
-            kpis.append(safe_kpi(
+            warn_msg = "Low quality - Review process (<95%)" if avg_qual < 95 else "None"
+            kpis.append(engine.build_kpi(
                 category="⚙️ Equipment Efficiency",
                 name="Avg Quality Score",
                 value=f"{avg_qual:.2f}%",
                 formula="Mean(Quality)",
                 source=f"`{quality_col}`",
-                confidence=conf,
-                warnings="Low quality - Review process" if avg_qual < 95 else warns
+                warnings=warn_msg
             ))
+        else:
+            kpis.append(engine.log_missing("⚙️ Equipment Efficiency", "Quality", "All quality entries are missing/null."))
+    else:
+        kpis.append(engine.log_missing("⚙️ Equipment Efficiency", "Quality", "Missing 'quality_score' column."))
+    
+    if enable_debug:
+        engine.print_execution_log()
     
     return kpis
