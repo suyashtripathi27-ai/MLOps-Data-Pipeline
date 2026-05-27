@@ -88,4 +88,274 @@ class KPIEngine:
             })
             return col, self.df[col]
         
-        self._log_
+        self._log_trace("column_not_found", {"candidates": candidates})
+        return None, None
+
+    def get_numeric(self, candidates: List[str]) -> Tuple[Optional[str], Optional[Any]]:
+        """Find and return the first numeric column from candidates."""
+        col = first_column(self.df, candidates)
+        if col:
+            series = safe_numeric_series(self.df, col)
+            if series is not None:
+                self.used_columns.add(col)  
+                non_null_count = len(series)
+                total_count = len(self.df)
+                coercion_failure_rate = ((total_count - non_null_count) / total_count * 100) if total_count > 0 else 0
+                
+                self._log_trace("numeric_coercion_applied", {
+                    "col": col,
+                    "candidates": candidates,
+                    "non_null_rows": non_null_count,
+                    "coercion_failure_rate": f"{coercion_failure_rate:.1f}%"
+                })
+                return col, series.dropna()
+            else:
+                self._log_trace("numeric_coercion_failed", {
+                    "col": col,
+                    "reason": "All values failed numeric conversion"
+                })
+        
+        self._log_trace("numeric_column_not_found", {"candidates": candidates})
+        return None, None
+
+    def get_datetime(self, candidates: List[str]) -> Tuple[Optional[str], Optional[Any]]:
+        """Find and return the first datetime column from candidates."""
+        col = first_column(self.df, candidates)
+        if col:
+            series = safe_datetime_series(self.df, col)  
+            if series is not None:
+                self.used_columns.add(col)  
+                self._log_trace("datetime_coercion_applied", {
+                    "col": col,
+                    "candidates": candidates,
+                    "min_date": str(series.min()),
+                    "max_date": str(series.max())
+                })
+                return col, series.dropna()
+            else:
+                self._log_trace("datetime_coercion_failed", {
+                    "col": col,
+                    "reason": "Date parsing failed or epoch anomaly detected"
+                })
+        
+        self._log_trace("datetime_column_not_found", {"candidates": candidates})
+        return None, None
+    
+    def reset_column_tracking(self) -> None:
+        """Clear the used_columns tracker."""
+        self.used_columns.clear()
+        self._log_trace("column_tracking_reset", {})
+
+    # ==========================================
+    # 2. BUSINESS VALIDATION (Talks to validator.py)
+    # ==========================================
+    
+    def validate_business_rule(self, rule_name: str, series: Any) -> Tuple[bool, str]:
+        """Routes specialized business rule checks to SemanticValidator."""
+        if rule_name not in self.business_rules:
+            msg = f"Rule '{rule_name}' not registered (using default: Valid)"
+            self._log_trace("business_rule_not_found", {"rule_name": rule_name})
+            return True, msg
+        
+        is_valid, reason = self.business_rules[rule_name](series)
+        self._log_trace("business_rule_validated", {
+            "rule_name": rule_name,
+            "is_valid": is_valid,
+            "reason": reason
+        })
+        return is_valid, reason
+
+    # ==========================================
+    # 3. FORMATTING & GOVERNANCE (Talks to confidence_engine)
+    # ==========================================
+
+    def build_kpi(
+        self, 
+        category: str, 
+        name: str, 
+        value: str, 
+        formula: str, 
+        source: str, 
+        confidence: Optional[str] = None,
+        warnings: str = "None",
+        **kwargs
+    ) -> Dict[str, Any]:
+        # Auto-calculate confidence if not provided
+        if confidence is None:
+            confidence, auto_warn = evaluate_kpi_confidence(
+                self.df, 
+                list(self.used_columns),  # Convert set to list for confidence_engine
+                custom_industry_checks=self.custom_industry_checks
+            )
+        else:
+            auto_warn = "None"
+        
+        # Merge custom warnings with auto-warnings
+        if warnings == "None":
+            final_warn = auto_warn
+        elif auto_warn == "None":
+            final_warn = warnings
+        else:
+            final_warn = f"{warnings} | {auto_warn}"
+        
+        self._log_trace("kpi_built", {
+            "category": category,
+            "name": name,
+            "confidence": confidence,
+            "warnings": final_warn,
+            "columns_used": list(self.used_columns)
+        })
+        
+        return safe_kpi(category, name, value, formula, source, confidence, final_warn, **kwargs)
+
+    def log_missing(
+        self, 
+        category: str, 
+        name: str, 
+        reason: str,
+        source: str = "Diagnostic"
+    ) -> Dict[str, Any]:
+        """Create a diagnostic entry for missing/excluded KPIs."""
+        self._log_trace("kpi_excluded", {
+            "category": category,
+            "name": name,
+            "reason": reason
+        })
+        return excluded_kpi(category, name, source, reason)
+    
+    # ==========================================
+    # 4. TEMPLATE SYSTEM (Reusable Patterns)
+    # ==========================================
+    
+    def build_from_template(self, template_name: str, **overrides) -> Dict[str, Any]:
+        if template_name not in self.kpi_templates:
+            raise ValueError(
+                f"Template '{template_name}' not found. "
+                f"Available: {list(self.kpi_templates.keys())}"
+            )
+        
+        self._log_trace("template_used", {
+            "template_name": template_name,
+            "overrides": overrides
+        })
+        
+        return self.kpi_templates[template_name](self, **overrides)
+    
+    def list_templates(self) -> List[str]:
+        return list(self.kpi_templates.keys())
+    
+    def list_business_rules(self) -> List[str]:
+        return list(self.business_rules.keys())
+    
+    # ==========================================
+    # 5. EXECUTION TRACING (Enterprise Observability)
+    # ==========================================
+    
+    def enable_tracing(self, enabled: bool = True) -> None:
+        self._trace_enabled = enabled
+        self._log_trace("tracing_toggled", {"enabled": enabled})
+    
+    def _log_trace(self, event_type: str, details: Dict[str, Any]) -> None:
+        """Internal method to log execution events."""
+        if self._trace_enabled:
+            self.execution_log.append({
+                "timestamp": datetime.now().isoformat(),
+                "event_type": event_type,
+                "details": details
+            })
+    
+    def get_execution_log(self) -> List[Dict[str, Any]]:
+        return self.execution_log.copy()
+    
+    def clear_execution_log(self) -> None:
+        self.execution_log.clear()
+    
+    def print_execution_log(self) -> None:
+        if not self.execution_log:
+            print("📋 Execution log is empty. Enable tracing with engine.enable_tracing()")
+            return
+        
+        print("\n" + "="*80)
+        print("📋 EXECUTION TRACE LOG")
+        print("="*80)
+        for i, event in enumerate(self.execution_log, 1):
+            print(f"\n[{i}] {event['event_type']} @ {event['timestamp']}")
+            for key, value in event['details'].items():
+                print(f"    {key}: {value}")
+        print("\n" + "="*80 + "\n")
+    
+    # ==========================================
+    # 6. DIAGNOSTICS & DEBUGGING
+    # ==========================================
+    
+    def get_used_columns(self) -> List[str]:
+        return sorted(list(self.used_columns))
+    
+    def get_unused_columns(self) -> List[str]:
+        unused = [col for col in self.df.columns if col not in self.used_columns]
+        return sorted(unused)
+    
+    def debug_info(self) -> Dict[str, Any]:
+        return {
+            "dataframe_shape": self.df.shape,
+            "total_columns": len(self.df.columns),
+            "used_columns": self.get_used_columns(),
+            "unused_columns": self.get_unused_columns(),
+            "registered_templates": self.list_templates(),
+            "registered_business_rules": self.list_business_rules(),
+            "confidence_config": {
+                "missing_data_threshold": self.missing_data_threshold,
+                "score_deduction_for_warning": self.score_deduction_for_warning,
+                "low_confidence_threshold": self.low_confidence_threshold,
+            },
+            "tracing_enabled": self._trace_enabled,
+            "execution_log_size": len(self.execution_log)
+        }
+
+    # ==========================================
+    # 7. GOVERNANCE: DEDUPLICATION (Fixes Issue 5)
+    # ==========================================
+    
+    @staticmethod
+    def deduplicate_diagnostics(kpi_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Takes a raw list of generated KPIs and aggregates identical 'EXCLUDED' errors.
+        Prevents table bloat and executive distrust.
+        
+        Call this in your Master Orchestrator:
+        final_kpis = KPIEngine.deduplicate_diagnostics(final_kpis)
+        """
+        valid_kpis = []
+        excluded_tracker = {}
+
+        for kpi in kpi_list:
+            if kpi.get("value") == "EXCLUDED":
+                # Group by the specific warning/reason
+                reason = kpi.get("warnings", "Missing data elements.")
+                category = kpi.get("category", "Unknown")
+                
+                if reason not in excluded_tracker:
+                    excluded_tracker[reason] = {
+                        "categories": set([category]),
+                        "count": 1
+                    }
+                else:
+                    excluded_tracker[reason]["categories"].add(category)
+                    excluded_tracker[reason]["count"] += 1
+            else:
+                valid_kpis.append(kpi)
+
+        # Rebuild the excluded KPIs into clean, aggregated rows
+        for reason, data in excluded_tracker.items():
+            affected_cats = ", ".join(sorted(list(data["categories"])))
+            valid_kpis.append({
+                "category": "🛠️ System Diagnostics",
+                "name": f"Excluded Metrics ({data['count']} Items)",
+                "value": "EXCLUDED",
+                "formula": "N/A",
+                "source": "Governance Engine",
+                "confidence": "Low",
+                "warnings": f"Affected Areas: [{affected_cats}] | Reason: {reason}"
+            })
+
+        return valid_kpis
