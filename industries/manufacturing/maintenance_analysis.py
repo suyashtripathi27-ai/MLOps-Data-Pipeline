@@ -2,185 +2,205 @@
 Preventive maintenance, MTBF, MTTR, and maintenance performance metrics.
 """
 import pandas as pd
-from utils.kpi_helpers import first_column, safe_kpi, confidence_for
-from utils.validator import SemanticValidator
+from utils.kpi_engine import KPIEngine
 
-def calc_maintenance_metrics(df):
-    """Calculates maintenance performance KPIs."""
+MANUFACTURING_CONFIG = {
+    "missing_data_threshold": 6,
+    "score_deduction_for_warning": 15,
+    "low_confidence_threshold": 30,
+}
+
+def calc_maintenance_metrics(df, enable_debug=False):
+    """
+    Calculates maintenance performance KPIs with optional execution tracing.
+    
+    Args:
+        df: Input DataFrame
+        enable_debug: If True, prints execution trace log for observability
+    
+    Returns:
+        List of KPI dictionaries
+    """
+    engine = KPIEngine(df, industry_config=MANUFACTURING_CONFIG)
+    if enable_debug:
+        engine.enable_tracing()
+    
     kpis = []
     
     if len(df) == 0:
         return kpis
     
     # MTBF and MTTR are ELAPSED TIME (hours between failures, time to repair)
-    mtbf_col = first_column(df, ["mtbf_hours", "mean_time_between_failures", "hours_between_failures"])
-    mttr_col = first_column(df, ["mttr_hours", "mean_time_to_repair", "repair_time"])
-    pm_col = first_column(df, ["preventive_maintenance_hours", "planned_maintenance_hours", "pm_hours"])
-    machine_col = first_column(df, ["machine_id", "equipment_id", "asset_id"])
+    mtbf_col, mtbf_series = engine.get_numeric(["mtbf_hours", "mean_time_between_failures", "hours_between_failures"])
+    mttr_col, mttr_series = engine.get_numeric(["mttr_hours", "mean_time_to_repair", "repair_time"])
+    pm_col, pm_series = engine.get_numeric(["preventive_maintenance_hours", "planned_maintenance_hours", "pm_hours"])
+    machine_col, machine_series = engine.get_column(["machine_id", "equipment_id", "asset_id"])
     
-    if not mtbf_col and not mttr_col and not pm_col:
-        return kpis
-    
-    conf, warns = confidence_for(df, [col for col in [mtbf_col, mttr_col, pm_col, machine_col] if col])
-    
-    # MTBF (Mean Time Between Failures) - ⏱️ ELAPSED TIME
-    if mtbf_col:
-        is_valid, reason = SemanticValidator.is_valid_duration(df[mtbf_col])
+    # ==========================================
+    # 1. MTBF (Mean Time Between Failures)
+    # ==========================================
+    if mtbf_col is not None:
+        # FIX: Drop NaN values BEFORE calculating
+        mtbf_clean = mtbf_series.dropna()
         
-        if is_valid and pd.api.types.is_numeric_dtype(df[mtbf_col]):
-            valid_mtbf = df[mtbf_col].dropna()
+        if len(mtbf_clean) > 0:
+            is_valid, reason = engine.validate_business_rule("duration", mtbf_clean)
             
-            if not valid_mtbf.empty:
-                avg_mtbf = valid_mtbf.mean()
-                min_mtbf = valid_mtbf.min()
+            if is_valid:
+                avg_mtbf = mtbf_clean.mean()
+                min_mtbf = mtbf_clean.min()
                 
-                kpis.append(safe_kpi(
+                kpis.append(engine.build_kpi(
                     category="🛠️ Maintenance",
                     name="Avg MTBF (Mean Time Between Failures)",
                     value=f"{avg_mtbf:,.1f} hours",
                     formula="Mean(MTBF)",
                     source=f"`{mtbf_col}`",
-                    confidence=conf,
-                    warnings="Low MTBF - Frequent failures" if avg_mtbf < 100 else warns
+                    warnings="Low MTBF - Frequent failures (<100 hrs)" if avg_mtbf < 100 else "None"
                 ))
                 
-                kpis.append(safe_kpi(
+                kpis.append(engine.build_kpi(
                     category="🛠️ Maintenance",
                     name="Min MTBF (Weakest Equipment)",
                     value=f"{min_mtbf:,.1f} hours",
                     formula="Min(MTBF)",
                     source=f"`{mtbf_col}`",
-                    confidence=conf,
-                    warnings="Critical: Very low MTBF" if min_mtbf < 50 else warns
+                    warnings="Critical: Very low MTBF (<50 hrs)" if min_mtbf < 50 else "None"
                 ))
+            else:
+                kpis.append(engine.log_missing("🛠️ Maintenance", "MTBF", f"Invalid duration: {reason}"))
         else:
-            kpis.append(safe_kpi(
-                category="🛠️ Maintenance",
-                name="MTBF Metrics",
-                value="EXCLUDED",
-                formula="N/A",
-                source=f"`{mtbf_col}`",
-                confidence="Low",
-                warnings=f"Invalid duration: {reason}"
-            ))
+            kpis.append(engine.log_missing("🛠️ Maintenance", "MTBF", "All MTBF entries are missing/null."))
+    else:
+        kpis.append(engine.log_missing("🛠️ Maintenance", "MTBF", "Missing numeric 'mtbf_hours' column."))
     
-    # MTTR (Mean Time To Repair) - ⏱️ ELAPSED TIME
-    if mttr_col:
-        is_valid, reason = SemanticValidator.is_valid_duration(df[mttr_col])
+    # ==========================================
+    # 2. MTTR (Mean Time To Repair)
+    # ==========================================
+    if mttr_col is not None:
+        # FIX: Drop NaN values BEFORE calculating
+        mttr_clean = mttr_series.dropna()
         
-        if is_valid and pd.api.types.is_numeric_dtype(df[mttr_col]):
-            valid_mttr = df[mttr_col].dropna()
+        if len(mttr_clean) > 0:
+            is_valid, reason = engine.validate_business_rule("duration", mttr_clean)
             
-            if not valid_mttr.empty:
-                avg_mttr = valid_mttr.mean()
-                max_mttr = valid_mttr.max()
+            if is_valid:
+                avg_mttr = mttr_clean.mean()
+                max_mttr = mttr_clean.max()
                 
-                kpis.append(safe_kpi(
+                kpis.append(engine.build_kpi(
                     category="🛠️ Maintenance",
                     name="Avg MTTR (Mean Time To Repair)",
                     value=f"{avg_mttr:.2f} hours",
                     formula="Mean(MTTR)",
                     source=f"`{mttr_col}`",
-                    confidence=conf,
-                    warnings="High MTTR - Slow repairs" if avg_mttr > 4 else warns
+                    warnings="High MTTR - Slow repairs (>4 hrs)" if avg_mttr > 4 else "None"
                 ))
                 
-                kpis.append(safe_kpi(
+                kpis.append(engine.build_kpi(
                     category="🛠️ Maintenance",
                     name="Max MTTR (Longest Repair)",
                     value=f"{max_mttr:.2f} hours",
                     formula="Max(MTTR)",
-                    source=f"`{mttr_col}`",
-                    confidence=conf,
-                    warnings=warns
+                    source=f"`{mttr_col}`"
                 ))
                 
-                # Equipment availability from MTBF/MTTR ratio
-                if mtbf_col and pd.api.types.is_numeric_dtype(df[mtbf_col]):
-                    valid_mtbf = df[mtbf_col].dropna()
+                # ==========================================
+                # 3. EQUIPMENT AVAILABILITY (from MTBF/MTTR)
+                # ==========================================
+                if mtbf_col is not None:
+                    mtbf_for_avail = mtbf_series.dropna()
                     
-                    if not valid_mtbf.empty:
-                        avg_mtbf = valid_mtbf.mean()
-                        availability = (avg_mtbf / (avg_mtbf + avg_mttr)) * 100 if (avg_mtbf + avg_mttr) > 0 else 0
+                    if len(mtbf_for_avail) > 0:
+                        avg_mtbf = mtbf_for_avail.mean()
+                        availability = (avg_mtbf / (avg_mtbf + avg_mttr) * 100) if (avg_mtbf + avg_mttr) > 0 else 0
                         
-                        kpis.append(safe_kpi(
+                        warn_msg = "Low availability (<85%)" if availability < 85 else "None"
+                        kpis.append(engine.build_kpi(
                             category="🔧 Equipment Health",
                             name="Equipment Availability (from MTBF/MTTR)",
                             value=f"{availability:.2f}%",
                             formula="MTBF / (MTBF + MTTR) * 100",
                             source=f"`{mtbf_col}`, `{mttr_col}`",
-                            confidence=conf,
-                            warnings="Low availability" if availability < 85 else warns
+                            warnings=warn_msg
                         ))
+            else:
+                kpis.append(engine.log_missing("🛠️ Maintenance", "MTTR", f"Invalid duration: {reason}"))
         else:
-            kpis.append(safe_kpi(
-                category="🛠️ Maintenance",
-                name="MTTR Metrics",
-                value="EXCLUDED",
-                formula="N/A",
-                source=f"`{mttr_col}`",
-                confidence="Low",
-                warnings=f"Invalid duration: {reason}"
-            ))
+            kpis.append(engine.log_missing("🛠️ Maintenance", "MTTR", "All MTTR entries are missing/null."))
+    else:
+        kpis.append(engine.log_missing("🛠️ Maintenance", "MTTR", "Missing numeric 'mttr_hours' column."))
     
-    # Preventive Maintenance - ⏱️ ELAPSED TIME
-    if pm_col:
-        is_valid, reason = SemanticValidator.is_valid_duration(df[pm_col])
+    # ==========================================
+    # 4. PREVENTIVE MAINTENANCE
+    # ==========================================
+    if pm_col is not None:
+        # FIX: Drop NaN values BEFORE calculating
+        pm_clean = pm_series.dropna()
         
-        if is_valid and pd.api.types.is_numeric_dtype(df[pm_col]):
-            total_pm = df[pm_col].sum()
+        if len(pm_clean) > 0:
+            is_valid, reason = engine.validate_business_rule("duration", pm_clean)
             
-            kpis.append(safe_kpi(
-                category="🛠️ Maintenance",
-                name="Total Preventive Maintenance Hours",
-                value=f"{total_pm:,.1f} hours",
-                formula="Sum(PM Hours)",
-                source=f"`{pm_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
-            
-            # PM vs corrective ratio
-            if mttr_col and pd.api.types.is_numeric_dtype(df[mttr_col]):
-                total_corrective = df[mttr_col].sum()
-                pm_ratio = (total_pm / (total_pm + total_corrective) * 100) if (total_pm + total_corrective) > 0 else 0
+            if is_valid:
+                total_pm = pm_clean.sum()
                 
-                kpis.append(safe_kpi(
+                kpis.append(engine.build_kpi(
                     category="🛠️ Maintenance",
-                    name="Preventive vs Corrective Ratio",
-                    value=f"{pm_ratio:.2f}% PM",
-                    formula="(PM Hours / (PM + Corrective)) * 100",
-                    source=f"`{pm_col}`, `{mttr_col}`",
-                    confidence=conf,
-                    warnings="Low PM ratio - Reactive maintenance" if pm_ratio < 30 else warns
+                    name="Total Preventive Maintenance Hours",
+                    value=f"{total_pm:,.1f} hours",
+                    formula="Sum(PM Hours)",
+                    source=f"`{pm_col}`"
                 ))
+                
+                # ==========================================
+                # 5. PM vs Corrective Ratio
+                # ==========================================
+                if mttr_col is not None:
+                    mttr_for_ratio = mttr_series.dropna()
+                    
+                    if len(mttr_for_ratio) > 0:
+                        total_corrective = mttr_for_ratio.sum()
+                        pm_ratio = (total_pm / (total_pm + total_corrective) * 100) if (total_pm + total_corrective) > 0 else 0
+                        
+                        warn_msg = "Low PM ratio - Reactive maintenance (<30%)" if pm_ratio < 30 else "None"
+                        kpis.append(engine.build_kpi(
+                            category="🛠️ Maintenance",
+                            name="Preventive vs Corrective Ratio",
+                            value=f"{pm_ratio:.2f}% PM",
+                            formula="(PM Hours / (PM + Corrective)) * 100",
+                            source=f"`{pm_col}`, `{mttr_col}`",
+                            warnings=warn_msg
+                        ))
+            else:
+                kpis.append(engine.log_missing("🛠️ Maintenance", "PM", f"Invalid duration: {reason}"))
         else:
-            kpis.append(safe_kpi(
-                category="🛠️ Maintenance",
-                name="PM Metrics",
-                value="EXCLUDED",
-                formula="N/A",
-                source=f"`{pm_col}`",
-                confidence="Low",
-                warnings=f"Invalid duration: {reason}"
-            ))
+            kpis.append(engine.log_missing("🛠️ Maintenance", "PM", "All PM entries are missing/null."))
+    else:
+        kpis.append(engine.log_missing("🛠️ Maintenance", "PM", "Missing numeric 'preventive_maintenance_hours' column."))
     
-    # Maintenance by machine
-    if machine_col and mttr_col and pd.api.types.is_numeric_dtype(df[mttr_col]):
+    # ==========================================
+    # 6. MAINTENANCE BY MACHINE
+    # ==========================================
+    if machine_col is not None and mttr_col is not None:
         machine_mttr = df.groupby(machine_col)[mttr_col].mean().sort_values(ascending=False)
         
-        if not machine_mttr.empty:
+        if len(machine_mttr) > 0:
             slowest_machine = machine_mttr.idxmax()
             slowest_mttr = machine_mttr.max()
             
-            kpis.append(safe_kpi(
+            kpis.append(engine.build_kpi(
                 category="🛠️ Maintenance",
                 name="Slowest to Repair (Avg MTTR)",
                 value=f"{slowest_machine} ({slowest_mttr:.2f} hrs)",
                 formula="Machine with max avg MTTR",
-                source=f"`{machine_col}`, `{mttr_col}`",
-                confidence=conf,
-                warnings=warns
+                source=f"`{machine_col}`, `{mttr_col}`"
             ))
+        else:
+            kpis.append(engine.log_missing("🛠️ Maintenance", "Top Machine", "No valid machine data."))
+    else:
+        kpis.append(engine.log_missing("🛠️ Maintenance", "Top Machine", "Missing 'machine_id' column."))
+    
+    if enable_debug:
+        engine.print_execution_log()
     
     return kpis
