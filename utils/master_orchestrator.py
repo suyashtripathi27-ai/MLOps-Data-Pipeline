@@ -23,8 +23,10 @@ def run_master_orchestrator(industry_name, kpi_list, kpi_markdown, payload, clie
     
     # Safely handle the payload
     if isinstance(payload, str):
-        try: payload = json.loads(payload)
-        except: payload = {"raw_data": payload}
+        try: 
+            payload = json.loads(payload)
+        except: 
+            payload = {"raw_data": payload}
             
     # Send ONLY the top 3 clusters to keep AI focused
     payload['prioritized_signals'] = {"PRIORITIZED_NARRATIVE_BLOCKS": top_3_clusters}
@@ -51,5 +53,6 @@ def run_master_orchestrator(industry_name, kpi_list, kpi_markdown, payload, clie
     safe_report = validate_operational_claims(clean_report)
     final_report = inject_reliability_warning(safe_report, avg_confidence)
     
-    final_kpis = KPIEngine.deduplicate_diagnostics(final_kpis)
+    # 5. FINAL ASSEMBLY
+    # The kpi_markdown passed here is already clean and deduplicated from main.py
     return f"{final_report}\n\n---\n### 📊 Technical Appendix: Operational KPIs\n{kpi_markdown}"
