@@ -51,5 +51,5 @@ def run_master_orchestrator(industry_name, kpi_list, kpi_markdown, payload, clie
     safe_report = validate_operational_claims(clean_report)
     final_report = inject_reliability_warning(safe_report, avg_confidence)
     
-    # Append the raw data at the bottom natively
+    final_kpis = KPIEngine.deduplicate_diagnostics(final_kpis)
     return f"{final_report}\n\n---\n### 📊 Technical Appendix: Operational KPIs\n{kpi_markdown}"
