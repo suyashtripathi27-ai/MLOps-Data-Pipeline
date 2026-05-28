@@ -1,5 +1,6 @@
 import os
 from utils.master_orchestrator import run_master_orchestrator
+from utils.kpi_engine import KPIEngine # 👈 IMPORT ADDED
 
 # Import your local microservices
 from .account_analysis import calc_account_metrics
@@ -16,14 +17,9 @@ def generate_dynamic_kpis(df):
     """Executes all KPI modules dynamically and returns a list of dictionaries."""
     all_kpis = []
     for module in [
-        calc_account_metrics, 
-        calc_balance_metrics,
-        calc_deposit_metrics, 
-        calc_loan_metrics, 
-        calc_customer_metrics, 
-        calc_fee_metrics, 
-        calc_compliance_metrics, 
-        calc_branch_metrics
+        calc_account_metrics, calc_balance_metrics, calc_deposit_metrics, 
+        calc_loan_metrics, calc_customer_metrics, calc_fee_metrics, 
+        calc_compliance_metrics, calc_branch_metrics
     ]:
         try:
             all_kpis.extend(module(df))
@@ -44,19 +40,24 @@ def build_markdown_table(kpis):
 
 
 def run_banking_analysis(payload, clients, df):
-    # 1. Generate KPIs locally
-    kpi_list = generate_dynamic_kpis(df)
-    kpi_markdown = build_markdown_table(kpi_list)
+    # 1. Generate Raw KPIs locally
+    raw_kpis = generate_dynamic_kpis(df)
     
-    # 2. Define Paths
+    # 2. 🛑 DEDUPLICATE (Fixes Issue 5) 🛑
+    final_kpis = KPIEngine.deduplicate_diagnostics(raw_kpis)
+    
+    # 3. Build Markdown using the clean list
+    kpi_markdown = build_markdown_table(final_kpis)
+    
+    # 4. Define Paths
     prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
     sys_prompt_path = os.path.join(os.path.dirname(__file__), 'system_prompt.txt')
     
-    # 3. Hand off to the Master Orchestrator
+    # 5. Hand off to the Master Orchestrator
     return run_master_orchestrator(
         industry_name="banking",
-        kpi_list=kpi_list,
-        kpi_markdown=kpi_markdown,
+        kpi_list=final_kpis,       # 👈 Pass the clean list
+        kpi_markdown=kpi_markdown, # 👈 Pass the clean markdown
         payload=payload,
         clients=clients,
         prompt_path=prompt_path,
