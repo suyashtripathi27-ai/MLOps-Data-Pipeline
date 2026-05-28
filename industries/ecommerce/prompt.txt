@@ -1,35 +1,6 @@
-Analyze the E-commerce operational intelligence payload below.
+Analyze the e-commerce operational intelligence payload below. Focus exclusively on the PRIORITIZED_NARRATIVE_BLOCKS. 
+
+Do NOT explain metrics individually. Do NOT narrate KPI tables. Generate the intelligence report strictly adhering to the structure, formatting, governance, and lexical constraints defined in your system instructions.
 
 PAYLOAD:
 {data_payload}
-
-YOUR TASK:
-Generate an E-commerce executive intelligence report focusing heavily on the PRIORITIZED_NARRATIVE_BLOCKS.
-
-Format your response in professional Markdown, structuring it EXACTLY with these sections:
-
-### 📑 1. Executive Summary
-* VERY short. Tell the user what matters immediately in 3-4 sentences focusing on overall fulfillment health, sales performance, and highest-priority risks.
-
-### 🛡️ 2. Reliability & Data Quality
-* Create a simple markdown table summarizing the reliability of the provided data blocks.
-
-### 🔍 3. Key Operational Findings
-* Highlight the top impactful trends using this exact structure based on the narrative clusters provided:
-  * **Observation:** [What happened based on the data]
-  * **Possible Reason:** [Why it may matter / Potential root cause]
-  * **Business Impact:** [The operational or financial implication]
-
-### 🚨 4. Operational Risk Areas
-* Create a Markdown table with two columns: **Risk Area** and **Severity** (High/Medium/Low).
-
-### 🚀 5. Recommended Actions
-* Provide 3-5 highly specific, practical next steps for the ecommerce team based directly on the evidence.
-
-### 📈 6. Supporting Dashboard Context
-* Provide a brief list of interactive charts or data visualizations that would best support these findings in a UI dashboard.
-
-STRICT RULES:
-- Never explain every KPI individually.
-- Do not generate the raw technical data table (this is appended automatically by the system).
-- Keep sections concise and high-signal.
