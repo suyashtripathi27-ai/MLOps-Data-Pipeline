@@ -5,7 +5,6 @@ import re
 # LAYER 1: THE MASTER ONTOLOGY (Multi-Industry + Future State)
 # ==========================================
 INDUSTRY_ONTOLOGIES = {
-    # 🏭 EXISTING: Manufacturing
     "manufacturing": {
         "production_instability_cluster": {
             "keywords": ["downtime", "maintenance", "oee", "efficiency", "utilization", "delay", "idle"],
@@ -38,8 +37,6 @@ INDUSTRY_ONTOLOGIES = {
             "criticality": "internal_operational"
         }
     },
-    
-    # 🛒 EXISTING: E-commerce
     "ecommerce": {
         "fulfillment_risk_cluster": {
             "keywords": ["delivery", "shipping", "delay", "fulfillment", "transit", "logistics"],
@@ -54,8 +51,6 @@ INDUSTRY_ONTOLOGIES = {
             "criticality": "internal_operational"
         }
     },
-    
-    # 👥 EXISTING: HR
     "hr": {
         "retention_risk_cluster": {
             "keywords": ["turnover", "attrition", "flight risk", "resignation", "tenure"],
@@ -64,8 +59,6 @@ INDUSTRY_ONTOLOGIES = {
             "criticality": "internal_operational"
         }
     },
-    
-    # 🧬 EXISTING: Pharma
     "pharma": {
         "compliance_risk_cluster": {
             "keywords": ["fda", "audit", "gmp", "deviation", "sterility", "temperature", "excursion"],
@@ -80,8 +73,6 @@ INDUSTRY_ONTOLOGIES = {
             "criticality": "internal_operational"
         }
     },
-    
-    # 📈 EXISTING: Finance
     "finance": {
         "liquidity_risk_cluster": {
             "keywords": ["cash flow", "working capital", "dscr", "burn rate", "runway", "receivables"],
@@ -96,8 +87,6 @@ INDUSTRY_ONTOLOGIES = {
             "criticality": "internal_operational"
         }
     },
-    
-    # 🏦 EXISTING: Banking
     "banking": {
         "credit_risk_cluster": {
             "keywords": ["npl", "default", "delinquency", "charge off", "fico", "ltv"],
@@ -110,10 +99,26 @@ INDUSTRY_ONTOLOGIES = {
             "impact_areas": ["regulatory_fine", "reputational_damage", "license_risk"],
             "related_signals": [],
             "criticality": "customer_facing"
+        },
+        "customer_retention_cluster": {
+            "keywords": ["churn", "attrition", "retention", "inactive", "one-time"],
+            "impact_areas": ["revenue_stability", "portfolio_growth", "customer_lifetime_value"],
+            "related_signals": ["engagement_stability_cluster"],
+            "criticality": "internal_operational"
+        },
+        "deposit_concentration_cluster": {
+            "keywords": ["balance", "deposit", "concentration", "liquidity", "top 5%"],
+            "impact_areas": ["liquidity_risk", "funding_stability"],
+            "related_signals": ["credit_risk_cluster"],
+            "criticality": "internal_operational"
+        },
+        "engagement_stability_cluster": {
+            "keywords": ["active_member", "credit_card", "usage", "engagement", "active accounts"],
+            "impact_areas": ["customer_loyalty", "cross_sell_potential"],
+            "related_signals": ["customer_retention_cluster"],
+            "criticality": "internal_operational"
         }
     },
-    
-    # 🏪 EXISTING: Retail
     "retail": {
         "store_performance_cluster": {
             "keywords": ["footfall", "conversion", "basket size", "upt", "shrinkage", "theft"],
@@ -128,8 +133,6 @@ INDUSTRY_ONTOLOGIES = {
             "criticality": "internal_operational"
         }
     },
-    
-    # 🚚 EXISTING: Logistics
     "logistics": {
         "network_bottleneck_cluster": {
             "keywords": ["transit time", "delay", "detention", "demurrage", "port", "routing"],
@@ -143,74 +146,6 @@ INDUSTRY_ONTOLOGIES = {
             "related_signals": ["network_bottleneck_cluster"],
             "criticality": "internal_operational"
         }
-    },
-
-    # ==========================================
-    # 🚀 FUTURE ROADMAP INDUSTRIES 
-    # ==========================================
-
-    # 🏥 FUTURE: Healthcare & Hospital Operations
-    "healthcare": {
-        "patient_flow_cluster": {
-            "keywords": ["wait time", "los", "length of stay", "bed", "occupancy", "discharge", "er"],
-            "impact_areas": ["patient_experience", "care_bottlenecks", "facility_throughput"],
-            "related_signals": ["clinical_outcomes_cluster"],
-            "criticality": "customer_facing"
-        },
-        "clinical_outcomes_cluster": {
-            "keywords": ["readmission", "mortality", "infection", "complication", "incident", "hais"],
-            "impact_areas": ["quality_of_care", "compliance_penalty", "liability_risk"],
-            "related_signals": ["patient_flow_cluster"],
-            "criticality": "customer_facing"
-        }
-    },
-
-    # ⚡ FUTURE: Energy & Utilities
-    "energy": {
-        "grid_stability_cluster": {
-            "keywords": ["outage", "downtime", "load", "capacity", "frequency", "voltage", "saidi", "saifi"],
-            "impact_areas": ["service_reliability", "regulatory_fines", "customer_trust"],
-            "related_signals": ["asset_degradation_cluster"],
-            "criticality": "customer_facing"
-        },
-        "asset_degradation_cluster": {
-            "keywords": ["maintenance", "failure", "degradation", "transformer", "turbine", "lifecycle"],
-            "impact_areas": ["capex_efficiency", "operational_hazards"],
-            "related_signals": ["grid_stability_cluster"],
-            "criticality": "internal_operational"
-        }
-    },
-
-    # 📡 FUTURE: Telecommunications
-    "telecom": {
-        "network_reliability_cluster": {
-            "keywords": ["latency", "packet loss", "uptime", "drop rate", "bandwidth", "congestion"],
-            "impact_areas": ["sla_breach", "subscriber_churn", "infrastructure_stress"],
-            "related_signals": ["subscriber_health_cluster"],
-            "criticality": "customer_facing"
-        },
-        "subscriber_health_cluster": {
-            "keywords": ["churn", "arpu", "cac", "mrr", "downgrade", "activation"],
-            "impact_areas": ["revenue_retention", "market_share", "acquisition_roi"],
-            "related_signals": ["network_reliability_cluster"],
-            "criticality": "internal_operational"
-        }
-    },
-
-    # 💻 FUTURE: SaaS & Cloud Technology
-    "saas": {
-        "platform_health_cluster": {
-            "keywords": ["uptime", "error rate", "api", "latency", "timeout", "bug", "incident"],
-            "impact_areas": ["sla_breach", "user_trust", "engineering_velocity"],
-            "related_signals": ["customer_success_cluster"],
-            "criticality": "customer_facing"
-        },
-        "customer_success_cluster": {
-            "keywords": ["nrr", "churn", "dau", "mau", "active users", "adoption", "engagement"],
-            "impact_areas": ["recurring_revenue", "valuation_multiple", "account_expansion"],
-            "related_signals": ["platform_health_cluster"],
-            "criticality": "internal_operational"
-        }
     }
 }
 
@@ -218,12 +153,8 @@ INDUSTRY_ONTOLOGIES = {
 # LAYER 2: SIGNAL ENRICHMENT ENGINE
 # ==========================================
 def map_to_ontology(category, name, industry="manufacturing"):
-    """Pulls the correct ontology based on the industry pipeline calling it."""
     text = f"{category} {name}".lower()
-    
-    # Safely fallback to manufacturing if the industry isn't found
     active_ontology = INDUSTRY_ONTOLOGIES.get(industry, INDUSTRY_ONTOLOGIES["manufacturing"])
-    
     for cluster_name, rules in active_ontology.items():
         if any(keyword in text for keyword in rules["keywords"]):
             return cluster_name, rules["impact_areas"], rules["related_signals"], rules["criticality"]
@@ -250,7 +181,6 @@ def generate_signal(kpi, industry):
     value = kpi.get("value", "")
     conf_label = str(kpi.get("confidence", "Medium"))
     
-    # Pass the industry down to the mapper
     cluster, impacts, related, criticality = map_to_ontology(category, name, industry)
     
     signal = {
@@ -259,7 +189,7 @@ def generate_signal(kpi, industry):
         "affected_dimension": clean_dimension_name(category), 
         "business_area": category,
         "finding": f"{name} is at {value}",
-        "raw_warning": warning,                               
+        "raw_warning": warning,                                
         "impact_areas": impacts,
         "related_clusters": related,
         "business_criticality": criticality,
@@ -288,7 +218,6 @@ def generate_signal(kpi, industry):
 # ==========================================
 def consolidate_signals(signals_list):
     consolidated = {}
-    
     for sig in signals_list:
         if sig["severity"] == "LOW":
             continue 
@@ -322,7 +251,6 @@ def consolidate_signals(signals_list):
     return consolidated
 
 def apply_cross_cluster_escalation(clusters, industry):
-    # Industry-specific escalation rules
     if industry == "manufacturing":
         if "production_instability_cluster" in clusters and "quality_degradation_cluster" in clusters:
             clusters["production_instability_cluster"]["time_sensitivity"] = "CRITICAL_BOARD_LEVEL"
@@ -360,16 +288,39 @@ def calculate_priority_scores(clusters):
         
     return clusters
 
+# ==========================================
+# LAYER 4: THE NEW SEPARATED SYNTHESIS PIPELINE
+# ==========================================
 def synthesize_operational_signals(kpi_list, industry="manufacturing"):
-    """Main execution function, now accepts an industry parameter."""
-    raw_signals = [generate_signal(kpi, industry) for kpi in kpi_list]
-    
+    """
+    Separates operational intelligence from governance intelligence.
+    Prevents missing data warnings from generating false positive risk clusters.
+    """
+    # 1. Split signals by explicit classification
+    operational_kpis = [k for k in kpi_list if k.get("signal_type", "operational") != "governance"]
+    governance_kpis = [k for k in kpi_list if k.get("signal_type") == "governance"]
+
+    # 2. OPERATIONAL INTELLIGENCE (Full clustering & scoring)
+    raw_signals = [generate_signal(kpi, industry) for kpi in operational_kpis]
     grouped_clusters = consolidate_signals(raw_signals)
     escalated_clusters = apply_cross_cluster_escalation(grouped_clusters, industry)
     scored_clusters = calculate_priority_scores(escalated_clusters)
     
-    sorted_narrative_blocks = dict(
+    sorted_operational_blocks = dict(
         sorted(scored_clusters.items(), key=lambda item: item[1]['cluster_priority_score'], reverse=True)
     )
-    
-    return {"PRIORITIZED_NARRATIVE_BLOCKS": sorted_narrative_blocks}
+
+    # 3. GOVERNANCE INTELLIGENCE (Direct mapping, no clustering hallucination)
+    governance_signals = []
+    for k in governance_kpis:
+        governance_signals.append({
+            "severity": "LOW",
+            "issue": k.get("warnings", "Data excluded by governance engine."),
+            "affected_area": k.get("category", "System Diagnostics")
+        })
+
+    # 4. Strict return structure for LLM routing
+    return {
+        "OPERATIONAL_INTELLIGENCE": sorted_operational_blocks,
+        "GOVERNANCE_INTELLIGENCE": governance_signals
+    }
