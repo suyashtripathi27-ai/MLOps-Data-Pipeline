@@ -188,35 +188,37 @@ class KPIEngine:
             "confidence_config": self.confidence_config, "tracing_enabled": self._trace_enabled,
             "execution_log_size": len(self.execution_log)
         }
-
+        
     @staticmethod
     def deduplicate_diagnostics(kpi_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Takes a raw list of generated KPIs and aggregates ALL 'EXCLUDED' errors into a single row.
+        Prevents table bloat and executive distrust.
+        """
         valid_kpis = []
-        excluded_tracker = {}
+        excluded_count = 0
+        affected_categories = set()
 
         for kpi in kpi_list:
             if kpi.get("value") == "EXCLUDED":
-                reason = kpi.get("warnings", "Missing data elements.")
-                category = kpi.get("category", "Unknown")
-                if reason not in excluded_tracker:
-                    excluded_tracker[reason] = {"categories": set([category]), "count": 1}
-                else:
-                    excluded_tracker[reason]["categories"].add(category)
-                    excluded_tracker[reason]["count"] += 1
+                excluded_count += 1
+                # Collect all the unique categories that had missing data
+                affected_categories.add(kpi.get("category", "Unknown"))
             else:
                 valid_kpis.append(kpi)
 
-        for reason, data in excluded_tracker.items():
-            affected_cats = ", ".join(sorted(list(data["categories"])))
+        # If we found missing data, create exactly ONE summary row
+        if excluded_count > 0:
+            cats = ", ".join(sorted(list(affected_categories)))
             valid_kpis.append({
                 "category": "🛠️ System Diagnostics",
-                "name": f"Excluded Metrics ({data['count']} Items)",
+                "name": f"Excluded Metrics ({excluded_count} Items)",
                 "value": "EXCLUDED",
                 "formula": "N/A",
                 "source": "Governance Engine",
                 "confidence": "Low",
-                "warnings": f"Affected Areas: [{affected_cats}] | Reason: {reason}",
-                "signal_type": "governance"  # 👈 Ensure consolidated missing data goes to governance!
+                "warnings": f"Missing required data fields across: [{cats}]",
+                "signal_type": "governance"
             })
 
         return valid_kpis
