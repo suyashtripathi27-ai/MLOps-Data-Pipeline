@@ -4,3 +4,8 @@ Do NOT explain metrics individually. Do NOT narrate KPI tables. Generate the int
 
 PAYLOAD:
 {data_payload}
+
+CRITICAL ROUTING INSTRUCTIONS:
+1. You MUST use the "OPERATIONAL_INTELLIGENCE" block exclusively to write Sections 1, 2, 3, and 4. 
+2. You MUST use the "GOVERNANCE_INTELLIGENCE" block exclusively to write Section 5. 
+3. NEVER mix governance warnings (missing columns/excluded metrics) into your operational risk synthesis. Governance constraints do not belong in the Stoplight hierarchy.
