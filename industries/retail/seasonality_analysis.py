@@ -2,148 +2,54 @@
 Seasonal patterns, holiday uplift, and demand variability metrics.
 """
 import pandas as pd
-from utils.kpi_helpers import first_column, safe_kpi, confidence_for
-from utils.validator import SemanticValidator
+from utils.kpi_engine import KPIEngine
 
-def calc_seasonality_metrics(df):
-    """Calculates seasonality and temporal patterns KPIs."""
+RETAIL_CONFIG = {"missing_data_threshold": 8, "score_deduction_for_warning": 12, "low_confidence_threshold": 35}
+
+def calc_seasonality_metrics(df, enable_debug=False):
+    engine = KPIEngine(df, industry_config=RETAIL_CONFIG)
+    if enable_debug: engine.enable_tracing()
+    
     kpis = []
+    if len(df) == 0: return kpis
     
-    if len(df) == 0:
-        return kpis
+    rev_col, rev_series = engine.get_numeric(["revenue", "sales", "weekly_sales", "total_sales", "order_value"])
+    date_col, date_series = engine.get_datetime(["date", "transaction_date", "order_date", "week_date"])
+    hol_col, hol_series = engine.get_column(["is_holiday", "holiday_flag", "holiday"])
     
-    # Revenue is MONEY, not time
-    revenue_col = first_column(df, ["revenue", "sales", "weekly_sales", "total_sales", "order_value"])
-    date_col = first_column(df, ["date", "transaction_date", "order_date", "week_date", "timestamp"])
-    holiday_col = first_column(df, ["is_holiday", "holiday_flag", "holiday"])
-    
-    if not revenue_col or not date_col:
-        return kpis
-    
-    # Revenue is MONEY, not duration
-    if not pd.api.types.is_numeric_dtype(df[revenue_col]):
-        kpis.append(safe_kpi(
-            category="📅 Seasonality",
-            name="Seasonality Metrics",
-            value="EXCLUDED",
-            formula="N/A",
-            source=f"`{revenue_col}`, `{date_col}`",
-            confidence="Low",
-            warnings="Revenue column contains non-numeric data."
-        ))
-        return kpis
-    
-    conf, warns = confidence_for(df, [col for col in [revenue_col, date_col, holiday_col] if col])
-    
-    # Date validation (⏱️ EXACT DATES - not duration)
-    date_series = pd.to_datetime(df[date_col], errors="coerce")
-    dt_valid, reason = SemanticValidator.is_valid_datetime(date_series.dropna())
-    
-    if not dt_valid:
-        kpis.append(safe_kpi(
-            category="📅 Seasonality",
-            name="Seasonality Metrics",
-            value="EXCLUDED",
-            formula="N/A",
-            source=f"`{date_col}`",
-            confidence="Low",
-            warnings=f"Invalid dates: {reason}"
-        ))
-        return kpis
-    
-    work_df = df[[revenue_col]].copy()
-    work_df["date"] = date_series
-    work_df = work_df.dropna(subset=["date", revenue_col])
-    
-    if work_df.empty:
-        return kpis
-    
-    # Monthly and quarterly analysis
-    work_df["month"] = work_df["date"].dt.month
-    work_df["quarter"] = work_df["date"].dt.quarter
-    
-    monthly = work_df.groupby("month")[revenue_col].sum()
-    
-    if not monthly.empty:
-        peak_month = int(monthly.idxmax())
-        peak_revenue = monthly.max()
-        
-        kpis.append(safe_kpi(
-            category="📅 Seasonality",
-            name="Peak Sales Month",
-            value=f"Month {peak_month} (${peak_revenue:,.2f})",
-            formula="Month with max revenue",
-            source=f"`{revenue_col}`, `{date_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
-    
-    # Q4 analysis
-    total_revenue = work_df[revenue_col].sum()
-    q4_revenue = work_df.loc[work_df["quarter"] == 4, revenue_col].sum()
-    q4_share = (q4_revenue / total_revenue * 100) if total_revenue > 0 else 0
-    
-    kpis.append(safe_kpi(
-        category="📅 Seasonality",
-        name="Q4 Contribution",
-        value=f"{q4_share:.2f}%",
-        formula="Q4 Revenue / Total Revenue * 100",
-        source=f"`{revenue_col}`, `{date_col}`",
-        confidence=conf,
-        warnings=warns
-    ))
-    
-    # Demand variability
-    demand_variability = work_df[revenue_col].std() / work_df[revenue_col].mean() if work_df[revenue_col].mean() > 0 else 0
-    
-    kpis.append(safe_kpi(
-        category="📅 Seasonality",
-        name="Demand Variability Coefficient",
-        value=f"{demand_variability:.3f}",
-        formula="StdDev(Revenue) / Mean(Revenue)",
-        source=f"`{revenue_col}`",
-        confidence=conf,
-        warnings="High variability - Complex forecasting" if demand_variability > 0.5 else warns
-    ))
-    
-    # Seasonal growth
-    monthly_ordered = work_df.set_index("date")[revenue_col].resample("M").sum()
-    
-    if len(monthly_ordered) >= 2 and monthly_ordered.iloc[0] != 0:
-        seasonal_growth = ((monthly_ordered.iloc[-1] - monthly_ordered.iloc[0]) / monthly_ordered.iloc[0]) * 100
-        
-        kpis.append(safe_kpi(
-            category="📅 Seasonality",
-            name="Seasonal Growth %",
-            value=f"{seasonal_growth:.2f}%",
-            formula="((Last Month - First Month) / First Month) * 100",
-            source=f"`{revenue_col}`, `{date_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
-    
-    # Holiday uplift
-    if holiday_col:
-        holiday_mask = df[holiday_col].astype(str).str.lower().isin(['true', '1', 'yes', 'y'])
-        holiday_df = pd.DataFrame({
-            "is_holiday": holiday_mask,
-            "revenue": df[revenue_col]
-        }).dropna()
-        
-        if holiday_df["is_holiday"].any() and (~holiday_df["is_holiday"]).any():
-            holiday_avg = holiday_df.loc[holiday_df["is_holiday"], "revenue"].mean()
-            non_holiday_avg = holiday_df.loc[~holiday_df["is_holiday"], "revenue"].mean()
+    if rev_col is not None and date_col is not None:
+        work_df = pd.concat([date_series, rev_series], axis=1).dropna()
+        if len(work_df) > 0:
+            work_df["month"] = work_df[date_col].dt.month
+            work_df["quarter"] = work_df[date_col].dt.quarter
             
-            uplift = ((holiday_avg - non_holiday_avg) / non_holiday_avg * 100) if non_holiday_avg > 0 else 0
+            monthly = work_df.groupby("month")[rev_col].sum()
+            if not monthly.empty:
+                kpis.append(engine.build_kpi("📅 Seasonality", "Peak Sales Month", f"Month {int(monthly.idxmax())} (${monthly.max():,.2f})", "Month with max revenue", f"`{rev_col}`, `{date_col}`"))
             
-            kpis.append(safe_kpi(
-                category="📅 Seasonality",
-                name="Holiday Sales Uplift",
-                value=f"{uplift:.2f}%",
-                formula="((Holiday Avg - Non-Holiday Avg) / Non-Holiday Avg) * 100",
-                source=f"`{holiday_col}`, `{revenue_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
-    
+            tot_rev = work_df[rev_col].sum()
+            q4_rev = work_df.loc[work_df["quarter"] == 4, rev_col].sum()
+            kpis.append(engine.build_kpi("📅 Seasonality", "Q4 Contribution", f"{(q4_rev / tot_rev * 100) if tot_rev > 0 else 0:.2f}%", "Q4 / Total * 100", f"`{rev_col}`, `{date_col}`"))
+            
+            var = work_df[rev_col].std() / work_df[rev_col].mean() if work_df[rev_col].mean() > 0 else 0
+            kpis.append(engine.build_kpi("📅 Seasonality", "Demand Variability", f"{var:.3f}", "StdDev/Mean", f"`{rev_col}`", warnings="High variability" if var > 0.5 else "None"))
+            
+            mo_ordered = work_df.set_index(date_col)[rev_col].resample("ME").sum()
+            if len(mo_ordered) >= 2 and mo_ordered.iloc[0] != 0:
+                s_growth = ((mo_ordered.iloc[-1] - mo_ordered.iloc[0]) / mo_ordered.iloc[0]) * 100
+                kpis.append(engine.build_kpi("📅 Seasonality", "Seasonal Growth %", f"{s_growth:.2f}%", "Last Month vs First Month", f"`{rev_col}`, `{date_col}`"))
+    else:
+        kpis.append(engine.log_missing("📅 Seasonality", "Seasonality Metrics", "Requires 'date' and numeric 'revenue'."))
+
+    if hol_col is not None and rev_col is not None:
+        hol_df = pd.concat([hol_series, rev_series], axis=1).dropna()
+        if len(hol_df) > 0:
+            mask = hol_df[hol_col].astype(str).str.lower().isin(['true', '1', 'yes', 'y'])
+            if mask.any() and (~mask).any():
+                hol_avg = hol_df.loc[mask, rev_col].mean()
+                non_hol_avg = hol_df.loc[~mask, rev_col].mean()
+                uplift = ((hol_avg - non_hol_avg) / non_hol_avg * 100) if non_hol_avg > 0 else 0
+                kpis.append(engine.build_kpi("📅 Seasonality", "Holiday Sales Uplift", f"{uplift:.2f}%", "(Holiday Avg - Non-Holiday Avg) / Non-Holiday Avg * 100", f"`{hol_col}`, `{rev_col}`"))
+
+    if enable_debug: engine.print_execution_log()
     return kpis
