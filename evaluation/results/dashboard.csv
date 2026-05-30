@@ -1,3 +1,4 @@
 Timestamp,Version,Industry,Dataset,Total_Score,Max_Score,Percentage,Behavioral,Prioritization,Governance,Readability,Realism
 20260530_120801,v1,banking,Banking Customer Chrun Predicator Dataset,34,50,68.0,8,6,10,10,0
 20260530_121650,v1,banking,Banking Customer Chrun Predicator Dataset,38,50,76.0,10,10,5,10,3
+20260530_122432,v1,banking,Banking Customer Chrun Predicator Dataset,43,50,86.0,10,10,3,10,10
