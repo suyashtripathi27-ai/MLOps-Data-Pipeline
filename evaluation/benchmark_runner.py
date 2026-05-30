@@ -5,21 +5,32 @@ from datetime import datetime
 from industries.banking.pipeline import run_banking_analysis
 from evaluation.evaluation_engine import EvaluationEngine
 
+def load_dataset(file_path):
+    """Helper function to automatically use the correct pandas reader."""
+    if file_path.endswith('.csv') or file_path.endswith('.zip'):
+        return pd.read_csv(file_path)
+    elif file_path.endswith('.xlsx') or file_path.endswith('.xls'):
+        return pd.read_excel(file_path)
+    else:
+        raise ValueError("Unsupported file format. Please provide a CSV, ZIP, or Excel file.")
+
 def run_benchmark(version="v1"):
     print(f"🚀 Starting Benchmark Suite ({version})...")
     
-    dataset_path_zip = "data/raw/Banking Customer Chrun Predicator Dataset.zip"
-    dataset_path_csv = "data/raw/Banking Customer Chrun Predicator Dataset.csv"
-    dataset_path_excel = "data/raw/Banking Customer Chrun Predicator Dataset.xlsx" # 👈 Pointing to your actual dataset!
+    # Define your active dataset path here! 
+    # (Switch this string if you want to test CSV or Excel later)
+    active_dataset_path = "data/raw/Banking Customer Chrun Predicator Dataset.zip"
+    
     behavior_path = "evaluation/benchmark_cases/banking/churn_crisis/benchmark_metadata.json"
     vocab_path = "evaluation/configs/industry_vocabulary.json"
     results_dir = f"evaluation/results/{version}"
     os.makedirs(results_dir, exist_ok=True)
     
     try:
-        df = pd.read_csv(dataset_path)
+        # Using our robust helper function
+        df = load_dataset(active_dataset_path)
     except FileNotFoundError:
-        print(f"⚠️ Dataset not found at {dataset_path}")
+        print(f"⚠️ Dataset not found at {active_dataset_path}")
         return
 
     print("⚙️ Running Production Pipeline...")
