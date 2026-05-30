@@ -21,7 +21,6 @@ class EvaluationEngine:
         if not synonyms:
             return 0.0
             
-        # Count unique synonym hits
         hits = sum(1 for synonym in synonyms if synonym.lower() in search_text)
         
         if hits == 0:
@@ -57,15 +56,12 @@ class EvaluationEngine:
             self.scorecard.scores["prioritization"] = 10
             return
 
-        # Extract just the top priority section (Section 1 or 3)
         priority_match = re.search(r'(# 1\..*?# 2\.|# 3\..*?# 4\.)', self.report, re.DOTALL | re.IGNORECASE)
         priority_text = priority_match.group(0).lower() if priority_match else ""
 
-        # Fetch synonyms directly to check for ANY hit
         synonyms = self.metadata.get("concept_synonyms", {}).get(primary, [])
         hits = sum(1 for synonym in synonyms if synonym.lower() in priority_text)
         
-        # 🛑 THE FIX: If it hit the concept AT ALL in the priority section, full points!
         if hits >= 1:
             self.scorecard.scores["prioritization"] = 10
         else:
@@ -76,10 +72,8 @@ class EvaluationEngine:
         score = 10
         gov_rules = self.metadata.get("governance_expectation", {})
         
-        # Check missing data acknowledgment
         mentions_missing = any(word in self.report_lower for word in ["excluded", "missing", "visibility constraint", "unavailable"])
         
-        # 🛑 Governance Consistency Check (Catches logical contradictions)
         claims_no_exclusions = any(phrase in self.report_lower for phrase in [
             "no specific metrics were explicitly identified",
             "no specific metrics were excluded",
@@ -91,16 +85,14 @@ class EvaluationEngine:
         
         if gov_rules.get("must_acknowledge_missing_data"):
             if not mentions_missing:
-                score -= 5 # Failed to mention known data gaps
+                score -= 5
             
-            # If it was SUPPOSED to acknowledge missing data, but explicitly claimed none was missing
             if claims_no_exclusions:
-                score -= 7 # Critical hallucination deduction
+                score -= 7
         else:
             if mentions_missing:
-                score -= 3 # Hallucinated a data gap that didn't exist
+                score -= 3
                 
-        # Check certainty overstatement
         if gov_rules.get("must_not_overstate_certainty"):
             overstatements = ["proves", "guarantees", "certainly", "100%"]
             if any(word in self.report_lower for word in overstatements):
@@ -123,7 +115,6 @@ class EvaluationEngine:
             
         terms_found = sum(1 for term in expected_terms if term.lower() in self.report_lower)
         
-        # Give full points if they use at least 3 strong industry terms
         ratio = terms_found / min(3, len(expected_terms))
         self.scorecard.scores["industry_realism"] = min(10, round(ratio * 10))
 
