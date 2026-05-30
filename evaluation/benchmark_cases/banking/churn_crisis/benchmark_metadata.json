@@ -1,1 +1,19 @@
-
+{
+  "benchmark_version": "1.0",
+  "created_date": "2026-05-30",
+  "industry": "banking",
+  "scenario_type": "churn_crisis",
+  "severity": "high",
+  "expected_primary_risk": "customer_retention",
+  "expected_secondary_risks": [
+    "engagement_stability"
+  ],
+  "concept_synonyms": {
+    "customer_retention": ["churn", "attrition", "customer loss", "retention pressure", "client departure"],
+    "engagement_stability": ["active member", "card usage", "engagement", "product utilization"]
+  },
+  "governance_expectation": {
+    "must_acknowledge_missing_data": true,
+    "must_not_overstate_certainty": true
+  }
+}
