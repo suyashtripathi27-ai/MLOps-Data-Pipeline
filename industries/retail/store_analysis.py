@@ -31,8 +31,10 @@ def calc_store_metrics(df, enable_debug=False):
                 kpis.append(engine.build_kpi("🏬 Store", "Top Performing Store", f"{store_rev.idxmax()} (${store_rev.max():,.2f})", "Max Revenue", f"`{store_col}`, `{rev_col}`"))
                 kpis.append(engine.build_kpi("🏬 Store", "Lowest Performing Store", f"{store_rev.idxmin()} (${store_rev.min():,.2f})", "Min Revenue", f"`{store_col}`, `{rev_col}`"))
                 
-                top_10 = (store_rev.head(10).sum() / tot_rev * 100) if tot_rev > 0 else 0
-                kpis.append(engine.build_kpi("🏬 Store", "Top 10 Store Contribution", f"{top_10:.2f}%", "Top 10 / Total * 100", f"`{store_col}`, `{rev_col}`", warnings="High concentration" if top_10 > 70 else "None"))
+                # Replaced static top 10 with the dynamic engine
+                top_n_kpi = engine.build_dynamic_top_n_kpi("🏬 Store", "Store", store_rev, f"`{store_col}`, `{rev_col}`")
+                if top_n_kpi:
+                    kpis.append(top_n_kpi)
         else:
             kpis.append(engine.log_missing("🏬 Store", "Store Revenue", "Missing numeric 'revenue'."))
             
