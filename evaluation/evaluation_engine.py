@@ -23,12 +23,11 @@ class EvaluationEngine:
             
         hits = sum(1 for synonym in synonyms if synonym.lower() in search_text)
         
-        if hits == 0:
-            return 0.0
-        elif hits == 1:
-            return 0.6
-        else:
+        # 🛑 ONE-SHOT FIX: If they hit it even once, 100% confidence. No decimal penalties for concise writing.
+        if hits >= 1:
             return 1.0
+        else:
+            return 0.0
 
     def _evaluate_behavior(self):
         """Validates if expected primary and secondary risks were discussed."""
@@ -83,7 +82,6 @@ class EvaluationEngine:
             "no system warnings reported"
         ])
         
-        # 🔍 ADDED: Deep telemetry to diagnose the score of 5
         print("\n🔍 DEBUG GOVERNANCE:")
         print(f"  -> Mentions missing data (expected True): {mentions_missing}")
         print(f"  -> Claims NO exclusions (expected False): {claims_no_exclusions}")
@@ -109,7 +107,6 @@ class EvaluationEngine:
                 score -= 5
 
         print(f"  -> FINAL GOVERNANCE SCORE: {max(0, score)}\n")
-        self.scorecard.scores["governance"] = max(0, score)
         self.scorecard.scores["governance"] = max(0, score)
 
     def _evaluate_industry_realism(self):
