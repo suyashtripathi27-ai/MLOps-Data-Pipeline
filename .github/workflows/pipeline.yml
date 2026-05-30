@@ -49,9 +49,11 @@ jobs:
           # 1. Explicitly turn off rebasing (This prevents your specific error!)
           git config pull.rebase false
           
-          # 2. Add and commit the new report
+          # 2. Add and commit the new report AND the evaluation telemetry
           git add data/outputs/reports/
-          git commit -m "🤖 Auto-generated AI Strategy Report" || echo "No changes to commit"
+          git add evaluation/results/      # 👈 THIS IS THE FIX
+          
+          git commit -m "🤖 Auto-generated AI Strategy Report & Telemetry" || echo "No changes to commit"
           
           # 3. Pull latest changes and FORCE the runner's file to win (-X ours)
           git pull origin main -s recursive -X ours
