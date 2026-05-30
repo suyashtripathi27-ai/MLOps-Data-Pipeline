@@ -8,8 +8,9 @@ from evaluation.evaluation_engine import EvaluationEngine
 def run_benchmark(version="v1"):
     print(f"🚀 Starting Benchmark Suite ({version})...")
     
-    # Define paths
-    dataset_path = "data/raw/Banking Customer Chrun Predicator Dataset.csv" # 👈 Pointing to your actual dataset!
+    dataset_path_zip = "data/raw/Banking Customer Chrun Predicator Dataset.zip"
+    dataset_path_csv = "data/raw/Banking Customer Chrun Predicator Dataset.csv"
+    dataset_path_excel = "data/raw/Banking Customer Chrun Predicator Dataset.xlsx" # 👈 Pointing to your actual dataset!
     behavior_path = "evaluation/benchmark_cases/banking/churn_crisis/benchmark_metadata.json"
     vocab_path = "evaluation/configs/industry_vocabulary.json"
     results_dir = f"evaluation/results/{version}"
