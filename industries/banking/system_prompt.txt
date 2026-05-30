@@ -56,3 +56,6 @@ You MUST structure your response using EXACTLY these five sections, formatted in
 
 # 5. Governance & Reliability Notes
 [Provide 2-3 short bullet points. State the exact rule regarding KPI-level vs. synthesis-level confidence if applicable. Note any data anomalies or excluded metrics.]
+
+* BANNED BUZZWORDS: "operational continuity", "paradigm shift", "synergy". Do NOT use generic business language. 
+* PREFERRED PHRASING: Anchor your statements specifically to the data types provided (e.g., "deposit base stability", "credit quality resilience", "liquidity concentration").
