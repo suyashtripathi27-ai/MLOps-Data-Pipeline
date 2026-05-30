@@ -83,21 +83,33 @@ class EvaluationEngine:
             "no system warnings reported"
         ])
         
+        # 🔍 ADDED: Deep telemetry to diagnose the score of 5
+        print("\n🔍 DEBUG GOVERNANCE:")
+        print(f"  -> Mentions missing data (expected True): {mentions_missing}")
+        print(f"  -> Claims NO exclusions (expected False): {claims_no_exclusions}")
+        
         if gov_rules.get("must_acknowledge_missing_data"):
             if not mentions_missing:
+                print("  -> ❌ PENALTY (-5): Failed to mention missing data using required keywords.")
                 score -= 5
             
             if claims_no_exclusions:
+                print("  -> ❌ PENALTY (-7): Hallucinated that no data was missing.")
                 score -= 7
         else:
             if mentions_missing:
+                print("  -> ❌ PENALTY (-3): Mentioned missing data when none was expected.")
                 score -= 3
                 
         if gov_rules.get("must_not_overstate_certainty"):
             overstatements = ["proves", "guarantees", "certainly", "100%"]
-            if any(word in self.report_lower for word in overstatements):
+            found_overstatements = [w for w in overstatements if w in self.report_lower]
+            if found_overstatements:
+                print(f"  -> ❌ PENALTY (-5): Overstated certainty using banned words: {found_overstatements}")
                 score -= 5
 
+        print(f"  -> FINAL GOVERNANCE SCORE: {max(0, score)}\n")
+        self.scorecard.scores["governance"] = max(0, score)
         self.scorecard.scores["governance"] = max(0, score)
 
     def _evaluate_industry_realism(self):
