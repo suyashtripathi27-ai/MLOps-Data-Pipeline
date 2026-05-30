@@ -104,6 +104,10 @@ class EvaluationEngine:
         """Checks if the report uses the correct enterprise vocabulary."""
         industry = self.metadata.get("industry")
         expected_terms = self.vocab_dict.get(industry, [])
+
+        print(f"\n🔍 DEBUG REALISM - Industry Key from Metadata: '{industry}'")
+        print(f"🔍 DEBUG REALISM - Available Dictionary Keys: {list(self.vocab_dict.keys())}")
+        print(f"🔍 DEBUG REALISM - Expected Terms Loaded: {expected_terms}\n")
         
         if not expected_terms:
             self.scorecard.scores["industry_realism"] = 10
