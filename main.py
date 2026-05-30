@@ -181,3 +181,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+from evaluation.benchmark_runner import run_benchmark
+run_benchmark(version="v1")
