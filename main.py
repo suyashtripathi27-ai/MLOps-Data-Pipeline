@@ -179,8 +179,17 @@ def main():
     if not processed_any_file:
         print("\n⏸️ No valid data files found in data/raw/. Pipeline sleeping safely.")
 
+
 if __name__ == "__main__":
+    # 1. Run the main processing pipeline
     main()
 
-from evaluation.benchmark_runner import run_benchmark
-run_benchmark(version="v1")
+    # ==========================================
+    # 🚀 EVALUATION & BENCHMARKING TIER
+    # ==========================================
+    from evaluation.benchmark_runner import run_benchmark
+    
+    # 2. Run the dynamic benchmark engine on a specific file
+    consumer_file = "data/raw/Banking Customer Chrun Predicator Dataset.zip"
+    
+    run_benchmark(dataset_path=consumer_file, version="v1")
