@@ -2,123 +2,52 @@
 Promotional effectiveness, lift, and ROI metrics.
 """
 import pandas as pd
-from utils.kpi_helpers import first_column, safe_kpi, confidence_for
+from utils.kpi_engine import KPIEngine
 
-def calc_promotion_metrics(df):
-    """Calculates promotion effectiveness KPIs."""
+RETAIL_CONFIG = {"missing_data_threshold": 8, "score_deduction_for_warning": 12, "low_confidence_threshold": 35}
+
+def calc_promotion_metrics(df, enable_debug=False):
+    engine = KPIEngine(df, industry_config=RETAIL_CONFIG)
+    if enable_debug: engine.enable_tracing()
+    
     kpis = []
+    if len(df) == 0: return kpis
     
-    if len(df) == 0:
-        return kpis
+    promo_col, promo_series = engine.get_column(["promotion_id", "promo_id", "campaign_id", "offer_id"])
+    sales_col, sales_series = engine.get_numeric(["sales", "revenue", "order_value", "sales_amount"])
+    disc_col, disc_series = engine.get_numeric(["discount", "promotion_discount", "discount_value"])
+    qty_col, qty_series = engine.get_numeric(["quantity", "units_sold", "sales_qty"])
     
-    # Promotion metrics
-    promo_col = first_column(df, ["promotion_id", "promo_id", "campaign_id", "offer_id"])
-    sales_col = first_column(df, ["sales", "revenue", "order_value", "sales_amount"])
-    discount_col = first_column(df, ["discount", "promotion_discount", "discount_value"])
-    quantity_col = first_column(df, ["quantity", "units_sold", "sales_qty"])
-    
-    if not promo_col:
-        return kpis
-    
-    conf, warns = confidence_for(df, [col for col in [promo_col, sales_col, discount_col, quantity_col] if col])
-    
-    # Total promotions
-    total_promos = df[promo_col].nunique()
-    
-    kpis.append(safe_kpi(
-        category="🎯 Promotions",
-        name="Total Active Promotions",
-        value=f"{total_promos}",
-        formula="Count(Distinct Promotions)",
-        source=f"`{promo_col}`",
-        confidence=conf,
-        warnings=warns
-    ))
-    
-    # Sales lift
-    if sales_col and pd.api.types.is_numeric_dtype(df[sales_col]):
-        total_sales = df[sales_col].sum()
-        promo_sales = df.groupby(promo_col)[sales_col].sum().sort_values(ascending=False)
+    if promo_col is not None:
+        kpis.append(engine.build_kpi("🎯 Promotions", "Total Active Promotions", f"{promo_series.nunique()}", "Count(Distinct Promos)", f"`{promo_col}`"))
         
-        kpis.append(safe_kpi(
-            category="🎯 Promotions",
-            name="Total Promotion Sales",
-            value=f"${total_sales:,.2f}",
-            formula="Sum(Sales in Promotions)",
-            source=f"`{sales_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
-        
-        if not promo_sales.empty:
-            top_promo = promo_sales.idxmax()
-            top_promo_sales = promo_sales.max()
+        if sales_col is not None:
+            promo_sales_df = pd.concat([promo_series, sales_series], axis=1).dropna()
+            if len(promo_sales_df) > 0:
+                promo_grouped = promo_sales_df.groupby(promo_col)[sales_col].sum().sort_values(ascending=False)
+                kpis.append(engine.build_kpi("🎯 Promotions", "Total Promotion Sales", f"${promo_grouped.sum():,.2f}", "Sum(Sales in Promos)", f"`{sales_col}`"))
+                kpis.append(engine.build_kpi("🎯 Promotions", "Top Promotion", f"{promo_grouped.idxmax()} (${promo_grouped.max():,.2f})", "Promo with max sales", f"`{promo_col}`, `{sales_col}`"))
+    else:
+        kpis.append(engine.log_missing("🎯 Promotions", "Promotions", "Missing 'promotion_id'."))
+
+    if disc_col is not None:
+        disc_clean = disc_series.dropna()
+        if len(disc_clean) > 0:
+            kpis.append(engine.build_kpi("🎯 Promotions", "Total Discount Given", f"${disc_clean.sum():,.2f}", "Sum(Discount)", f"`{disc_col}`"))
+            kpis.append(engine.build_kpi("🎯 Promotions", "Avg Discount per Promotion", f"${disc_clean.mean():,.2f}", "Mean(Discount)", f"`{disc_col}`"))
             
-            kpis.append(safe_kpi(
-                category="🎯 Promotions",
-                name="Top Promotion",
-                value=f"{top_promo} (${top_promo_sales:,.2f})",
-                formula="Promotion with max sales",
-                source=f"`{promo_col}`, `{sales_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
-    
-    # Discount impact
-    if discount_col and pd.api.types.is_numeric_dtype(df[discount_col]):
-        total_discount = df[discount_col].sum()
-        avg_discount = df[discount_col].mean()
-        
-        kpis.append(safe_kpi(
-            category="🎯 Promotions",
-            name="Total Discount Given",
-            value=f"${total_discount:,.2f}",
-            formula="Sum(Discount)",
-            source=f"`{discount_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
-        
-        kpis.append(safe_kpi(
-            category="🎯 Promotions",
-            name="Avg Discount per Promotion",
-            value=f"${avg_discount:,.2f}",
-            formula="Mean(Discount)",
-            source=f"`{discount_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
-    
-    # ROI calculation
-    if discount_col and sales_col and pd.api.types.is_numeric_dtype(df[discount_col]) and pd.api.types.is_numeric_dtype(df[sales_col]):
-        total_discount = df[discount_col].sum()
-        total_sales = df[sales_col].sum()
-        
-        net_benefit = total_sales - total_discount
-        roi = (net_benefit / total_discount * 100) if total_discount > 0 else 0
-        
-        kpis.append(safe_kpi(
-            category="🎯 Promotions",
-            name="Promotion ROI",
-            value=f"{roi:.2f}%",
-            formula="((Sales - Discount) / Discount) * 100",
-            source=f"`{sales_col}`, `{discount_col}`",
-            confidence=conf,
-            warnings="Negative ROI - Losing money" if roi < 0 else "Low ROI" if roi < 50 else warns
-        ))
-    
-    # Units sold in promotions
-    if quantity_col and pd.api.types.is_numeric_dtype(df[quantity_col]):
-        total_qty = df[quantity_col].sum()
-        
-        kpis.append(safe_kpi(
-            category="🎯 Promotions",
-            name="Total Units Sold in Promotions",
-            value=f"{total_qty:,.0f}",
-            formula="Sum(Quantity in Promos)",
-            source=f"`{quantity_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
-    
+            if sales_col is not None:
+                roi_df = pd.concat([sales_series, disc_series], axis=1).dropna()
+                if len(roi_df) > 0:
+                    tot_s = roi_df[sales_col].sum()
+                    tot_d = roi_df[disc_col].sum()
+                    roi = ((tot_s - tot_d) / tot_d * 100) if tot_d > 0 else 0
+                    kpis.append(engine.build_kpi("🎯 Promotions", "Promotion ROI", f"{roi:.2f}%", "((Sales - Discount) / Discount) * 100", f"`{sales_col}`, `{disc_col}`", warnings="Negative ROI" if roi < 0 else "None"))
+
+    if qty_col is not None:
+        qty_clean = qty_series.dropna()
+        if len(qty_clean) > 0:
+            kpis.append(engine.build_kpi("🎯 Promotions", "Total Units Sold in Promotions", f"{qty_clean.sum():,.0f}", "Sum(Qty)", f"`{qty_col}`"))
+
+    if enable_debug: engine.print_execution_log()
     return kpis
