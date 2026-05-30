@@ -38,7 +38,7 @@ def run_benchmark(version="v1"):
     clients = {} 
     
     # Run pipeline and intercept report
-    report_path = "data/outputs/reports/AI_banking_churn_crisis_benchmark_Report.md"
+    report_path = "data/outputs/reports/AI_Banking_churn_crisis_benchmark_Report.md"
     run_banking_analysis(payload, clients, df)
     
     with open(report_path, "r", encoding="utf-8") as f:
