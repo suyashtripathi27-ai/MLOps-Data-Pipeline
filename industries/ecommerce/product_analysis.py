@@ -14,13 +14,6 @@ ECOMMERCE_CONFIG = {
 def calc_product_metrics(df, enable_debug=False):
     """
     Calculate product performance KPIs with optional execution tracing.
-    
-    Args:
-        df: Input DataFrame
-        enable_debug: If True, prints execution trace log for observability
-    
-    Returns:
-        List of KPI dictionaries
     """
     
     engine = KPIEngine(df, industry_config=ECOMMERCE_CONFIG)
@@ -40,7 +33,6 @@ def calc_product_metrics(df, enable_debug=False):
     
     if product_col is not None:
         total_products = product_series.nunique()
-        
         kpis.append(engine.build_kpi(
             category="🧸 Product Analysis", name="Total Unique Products",
             value=f"{total_products:,}", formula="Count(Distinct Products)", source=f"`{product_col}`"
@@ -58,41 +50,27 @@ def calc_product_metrics(df, enable_debug=False):
             value=f"${total_revenue:,.2f}", formula="Sum(Revenue)", source=f"`{revenue_col}`"
         ))
         
-        if len(product_revenue) > 0:
-            top_product = product_revenue.idxmax()
-            top_product_rev = product_revenue.max()
-            top_product_share = (top_product_rev / total_revenue * 100) if total_revenue > 0 else 0
-            warn_msg = "High concentration" if top_product_share > 20 else "None"
+        if total_revenue > 0:
+            # 🛑 NEW: Dynamic Top N Product Share
+            top_n_prod = engine.build_dynamic_top_n_kpi("🧸 Product Analysis", "Product", product_revenue, f"`{product_col}`, `{revenue_col}`")
+            if top_n_prod: kpis.append(top_n_prod)
             
-            kpis.append(engine.build_kpi(
-                category="🧸 Product Analysis", name="Top Performing Product",
-                value=f"{top_product} (${top_product_rev:,.2f})", formula="Product with max revenue", source=f"`{product_col}`, `{revenue_col}`"
-            ))
-            
-            kpis.append(engine.build_kpi(
-                category="🧸 Product Analysis", name="Top Product Revenue Share",
-                value=f"{top_product_share:.2f}%", formula="Top Product / Total Revenue * 100", source=f"`{product_col}`, `{revenue_col}`",
-                warnings=warn_msg
-            ))
-    
     # Category analysis
     if category_col is not None and revenue_col is not None:
         category_revenue = df.groupby(category_col)[revenue_col].sum().sort_values(ascending=False)
         
         if len(category_revenue) > 0:
             total_cats = len(category_revenue)
-            top_cat = category_revenue.idxmax()
             
             kpis.append(engine.build_kpi(
                 category="🧸 Product Analysis", name="Total Categories",
                 value=f"{total_cats}", formula="Count(Distinct Categories)", source=f"`{category_col}`"
             ))
             
-            kpis.append(engine.build_kpi(
-                category="🧸 Product Analysis", name="Top Category",
-                value=f"{top_cat} (${category_revenue.max():,.2f})", formula="Category with max revenue", source=f"`{category_col}`, `{revenue_col}`"
-            ))
-    
+            # 🛑 NEW: Dynamic Top N Category Share
+            top_n_cat = engine.build_dynamic_top_n_kpi("🧸 Product Analysis", "Category", category_revenue, f"`{category_col}`, `{revenue_col}`")
+            if top_n_cat: kpis.append(top_n_cat)
+            
     # Rating analysis
     if rating_col is not None:
         avg_rating = rating_series.mean()
