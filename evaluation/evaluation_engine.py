@@ -41,19 +41,38 @@ class EvaluationEngine:
         confidence = self._check_concept_presence(primary, priority_text)
         self.scorecard.scores["prioritization"] = round(confidence * 10)
 
-    def _evaluate_governance(self):
+   def _evaluate_governance(self):
+        """Evaluates governance contextually based on expectations."""
         score = 10
         gov_rules = self.metadata.get("governance_expectation", {})
+        
         mentions_missing = any(word in self.report_lower for word in ["excluded", "missing", "visibility constraint", "unavailable"])
         
+        # 🛑 NEW: Governance Consistency Check
+        claims_no_exclusions = any(phrase in self.report_lower for phrase in [
+            "no specific metrics were explicitly identified as 'excluded'",
+            "no metrics were excluded",
+            "all data was available",
+            "no system warnings reported"
+        ])
+        
         if gov_rules.get("must_acknowledge_missing_data"):
-            if not mentions_missing: score -= 5
+            if not mentions_missing:
+                score -= 5 # Failed to mention known data gaps
+            
+            # If it was SUPPOSED to acknowledge missing data, but explicitly claimed none was missing
+            if claims_no_exclusions:
+                score -= 7 # Critical hallucination deduction
         else:
-            if mentions_missing: score -= 3
+            if mentions_missing:
+                score -= 3 # Hallucinated a data gap that didn't exist
                 
+        # Check certainty overstatement
         if gov_rules.get("must_not_overstate_certainty"):
-            if any(w in self.report_lower for w in ["proves", "guarantees", "certainly"]):
+            overstatements = ["proves", "guarantees", "certainly", "100%"]
+            if any(word in self.report_lower for word in overstatements):
                 score -= 5
+
         self.scorecard.scores["governance"] = max(0, score)
 
     def _evaluate_industry_realism(self):
