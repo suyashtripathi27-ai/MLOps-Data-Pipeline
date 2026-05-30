@@ -53,11 +53,23 @@ def calc_branch_metrics(df, enable_debug=False):
         ))
 
         if total_revenue > 0:
-            top_10_share = (branch_revenue.head(10).sum() / total_revenue) * 100
-            kpis.append(engine.build_kpi(
-                category="🏢 Branch Analysis", name="Top 10 Branch Share",
-                value=f"{top_10_share:.1f}%", formula="(Sum of Top 10 / Total) * 100", source=f"`{branch_col}`, `{amt_col}`"
-            ))
+            if total_branches >= 10:
+                top_n = 10
+            elif total_branches >= 5:
+                top_n = 5
+            elif total_branches >= 3:
+                top_n = 3
+            else:
+                top_n = None 
+            if top_n is not None:
+                top_n_share = (branch_revenue.head(top_n).sum() / total_revenue) * 100
+                kpis.append(engine.build_kpi(
+                    category="🏢 Branch Analysis", 
+                    name=f"Top {top_n} Branch Share",
+                    value=f"{top_n_share:.1f}%", 
+                    formula=f"(Sum of Top {top_n} / Total) * 100", 
+                    source=f"`{branch_col}`, `{amt_col}`"
+                ))        
     else:
         kpis.append(engine.log_missing("🏢 Branch Analysis", "Branch Performance", "Requires 'branch' and numeric 'amount' columns."))
 
