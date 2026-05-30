@@ -1,0 +1,19 @@
+{
+    "timestamp": "20260530_124545",
+    "version": "v1",
+    "industry": "banking",
+    "benchmark": "Banking Customer Chrun Predicator Dataset",
+    "evaluation": {
+        "dimensions": {
+            "behavioral_intelligence": 8,
+            "prioritization": 10,
+            "governance": 10,
+            "executive_readability": 10,
+            "industry_realism": 10,
+            "numerical_accuracy": "NOT_IMPLEMENTED"
+        },
+        "total_score": 48,
+        "max_score": 50,
+        "percentage": 96.0
+    }
+}
