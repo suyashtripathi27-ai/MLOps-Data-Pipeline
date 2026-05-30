@@ -50,7 +50,7 @@ class EvaluationEngine:
                 
         self.scorecard.scores["behavioral_intelligence"] = round(score)
 
-   def _evaluate_prioritization(self):
+    def _evaluate_prioritization(self):
         """Checks if the PRIMARY risk was elevated to the priority/stoplight sections."""
         primary = self.metadata.get("expected_primary_risk")
         if not primary:
@@ -81,8 +81,10 @@ class EvaluationEngine:
         
         # 🛑 Governance Consistency Check (Catches logical contradictions)
         claims_no_exclusions = any(phrase in self.report_lower for phrase in [
-            "no specific metrics were explicitly identified as 'excluded'",
+            "no specific metrics were explicitly identified",
+            "no specific metrics were excluded",
             "no metrics were excluded",
+            "all available statistical summary data points were leveraged",
             "all data was available",
             "no system warnings reported"
         ])
@@ -110,13 +112,13 @@ class EvaluationEngine:
         """Checks if the report uses the correct enterprise vocabulary."""
         industry = self.metadata.get("industry")
         expected_terms = self.vocab_dict.get(industry, [])
-
+        
         print(f"\n🔍 DEBUG REALISM - Industry Key from Metadata: '{industry}'")
         print(f"🔍 DEBUG REALISM - Available Dictionary Keys: {list(self.vocab_dict.keys())}")
         print(f"🔍 DEBUG REALISM - Expected Terms Loaded: {expected_terms}\n")
         
         if not expected_terms:
-            self.scorecard.scores["industry_realism"] = 10
+            self.scorecard.scores["industry_realism"] = 0
             return
             
         terms_found = sum(1 for term in expected_terms if term.lower() in self.report_lower)
