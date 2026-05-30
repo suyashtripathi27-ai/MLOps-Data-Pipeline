@@ -2,104 +2,49 @@
 Employee productivity, staffing, and labor efficiency metrics.
 """
 import pandas as pd
-from utils.kpi_helpers import first_column, safe_kpi, confidence_for
+from utils.kpi_engine import KPIEngine
 
-def calc_workforce_metrics(df):
-    """Calculates workforce and labor KPIs."""
+RETAIL_CONFIG = {"missing_data_threshold": 8, "score_deduction_for_warning": 12, "low_confidence_threshold": 35}
+
+def calc_workforce_metrics(df, enable_debug=False):
+    engine = KPIEngine(df, industry_config=RETAIL_CONFIG)
+    if enable_debug: engine.enable_tracing()
+    
     kpis = []
+    if len(df) == 0: return kpis
     
-    if len(df) == 0:
-        return kpis
+    emp_col, emp_series = engine.get_column(["employee_id", "employee", "staff_id", "worker"])
+    sales_col, sales_series = engine.get_numeric(["sales", "revenue", "daily_sales"])
+    hrs_col, hrs_series = engine.get_numeric(["hours_worked", "shift_hours", "labor_hours"])
+    store_col, store_series = engine.get_column(["store_id", "store", "location"])
     
-    # Workforce metrics
-    employee_col = first_column(df, ["employee_id", "employee", "staff_id", "worker"])
-    sales_col = first_column(df, ["sales", "revenue", "daily_sales"])
-    hours_col = first_column(df, ["hours_worked", "shift_hours", "labor_hours"])
-    store_col = first_column(df, ["store_id", "store", "location"])
-    
-    if not employee_col:
-        return kpis
-    
-    conf, warns = confidence_for(df, [col for col in [employee_col, sales_col, hours_col, store_col] if col])
-    
-    # Total employees
-    total_employees = df[employee_col].nunique()
-    
-    kpis.append(safe_kpi(
-        category="👥 Workforce",
-        name="Total Employees",
-        value=f"{total_employees:,}",
-        formula="Count(Distinct Employees)",
-        source=f"`{employee_col}`",
-        confidence=conf,
-        warnings=warns
-    ))
-    
-    # Sales per employee
-    if sales_col and pd.api.types.is_numeric_dtype(df[sales_col]):
-        total_sales = df[sales_col].sum()
-        sales_per_employee = total_sales / total_employees if total_employees > 0 else 0
+    if emp_col is not None:
+        tot_emp = emp_series.nunique()
+        kpis.append(engine.build_kpi("👥 Workforce", "Total Employees", f"{tot_emp:,}", "Count(Distinct)", f"`{emp_col}`"))
         
-        kpis.append(safe_kpi(
-            category="👥 Workforce",
-            name="Sales per Employee",
-            value=f"${sales_per_employee:,.2f}",
-            formula="Total Sales / Total Employees",
-            source=f"`{sales_col}`, `{employee_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
-    
-    # Productivity
-    if hours_col and sales_col and pd.api.types.is_numeric_dtype(df[hours_col]) and pd.api.types.is_numeric_dtype(df[sales_col]):
-        valid_hours = df[hours_col].dropna()
+        if sales_col is not None:
+            calc_df = pd.concat([emp_series, sales_series], axis=1).dropna()
+            if len(calc_df) > 0:
+                tot_sales = calc_df[sales_col].sum()
+                kpis.append(engine.build_kpi("👥 Workforce", "Sales per Employee", f"${(tot_sales / tot_emp):,.2f}", "Total Sales / Employees", f"`{sales_col}`, `{emp_col}`"))
+                
+                emp_sales = calc_df.groupby(emp_col)[sales_col].sum()
+                kpis.append(engine.build_kpi("👥 Workforce", "Top Performing Employee", f"{emp_sales.idxmax()} (${emp_sales.max():,.2f})", "Max Sales", f"`{emp_col}`, `{sales_col}`"))
+                
+        if hrs_col is not None and sales_col is not None:
+            prod_df = pd.concat([hrs_series, sales_series], axis=1).dropna()
+            if len(prod_df) > 0:
+                tot_hrs = prod_df[hrs_col].sum()
+                if tot_hrs > 0:
+                    kpis.append(engine.build_kpi("👥 Workforce", "Sales per Labor Hour", f"${(prod_df[sales_col].sum() / tot_hrs):,.2f}", "Sales / Hours", f"`{sales_col}`, `{hrs_col}`"))
         
-        if not valid_hours.empty:
-            total_hours = valid_hours.sum()
-            total_sales = df[sales_col].sum()
-            
-            productivity = total_sales / total_hours if total_hours > 0 else 0
-            
-            kpis.append(safe_kpi(
-                category="👥 Workforce",
-                name="Sales per Labor Hour",
-                value=f"${productivity:,.2f}",
-                formula="Total Sales / Total Hours Worked",
-                source=f"`{sales_col}`, `{hours_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
-    
-    # Top performer
-    if sales_col and pd.api.types.is_numeric_dtype(df[sales_col]):
-        employee_sales = df.groupby(employee_col)[sales_col].sum().sort_values(ascending=False)
-        
-        if not employee_sales.empty:
-            top_employee = employee_sales.idxmax()
-            top_sales = employee_sales.max()
-            
-            kpis.append(safe_kpi(
-                category="👥 Workforce",
-                name="Top Performing Employee",
-                value=f"{top_employee} (${top_sales:,.2f})",
-                formula="Employee with max sales",
-                source=f"`{employee_col}`, `{sales_col}`",
-                confidence=conf,
-                warnings=warns
-            ))
-    
-    # By store
-    if store_col:
-        emp_per_store = df.groupby(store_col)[employee_col].nunique()
-        
-        kpis.append(safe_kpi(
-            category="👥 Workforce",
-            name="Avg Employees per Store",
-            value=f"{emp_per_store.mean():.0f}",
-            formula="Mean(Employees per Store)",
-            source=f"`{store_col}`, `{employee_col}`",
-            confidence=conf,
-            warnings=warns
-        ))
-    
+        if store_col is not None:
+            store_df = pd.concat([store_series, emp_series], axis=1).dropna()
+            if len(store_df) > 0:
+                avg_emp_store = store_df.groupby(store_col)[emp_col].nunique().mean()
+                kpis.append(engine.build_kpi("👥 Workforce", "Avg Employees per Store", f"{avg_emp_store:.0f}", "Mean(Employees / Store)", f"`{store_col}`, `{emp_col}`"))
+    else:
+        kpis.append(engine.log_missing("👥 Workforce", "Employees", "Missing 'employee_id'."))
+
+    if enable_debug: engine.print_execution_log()
     return kpis
