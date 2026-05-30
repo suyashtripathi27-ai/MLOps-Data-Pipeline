@@ -4,9 +4,10 @@ Orchestrates all 8 HR KPI modules with governance filters for sensitive HR data.
 """
 import os
 from utils.master_orchestrator import run_master_orchestrator
-from utils.kpi_engine import KPIEngine  # 👈 IMPORT ADDED HERE
+from utils.kpi_engine import KPIEngine
 
 # Import all HR microservices
+from .department_analysis import calc_department_metrics
 from .workforce_stability_analysis import calc_workforce_stability_metrics
 from .recruitment_analysis import calc_recruitment_metrics
 from .productivity_analysis import calc_productivity_metrics
@@ -26,6 +27,7 @@ def generate_dynamic_kpis(df):
     
     # HIGH PRIORITY: Organizational continuity & staffing risk
     hr_modules = [
+        ("Department Analysis", calc_department_metrics),  # 👈 INJECTED HERE (Establishes baseline headcount)
         ("Workforce Stability", calc_workforce_stability_metrics),
         ("Recruitment", calc_recruitment_metrics),
         ("Productivity", calc_productivity_metrics),
@@ -122,7 +124,7 @@ def run_hr_analysis(payload, clients, df):
     # 2. Apply HR governance (remove individual profiling, discrimination risks)
     safe_kpis = apply_hr_governance_filters(kpi_list)
     
-    # 3. 🛑 DEDUPLICATE HERE 🛑 (This groups all your missing employee IDs!)
+    # 3. 🛑 DEDUPLICATE HERE 🛑 (This groups all your missing data diagnostics)
     final_kpis = KPIEngine.deduplicate_diagnostics(safe_kpis)
     
     # 4. Build markdown table using the deduplicated list
@@ -135,8 +137,8 @@ def run_hr_analysis(payload, clients, df):
     # 6. Hand off to the Master Orchestrator
     return run_master_orchestrator(
         industry_name="hr",
-        kpi_list=final_kpis,        # 👈 Pass the clean, deduplicated list
-        kpi_markdown=kpi_markdown,  # 👈 Pass the clean, deduplicated table
+        kpi_list=final_kpis,        
+        kpi_markdown=kpi_markdown,  
         payload=payload,
         clients=clients,
         prompt_path=prompt_path,
