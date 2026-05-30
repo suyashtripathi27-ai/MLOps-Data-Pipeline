@@ -50,7 +50,7 @@ class EvaluationEngine:
                 
         self.scorecard.scores["behavioral_intelligence"] = round(score)
 
-    def _evaluate_prioritization(self):
+   def _evaluate_prioritization(self):
         """Checks if the PRIMARY risk was elevated to the priority/stoplight sections."""
         primary = self.metadata.get("expected_primary_risk")
         if not primary:
@@ -61,9 +61,15 @@ class EvaluationEngine:
         priority_match = re.search(r'(# 1\..*?# 2\.|# 3\..*?# 4\.)', self.report, re.DOTALL | re.IGNORECASE)
         priority_text = priority_match.group(0).lower() if priority_match else ""
 
-        # Scale prioritization score by how confidently it was discussed in the top sections
-        confidence = self._check_concept_presence(primary, priority_text)
-        self.scorecard.scores["prioritization"] = round(confidence * 10)
+        # Fetch synonyms directly to check for ANY hit
+        synonyms = self.metadata.get("concept_synonyms", {}).get(primary, [])
+        hits = sum(1 for synonym in synonyms if synonym.lower() in priority_text)
+        
+        # 🛑 THE FIX: If it hit the concept AT ALL in the priority section, full points!
+        if hits >= 1:
+            self.scorecard.scores["prioritization"] = 10
+        else:
+            self.scorecard.scores["prioritization"] = 0
 
     def _evaluate_governance(self):
         """Evaluates governance contextually based on expectations, checking for hallucinations."""
