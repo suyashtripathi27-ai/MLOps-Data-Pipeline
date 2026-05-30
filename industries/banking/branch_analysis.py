@@ -11,23 +11,11 @@ BANKING_CONFIG = {
 }
 
 def calc_branch_metrics(df, enable_debug=False):
-    """
-    Calculate branch performance KPIs with optional execution tracing.
-    
-    Args:
-        df: Input DataFrame
-        enable_debug: If True, prints execution trace log for observability
-    
-    Returns:
-        List of KPI dictionaries
-    """
-    
     engine = KPIEngine(df, industry_config=BANKING_CONFIG)
     if enable_debug:
         engine.enable_tracing()
     
     kpis = []
-    
     if len(df) == 0: 
         return kpis
     
@@ -35,7 +23,6 @@ def calc_branch_metrics(df, enable_debug=False):
     amt_col, amt_series = engine.get_numeric(["amount", "balance", "transaction_amount"])
 
     if branch_col is not None and amt_col is not None:
-        # Align index to prevent grouping errors
         df_temp = pd.concat([branch_series, amt_series], axis=1).dropna()
         branch_revenue = df_temp.groupby(branch_col)[amt_col].sum().sort_values(ascending=False)
         
@@ -53,23 +40,9 @@ def calc_branch_metrics(df, enable_debug=False):
         ))
 
         if total_revenue > 0:
-            if total_branches >= 10:
-                top_n = 10
-            elif total_branches >= 5:
-                top_n = 5
-            elif total_branches >= 3:
-                top_n = 3
-            else:
-                top_n = None 
-            if top_n is not None:
-                top_n_share = (branch_revenue.head(top_n).sum() / total_revenue) * 100
-                kpis.append(engine.build_kpi(
-                    category="🏢 Branch Analysis", 
-                    name=f"Top {top_n} Branch Share",
-                    value=f"{top_n_share:.1f}%", 
-                    formula=f"(Sum of Top {top_n} / Total) * 100", 
-                    source=f"`{branch_col}`, `{amt_col}`"
-                ))        
+            top_n_kpi = engine.build_dynamic_top_n_kpi("🏢 Branch Analysis", "Branch", branch_revenue, f"`{branch_col}`, `{amt_col}`")
+            if top_n_kpi:
+                kpis.append(top_n_kpi)
     else:
         kpis.append(engine.log_missing("🏢 Branch Analysis", "Branch Performance", "Requires 'branch' and numeric 'amount' columns."))
 
