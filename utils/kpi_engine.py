@@ -127,15 +127,42 @@ class KPIEngine:
             "warnings": final_warn, "columns_used": list(self.used_columns)
         })
         
-        # Hard-tag as operational to guarantee pipeline routing
         kpi_dict = safe_kpi(category, name, value, formula, source, confidence, final_warn, **kwargs)
         kpi_dict["signal_type"] = "operational"
         return kpi_dict
 
+    def build_dynamic_top_n_kpi(self, category: str, entity_name: str, grouped_series: Any, source_cols: str) -> Optional[Dict[str, Any]]:
+        """
+        Dynamically calculates a Top N concentration KPI based on entity count.
+        Returns the KPI dictionary, or None if there are too few entities.
+        """
+        total_entities = len(grouped_series)
+        total_value = grouped_series.sum()
+        
+        if total_value == 0 or total_entities < 3:
+            return None
+
+        if total_entities >= 10:
+            top_n = 10
+        elif total_entities >= 5:
+            top_n = 5
+        else:
+            top_n = 3
+
+        top_n_share = (grouped_series.head(top_n).sum() / total_value) * 100
+        warn_msg = f"High {entity_name} concentration risk" if top_n_share > 70 else "None"
+
+        return self.build_kpi(
+            category=category, 
+            name=f"Top {top_n} {entity_name} Share",
+            value=f"{top_n_share:.1f}%", 
+            formula=f"(Sum of Top {top_n} / Total) * 100", 
+            source=source_cols,
+            warnings=warn_msg
+        )
+
     def log_missing(self, category: str, name: str, reason: str, source: str = "Diagnostic") -> Dict[str, Any]:
         self._log_trace("kpi_excluded", {"category": category, "name": name, "reason": reason})
-        
-        # Hard-tag as governance to guarantee pipeline routing
         kpi_dict = excluded_kpi(category, name, source, reason)
         kpi_dict["signal_type"] = "governance"
         return kpi_dict
@@ -191,10 +218,6 @@ class KPIEngine:
         
     @staticmethod
     def deduplicate_diagnostics(kpi_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """
-        Takes a raw list of generated KPIs and aggregates ALL 'EXCLUDED' errors into a single row.
-        Prevents table bloat and executive distrust.
-        """
         valid_kpis = []
         excluded_count = 0
         affected_categories = set()
@@ -202,12 +225,10 @@ class KPIEngine:
         for kpi in kpi_list:
             if kpi.get("value") == "EXCLUDED":
                 excluded_count += 1
-                # Collect all the unique categories that had missing data
                 affected_categories.add(kpi.get("category", "Unknown"))
             else:
                 valid_kpis.append(kpi)
 
-        # If we found missing data, create exactly ONE summary row
         if excluded_count > 0:
             cats = ", ".join(sorted(list(affected_categories)))
             valid_kpis.append({
