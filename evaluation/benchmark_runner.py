@@ -1,5 +1,6 @@
 import os
 import json
+import csv
 import pandas as pd
 from datetime import datetime
 from industries.banking.pipeline import run_banking_analysis
@@ -14,14 +15,54 @@ def load_dataset(file_path):
     else:
         raise ValueError(f"Unsupported file format for {file_path}. Please provide a CSV, ZIP, or Excel file.")
 
-# 👇 Notice we added dataset_path as an argument here
+def update_dashboard(results_dir, run_data):
+    """Appends the latest benchmark run to the developer telemetry dashboard."""
+    dashboard_path = os.path.join(results_dir, "dashboard.csv")
+    file_exists = os.path.isfile(dashboard_path)
+    
+    # Define the exact columns for our telemetry dashboard
+    headers = [
+        "Timestamp", "Version", "Industry", "Dataset", 
+        "Total_Score", "Max_Score", "Percentage",
+        "Behavioral", "Prioritization", "Governance", 
+        "Readability", "Realism"
+    ]
+    
+    # Flatten the score dictionary into a CSV row
+    row = [
+        run_data["timestamp"],
+        run_data["version"],
+        run_data.get("industry", "banking"),  # Defaulting to banking for now
+        run_data["benchmark"],
+        run_data["evaluation"]["total_score"],
+        run_data["evaluation"]["max_score"],
+        run_data["evaluation"]["percentage"],
+        run_data["evaluation"]["dimensions"].get("behavioral_intelligence", 0),
+        run_data["evaluation"]["dimensions"].get("prioritization", 0),
+        run_data["evaluation"]["dimensions"].get("governance", 0),
+        run_data["evaluation"]["dimensions"].get("executive_readability", 0),
+        run_data["evaluation"]["dimensions"].get("industry_realism", 0)
+    ]
+    
+    # Append the row (and create headers if the file is new)
+    with open(dashboard_path, mode='a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(headers)
+        writer.writerow(row)
+        
+    print(f"📊 Telemetry updated: {dashboard_path}")
+
 def run_benchmark(dataset_path, version="v1"):
     print(f"🚀 Starting Benchmark Suite ({version}) on {dataset_path}...")
     
     behavior_path = "evaluation/benchmark_cases/banking/churn_crisis/benchmark_metadata.json"
     vocab_path = "evaluation/configs/industry_vocabulary.json"
-    results_dir = f"evaluation/results/{version}"
-    os.makedirs(results_dir, exist_ok=True)
+    
+    # We will save the dashboard at the root of the results folder
+    results_dir = "evaluation/results"
+    version_dir = os.path.join(results_dir, version)
+    os.makedirs(version_dir, exist_ok=True)
     
     try:
         df = load_dataset(dataset_path)
@@ -30,12 +71,10 @@ def run_benchmark(dataset_path, version="v1"):
         return
 
     print("⚙️ Running Production Pipeline...")
-    # Extract the filename dynamically to use in the report name
     consumer_filename = os.path.basename(dataset_path).split('.')[0]
     payload = {"dataset_name": consumer_filename}
     clients = {} 
     
-    # Run pipeline and intercept report dynamically
     report_path = f"data/outputs/reports/AI_Banking_{consumer_filename}_Report.md"
     
     try:
@@ -56,26 +95,29 @@ def run_benchmark(dataset_path, version="v1"):
     score_report = evaluator.run_evaluation()
     
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    result_filename = f"{results_dir}/banking_score_{consumer_filename}_{timestamp}.json"
+    result_filename = f"{version_dir}/banking_score_{consumer_filename}_{timestamp}.json"
     
     final_output = {
         "timestamp": timestamp,
         "version": version,
+        "industry": "banking",
         "benchmark": consumer_filename,
         "evaluation": score_report
     }
     
+    # 1. Save detailed JSON for debugging
     with open(result_filename, "w") as f:
         json.dump(final_output, f, indent=4)
         
+    # 2. Append to developer CSV dashboard
+    update_dashboard(results_dir, final_output)
+        
     print("\n✅ Benchmark Complete!")
     print(f"Total Score: {score_report['total_score']} / {score_report['max_score']} ({score_report['percentage']}%)")
-    print(f"Results saved to: {result_filename}")
+    print(f"Detailed Results saved to: {result_filename}")
 
-# This allows running it directly from terminal if needed
 if __name__ == "__main__":
     import sys
-    # If the user provides a file in the terminal, use it. Otherwise, fallback to a default.
     if len(sys.argv) > 1:
         custom_path = sys.argv[1]
     else:
