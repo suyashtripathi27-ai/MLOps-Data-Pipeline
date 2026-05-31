@@ -19,6 +19,13 @@ if gemini_key:
         base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
     )
 
+groq_key = os.getenv("GROQ_API_KEY")
+if groq_key:
+    clients["groq"] = OpenAI(
+        api_key=groq_key,
+        base_url="https://api.groq.com/openai/v1"
+    )
+
 or_key = os.getenv("OPENROUTER_API_KEY")
 if or_key:
     clients["openrouter"] = OpenAI(
@@ -31,9 +38,8 @@ if hf_key:
     clients["huggingface"] = hf_key
 
 if not clients:
-    print("❌ ERROR: No API keys found. Please set GEMINI_API_KEY or OPENROUTER_API_KEY.")
+    print("❌ ERROR: No API keys found. Please set at least one API key.")
     sys.exit(1)
-
 
 def detect_industry(clients, columns_list):
     """THE AGENTIC ROUTER: Intelligently routes datasets using strict overrides and weighted scoring."""
