@@ -22,7 +22,12 @@ def run_benchmark(dataset_path: str, version: str = "v2"):
         
     with open(report_path, "r", encoding="utf-8") as f:
         report_markdown = f.read()
-        
+
+    print(f"🔍 DEBUG: Current Working Directory is: {os.getcwd()}")
+    print(f"🔍 DEBUG: Does metadata path exist? {os.path.exists(metadata_path)}")
+    print("🔍 DEBUG: Contents of evaluation/ folder:")
+    os.system("ls -R evaluation/benchmark_cases/")
+    
     print("🧠 Running Evaluation Engine...")
     engine = EvaluationEngine(report_markdown, metadata_path, vocab_path)
     report = engine.run_evaluation()
