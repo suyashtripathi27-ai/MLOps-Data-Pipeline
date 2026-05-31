@@ -5,7 +5,8 @@ from utils.report_cleaner import clean_report_text
 from utils.governance_engine import validate_operational_claims, inject_reliability_warning
 from utils.llm_router import execute_with_fallback
 
-def run_master_orchestrator(industry_name, kpi_list, kpi_markdown, payload, clients, prompt_path, sys_prompt_path):
+# 🛠️ FIXED: Changed 'sys_prompt_path' to 'system_prompt_text=None'
+def run_master_orchestrator(industry_name, kpi_list, kpi_markdown, payload, clients, prompt_path, system_prompt_text=None):
     """
     UNIVERSAL INTELLIGENCE ORCHESTRATOR
     Handles signal prioritization, LLM generation, and governance for all industries.
@@ -38,8 +39,11 @@ def run_master_orchestrator(industry_name, kpi_list, kpi_markdown, payload, clie
     with open(prompt_path, 'r', encoding='utf-8') as f:
         final_prompt = f.read().replace('{data_payload}', json.dumps(payload, indent=2))
         
-    with open(sys_prompt_path, 'r', encoding='utf-8') as f:
-        system_prompt = f.read()
+    # 🛠️ FIXED: We now use the injected V3 string directly instead of reading a file!
+    if system_prompt_text:
+        system_prompt = system_prompt_text
+    else:
+        system_prompt = "You are a Senior Enterprise Strategy Consultant."
         
     # 3. Generate AI Report
     print(f"🧠 Synthesizing {industry_name.capitalize()} Executive Intelligence...")
