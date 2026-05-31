@@ -1,11 +1,7 @@
-"""
-Logistics Industry Pipeline: Fleet, Freight, Hub, and SLA Analytics.
-"""
 import os
 from utils.master_orchestrator import run_master_orchestrator
-from utils.kpi_engine import KPIEngine # 👈 Added Deduplication Engine
-
-# Import modules
+from utils.kpi_engine import KPIEngine
+from utils.prompt_engine import generate_v3_system_prompt
 from .route_analysis import calc_route_efficiency, calc_cost_efficiency
 from .hub_analysis import calc_hub_intelligence
 from .fleet_analysis import calc_fleet_economics 
@@ -15,7 +11,6 @@ from .sla_analysis import calc_sla_performance
 
 def generate_dynamic_kpis(df):
     all_kpis = []
-    # Dynamic orchestration of logistics modules
     for module in [
         calc_sla_performance, calc_route_efficiency, calc_cost_efficiency, 
         calc_hub_intelligence, calc_fleet_economics, calc_iot_sensor_metrics, 
@@ -27,25 +22,28 @@ def generate_dynamic_kpis(df):
             print(f"⚠️ Warning: Logistics module {module.__name__} failed: {e}")
     return all_kpis
 
-def run_logistics_analysis(payload, clients, df):
-    # 1. Generate Raw KPIs
-    raw_kpis = generate_dynamic_kpis(df)
-    
-    # 2. 🛑 DEDUPLICATE (Fixes Issue 5) 🛑
-    final_kpis = KPIEngine.deduplicate_diagnostics(raw_kpis)
-    
-    # 3. Build Markdown
+def build_markdown_table(kpis):
+    if not kpis:
+        return "*Insufficient columns to generate advanced logistics KPIs.*"
     md = "| Category | KPI Name | Value | Formula | Source | Confidence | Warnings |\n"
     md += "| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
-    for k in final_kpis:
+    for k in kpis:
         md += f"| {k.get('category','')} | **{k.get('name','')}** | `{k.get('value','')}` | *{k.get('formula','')}* | `{k.get('source','')}` | {k.get('confidence','N/A')} | {k.get('warnings','None')} |\n"
+    return md
+
+def run_logistics_analysis(payload, clients, df):
+    raw_kpis = generate_dynamic_kpis(df)
+    final_kpis = KPIEngine.deduplicate_diagnostics(raw_kpis)
+    kpi_markdown = build_markdown_table(final_kpis)
+    system_prompt = generate_v3_system_prompt("logistics")
+    prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
     
     return run_master_orchestrator(
         industry_name="logistics",
         kpi_list=final_kpis,
-        kpi_markdown=md,
+        kpi_markdown=kpi_markdown,
         payload=payload,
         clients=clients,
-        prompt_path=os.path.join(os.path.dirname(__file__), 'prompt.txt'),
-        sys_prompt_path=os.path.join(os.path.dirname(__file__), 'system_prompt.txt')
+        prompt_path=prompt_path,
+        system_prompt_text=system_prompt
     )
