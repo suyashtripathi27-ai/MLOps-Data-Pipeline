@@ -1,4 +1,26 @@
-### ⚠️ Pipeline Alert: All AI services are currently unavailable.
+# 1. Executive Banking Situation Report
+The institution maintains a generally sound credit profile, anchored by an average customer credit score of 650 and broad product engagement with 71% of customers holding credit cards. These metrics reflect a stable foundation of creditworthiness and customer interaction. Despite emerging pressures from customer attrition, core portfolio liquidity and operational continuity remain structurally intact.
+
+However, a significant 20% customer churn rate presents a material risk to revenue stability and growth. This attrition is compounded by nearly half of the customer base being inactive, alongside a notable segment holding zero balances, indicating potential disengagement and a bifurcated customer liquidity profile.
+
+# 2. Banking Risk & Portfolio Synthesis
+The primary risk theme centers on customer retention and engagement. A substantial 20% of the customer base has exited, directly impacting future revenue streams. This churn is closely linked to a broader disengagement trend, where 48% of customers are inactive, and a quarter of the portfolio holds no balance. This clustering of inactivity and low balance concentration suggests a vulnerable segment prone to attrition, potentially eroding the stable average credit quality observed across the wider portfolio.
+
+# 3. High-Priority Banking Risks Requiring Review
+*   🔴 HIGH PRIORITY: **Customer Attrition Rate** - A 20% customer exit rate signals a critical erosion of the deposit base and revenue-generating relationships.
+*   🟡 MODERATE PRIORITY: **Customer Inactivity & Balance Concentration** - Nearly half of the customer base is inactive, with 25% holding zero balances, indicating recurring friction in engagement and liquidity.
+*   🟢 MONITORING: **Credit Profile Distribution** - The average credit score remains stable at 650, but the full range (350-850) warrants ongoing observation for any shifts in credit quality.
+
+# 4. Strategic Banking Directives
+*   Investigate the root causes driving the 20% customer attrition, focusing on inactive and zero-balance segments.
+*   Calibrate targeted engagement strategies to reactivate dormant customers and enhance product utilization.
+*   Restructure product offerings or incentives to encourage balance growth and deepen relationships within the low-balance customer cohort.
+*   Audit the risk exposure within the lower credit score bands to preemptively manage potential credit deterioration.
+
+# 5. Governance & Reliability Notes
+*   Data reliability score is 100, indicating high KPI-level confidence.
+*   Visibility constraint: missing data limits full portfolio assessment.
+*   While KPI-level confidence remains high, confidence in broader cross-signal operational synthesis remains moderate due to limited supporting evidence diversity.
 
 ---
 ### 📊 Technical Appendix: Operational KPIs
