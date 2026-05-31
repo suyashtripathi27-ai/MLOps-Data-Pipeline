@@ -1,6 +1,7 @@
 import os
 from utils.master_orchestrator import run_master_orchestrator
 from utils.kpi_engine import KPIEngine
+from utils.prompt_engine import generate_v3_system_prompt
 
 from .cart_analysis import calc_cart_metrics
 from .conversion_analysis import calc_conversion_metrics
@@ -59,20 +60,11 @@ def build_markdown_table(kpis):
 
 
 def run_ecommerce_analysis(payload, clients, df):
-    # 1. Generate Raw KPIs locally
     raw_kpis = generate_dynamic_kpis(df)
-    
-    # 2. 🛑 DEDUPLICATE DIAGNOSTICS (Issue 5 Fix) 🛑
     final_kpis = KPIEngine.deduplicate_diagnostics(raw_kpis)
-    
-    # 3. Build Markdown using the clean list
     kpi_markdown = build_markdown_table(final_kpis)
-    
-    # 4. Define Paths
+    system_prompt = generate_v3_system_prompt("ecommerce")
     prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
-    sys_prompt_path = os.path.join(os.path.dirname(__file__), 'system_prompt.txt')
-    
-    # 5. Hand off to the Master Orchestrator
     return run_master_orchestrator(
         industry_name="ecommerce",
         kpi_list=final_kpis,
@@ -80,5 +72,5 @@ def run_ecommerce_analysis(payload, clients, df):
         payload=payload,
         clients=clients,
         prompt_path=prompt_path,
-        sys_prompt_path=sys_prompt_path
+        system_prompt_text=system_prompt
     )
