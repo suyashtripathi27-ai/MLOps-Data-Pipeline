@@ -2,7 +2,7 @@
 Freight handling, cargo metrics, and damage analysis.
 """
 import pandas as pd
-from utils.kpi_helpers import first_column, safe_kpi, confidence_for
+from utils.kpi_engine import KPIEngine
 
 def calc_freight_metrics(df):
     """Calculates freight and cargo handling KPIs."""
