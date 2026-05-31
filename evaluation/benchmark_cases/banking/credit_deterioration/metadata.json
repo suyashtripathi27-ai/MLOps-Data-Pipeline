@@ -1,0 +1,28 @@
+{
+  "industry": "banking",
+  "scenario_type": "credit_deterioration",
+  "expected_primary_risk": "default_risk",
+  "expected_secondary_risks": [
+    "delinquency_spike", 
+    "portfolio_degradation"
+  ],
+  "expected_recommendations": [
+    "tighten_underwriting", 
+    "increase_provisions"
+  ],
+  "governance_expectation": {
+    "must_acknowledge_missing_data": true,
+    "must_not_overstate_certainty": true
+  },
+  "expected_governance_domains": [
+    "credit_bureau_data",
+    "collateral_valuation"
+  ],
+  "concept_synonyms": {
+    "default_risk": ["default", "non-performing", "npl", "credit deterioration", "bad debt"],
+    "delinquency_spike": ["delinquency", "late payment", "past due", "arrears"],
+    "portfolio_degradation": ["downgrade", "deterioration", "credit migration", "score drop"],
+    "tighten_underwriting": ["underwriting", "credit limits", "lending criteria", "risk appetite"],
+    "increase_provisions": ["provisioning", "reserves", "capital buffer", "llp"]
+  }
+}
