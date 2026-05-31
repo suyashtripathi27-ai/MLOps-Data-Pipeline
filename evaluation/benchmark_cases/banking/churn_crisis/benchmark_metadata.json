@@ -1,19 +1,27 @@
 {
-  "benchmark_version": "1.0",
-  "created_date": "2026-05-30",
   "industry": "banking",
   "scenario_type": "churn_crisis",
-  "severity": "high",
   "expected_primary_risk": "customer_retention",
   "expected_secondary_risks": [
-    "engagement_stability"
+    "account_underutilization"
   ],
-  "concept_synonyms": {
-    "customer_retention": ["churn", "attrition", "customer loss", "retention pressure", "client departure"],
-    "engagement_stability": ["active member", "card usage", "engagement", "product utilization"]
-  },
+  "expected_recommendations": [
+    "investigate_drivers",
+    "retention_strategy"
+  ],
   "governance_expectation": {
     "must_acknowledge_missing_data": true,
     "must_not_overstate_certainty": true
+  },
+  "expected_governance_domains": [
+    "loan",
+    "fee",
+    "compliance"
+  ],
+  "concept_synonyms": {
+    "customer_retention": ["churn", "attrition", "retention pressure", "customer loss", "exit rate"],
+    "account_underutilization": ["zero-balance", "disengagement", "underutilization", "dormant"],
+    "investigate_drivers": ["investigate", "drivers", "root cause", "analyze", "identify specific"],
+    "retention_strategy": ["retention", "re-engagement", "proactive", "campaigns"]
   }
 }
