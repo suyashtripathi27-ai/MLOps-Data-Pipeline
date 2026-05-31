@@ -83,3 +83,23 @@ def calc_freight_metrics(df, enable_debug=False):
 
     if enable_debug: engine.print_execution_log()
     return kpis
+
+# ---------------------------------------------------------
+# 🚨 ADDED MISSING FUNCTION HERE
+# ---------------------------------------------------------
+def calc_fleet_economics(df: pd.DataFrame) -> dict:
+    """Calculates basic fleet economics for the logistics payload."""
+    try:
+        # Check if the necessary columns exist based on our schema inference
+        if 'total_cost' in df.columns and 'actual_duration_hours' in df.columns:
+            avg_cost = df['total_cost'].mean()
+            avg_duration = df['actual_duration_hours'].mean()
+            
+            return {
+                "average_shipment_cost": round(float(avg_cost), 2),
+                "average_transit_hours": round(float(avg_duration), 2)
+            }
+    except Exception as e:
+        print(f"⚠️ Fleet economics calc failed: {e}")
+        
+    return {"status": "Fleet economics data unavailable for this dataset."}
