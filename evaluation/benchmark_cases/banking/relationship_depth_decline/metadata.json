@@ -1,0 +1,26 @@
+{
+  "industry": "banking",
+  "scenario_type": "relationship_depth_decline",
+  "expected_primary_risk": "product_underutilization",
+  "expected_secondary_risks": [
+    "wallet_share_loss"
+  ],
+  "expected_recommendations": [
+    "cross_sell_campaigns", 
+    "fee_restructuring"
+  ],
+  "governance_expectation": {
+    "must_acknowledge_missing_data": true,
+    "must_not_overstate_certainty": true
+  },
+  "expected_governance_domains": [
+    "external_wealth_data",
+    "competitor_rates"
+  ],
+  "concept_synonyms": {
+    "product_underutilization": ["single-product", "underutilization", "shallow relationship", "inactive account"],
+    "wallet_share_loss": ["share of wallet", "diverted funds", "external transfers", "deposit consolidation"],
+    "cross_sell_campaigns": ["cross-sell", "bundling", "targeted offers", "multi-product"],
+    "fee_restructuring": ["fee waivers", "pricing", "tier upgrades"]
+  }
+}
