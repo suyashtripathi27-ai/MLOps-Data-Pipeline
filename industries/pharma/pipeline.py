@@ -61,25 +61,17 @@ def build_markdown_table(kpis):
         md += f"| {k.get('category','')} | **{k.get('name','')}** | `{k.get('value','')}` | *{k.get('formula','')}* | `{k.get('source','')}` | {k.get('confidence','N/A')} | {k.get('warnings','None')} |\n"
     return md
 
-def run_manufacturing_analysis(payload, clients, df): # (Do the same for run_pharma_analysis)
-    # 1. Generate Raw KPIs locally
+def run_pharma_analysis(payload, clients, df): 
     raw_kpis = generate_dynamic_kpis(df)
-    
-    # 2. 🛑 DEDUPLICATE DIAGNOSTICS (Issue 5 Fix) 🛑
     final_kpis = KPIEngine.deduplicate_diagnostics(raw_kpis)
-    
-    # 3. Build Markdown using the clean list
     kpi_markdown = build_markdown_table(final_kpis)
-    
-    # 4. Define Paths
+    system_prompt = generate_v3_system_prompt("pharma")
     prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
-    sys_prompt_path = os.path.join(os.path.dirname(__file__), 'system_prompt.txt')
-    
-    # 5. Hand off to the Master Orchestrator
+
     return run_master_orchestrator(
-        industry_name="manufacturing", # (or "pharma")
-        kpi_list=final_kpis,           # 👈 Pass the clean list
-        kpi_markdown=kpi_markdown,     # 👈 Pass the clean markdown
+        industry_name="pharma", 
+        kpi_list=final_kpis,           
+        kpi_markdown=kpi_markdown,     
         payload=payload,
         clients=clients,
         prompt_path=prompt_path,
