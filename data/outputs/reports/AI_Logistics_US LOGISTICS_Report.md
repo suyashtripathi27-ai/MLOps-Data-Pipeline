@@ -1,3 +1,3 @@
 # System Error
 
-Failed to process logistics pipeline: cannot import name 'calc_fleet_economics' from 'industries.logistics.fleet_analysis' (/home/runner/work/MLOps-Data-Pipeline/MLOps-Data-Pipeline/industries/logistics/fleet_analysis.py)
+Failed to process logistics pipeline: cannot import name 'confidence_for' from 'utils.kpi_helpers' (/home/runner/work/MLOps-Data-Pipeline/MLOps-Data-Pipeline/utils/kpi_helpers.py)
