@@ -1,7 +1,7 @@
 import os
 from utils.master_orchestrator import run_master_orchestrator
-from utils.kpi_engine import KPIEngine # 👈 IMPORT ADDED
-
+from utils.kpi_engine import KPIEngine 
+from utils.prompt_engine import generate_v3_system_prompt
 from .customer_analysis import calc_customer_metrics
 from .department_analysis import calc_department_metrics
 from .inventory_analysis import calc_inventory_metrics
@@ -35,21 +35,18 @@ def build_markdown_table(kpis):
     return md
 
 def run_retail_analysis(payload, clients, df):
-    # 1. Generate Raw KPIs
     raw_kpis = generate_dynamic_kpis(df)
-    
-    # 2. 🛑 DEDUPLICATE (Fixes Issue 5) 🛑
     final_kpis = KPIEngine.deduplicate_diagnostics(raw_kpis)
-    
-    # 3. Build Markdown
     kpi_markdown = build_markdown_table(final_kpis)
+    system_prompt = generate_v3_system_prompt("retail")
+    prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
     
     return run_master_orchestrator(
         industry_name="retail",
-        kpi_list=final_kpis,       # 👈 Pass clean list
-        kpi_markdown=kpi_markdown, # 👈 Pass clean markdown
+        kpi_list=final_kpis,       
+        kpi_markdown=kpi_markdown, 
         payload=payload,
         clients=clients,
-        prompt_path=os.path.join(os.path.dirname(__file__), 'prompt.txt'),
-        sys_prompt_path=os.path.join(os.path.dirname(__file__), 'system_prompt.txt')
+        prompt_path=prompt_path,
+        system_prompt_text=system_prompt
     )
