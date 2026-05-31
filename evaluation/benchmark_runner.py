@@ -97,7 +97,7 @@ def get_scenario_from_filename(filename: str, industry: str) -> str:
 
     return "generic_analysis"
 
-def run_benchmark(dataset_path: str, version: str = "v2", override_industry: str = None):
+def run_benchmark(dataset_path: str, version: str = "v3", override_industry: str = None):
     print(f"\n🚀 Starting Universal Benchmark Suite ({version}) on {dataset_path}...")
     
     base_name = os.path.basename(dataset_path)
@@ -125,6 +125,10 @@ def run_benchmark(dataset_path: str, version: str = "v2", override_industry: str
     try:
         engine = EvaluationEngine(report_markdown, metadata_path, vocab_path)
         report = engine.run_evaluation()
+        
+        # 📈 V3: Pull Difficulty (Defaults to 'Medium' if not specified in JSON)
+        difficulty = engine.metadata.get("difficulty", "medium").capitalize()
+        
     except FileNotFoundError:
         print(f"❌ Error: Metadata file missing! Run build_suite.py to generate {metadata_path}")
         return
@@ -138,16 +142,16 @@ def run_benchmark(dataset_path: str, version: str = "v2", override_industry: str
     with open(dashboard_path, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         if not file_exists:
-            # Added Scenario column
+            # 📈 V3: Added Difficulty column
             writer.writerow([
-                "Timestamp", "Evaluation_Version", "Industry", "Dataset", "Scenario",
-                "Total_Score", "Max_Score", "Percentage", 
-                "Behavioral", "Prioritization", "Traceability", 
+                "Timestamp", "Version", "Industry", "Dataset", "Scenario", "Difficulty",
+                "Total", "Max", "Percent", 
+                "Behavior", "Priority", "Traceability", 
                 "Governance", "Readability", "Realism"
             ])
             
         writer.writerow([
-            timestamp, version, industry, dataset_name, scenario,
+            timestamp, version, industry, dataset_name, scenario, difficulty,
             report["total_score"], report["max_score"], report["percentage"],
             report["dimensions"]["behavioral_intelligence"],
             report["dimensions"]["prioritization"],
