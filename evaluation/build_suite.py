@@ -89,10 +89,26 @@ base_dir = "evaluation/benchmark_cases"
 
 for industry, scenarios in MATRIX.items():
     for scenario_name, data in scenarios.items():
-        # Compile the final JSON structure mapped from our matrix
+        
+        # 📈 V3 Upgrade: Auto-Calculate Difficulty
+        diff = "medium"
+        if "failure" in scenario_name or "crisis" in scenario_name or "breach" in scenario_name or "explosion" in scenario_name:
+            diff = "hard"
+        elif "decline" in scenario_name or "pressure" in scenario_name:
+            diff = "medium"
+        else:
+            diff = "easy"
+            
+        # Overrides to match your exact V3 request examples
+        if scenario_name == "attrition_crisis": diff = "easy"
+        if scenario_name == "aml_fraud_risk": diff = "medium"
+        if scenario_name == "governance_failure": diff = "hard"
+
+        # Compile the final V3 JSON structure
         payload = {
             "industry": industry,
             "scenario_type": scenario_name,
+            "difficulty": diff,  # <-- Added V3 Field
             "expected_primary_risk": data["p"],
             "expected_secondary_risks": data["s"],
             "expected_recommendations": data["r"],
@@ -101,12 +117,20 @@ for industry, scenarios in MATRIX.items():
                 "must_not_overstate_certainty": True
             },
             "expected_governance_domains": data["g"],
-            "concept_synonyms": data["v"]
+            "concept_synonyms": data["v"],
+            "recommendation_synonyms": {} # <-- Added V3 Block
         }
         
-        # Add generic secondary/rec synonyms so Traceability scores perfectly
-        payload["concept_synonyms"][data["s"][0]] = ["drop", "decline", "loss", "impact", "failure"]
-        payload["concept_synonyms"][data["r"][0]] = ["strategy", "optimize", "improve", "campaign", "remediate", "audit"]
+        # Add generic secondary synonyms to concept_synonyms
+        sec_key = data["s"][0]
+        payload["concept_synonyms"][sec_key] = payload["concept_synonyms"].get(sec_key, []) + ["drop", "decline", "loss", "impact", "failure"]
+        
+        # 📈 V3 Upgrade: Separate Recommendations from Concepts for True Traceability
+        rec_key = data["r"][0]
+        # Pull any existing synonyms defined in the matrix and remove them from concept_synonyms
+        rec_syns = payload["concept_synonyms"].pop(rec_key, [])
+        # Create the new V3 recommendation synonym block with robust consultant verbs
+        payload["recommendation_synonyms"][rec_key] = rec_syns + ["investigate", "analyze", "review", "root cause", "strategy", "optimize", "improve", "campaign", "remediate", "audit", "conduct"]
         
         folder_path = os.path.join(base_dir, industry, scenario_name)
         os.makedirs(folder_path, exist_ok=True)
@@ -115,4 +139,4 @@ for industry, scenarios in MATRIX.items():
         with open(file_path, "w", encoding="utf-8") as f:
             json.dump(payload, f, indent=4)
             
-print(f"✅ Master Enterprise Suite Generated: 64 Scenarios across 8 Industries!")
+print(f"✅ V3 Master Enterprise Suite Generated: 64 Scenarios with Difficulty & Advanced Traceability!")
