@@ -149,6 +149,8 @@ class EvaluationEngine:
             tier2 = vocab_data.get("tier2", [])
             
         score = 0.0
+        t1_hits = 0
+        t2_hits = 0
         
         if tier1:
             t1_hits = sum(1 for term in tier1 if term.lower() in self.report_lower)
@@ -157,6 +159,13 @@ class EvaluationEngine:
         if tier2:
             t2_hits = sum(1 for term in tier2 if term.lower() in self.report_lower)
             score += min(3.0, (t2_hits / min(2, len(tier2))) * 3.0)
+            
+        # 🔍 ADDED: Deep telemetry to diagnose Realism scores
+        print("\n🔍 DEBUG REALISM:")
+        print(f"  -> Industry: {industry}")
+        print(f"  -> Tier 1 Hits: {t1_hits} / {len(tier1)}")
+        print(f"  -> Tier 2 Hits: {t2_hits} / {len(tier2)}")
+        print(f"  -> FINAL REALISM SCORE: {round(score)}\n")
             
         self.scorecard.scores["industry_realism"] = round(score)
 
