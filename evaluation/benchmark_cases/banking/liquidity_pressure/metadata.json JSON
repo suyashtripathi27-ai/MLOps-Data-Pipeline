@@ -1,0 +1,28 @@
+{
+  "industry": "banking",
+  "scenario_type": "liquidity_pressure",
+  "expected_primary_risk": "deposit_flight",
+  "expected_secondary_risks": [
+    "reserve_depletion",
+    "funding_gap"
+  ],
+  "expected_recommendations": [
+    "increase_deposit_rates", 
+    "liquidate_assets"
+  ],
+  "governance_expectation": {
+    "must_acknowledge_missing_data": true,
+    "must_not_overstate_certainty": true
+  },
+  "expected_governance_domains": [
+    "wholesale_funding",
+    "treasury_logs"
+  ],
+  "concept_synonyms": {
+    "deposit_flight": ["deposit flight", "withdrawals", "run on", "outflow", "liquidity drain"],
+    "reserve_depletion": ["reserves", "liquidity coverage", "lcr", "cash position"],
+    "funding_gap": ["funding shortfall", "mismatch", "liquidity gap"],
+    "increase_deposit_rates": ["yield", "deposit rates", "promotional rates", "interest adjustment"],
+    "liquidate_assets": ["liquidate", "short-term assets", "sell-off", "raise cash"]
+  }
+}
