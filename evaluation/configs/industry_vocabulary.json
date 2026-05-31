@@ -1,18 +1,21 @@
 {
-  "banking": [
-    "deposit concentration",
-    "relationship depth",
-    "cross-product adoption",
-    "portfolio quality",
-    "credit deterioration",
-    "liquidity pressure",
-    "attrition",
-    "churn",
-    "deposit base",
-    "credit quality",
-    "portfolio",
-    "zero-balance",
-    "underutilization",
-    "retention"
-  ]
+  "banking": {
+    "tier1": [
+      "churn",
+      "portfolio",
+      "deposit base",
+      "credit quality",
+      "attrition",
+      "zero-balance",
+      "retention"
+    ],
+    "tier2": [
+      "relationship depth",
+      "customer lifetime value",
+      "portfolio segmentation",
+      "risk-adjusted return",
+      "cross-sell penetration",
+      "liquidity pressure"
+    ]
+  }
 }
