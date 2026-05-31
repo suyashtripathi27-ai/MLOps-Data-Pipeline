@@ -7,6 +7,7 @@ from openai import OpenAI
 from utils.cleaner import load_and_clean, universal_clean
 from utils.profiler import generate_payload
 from utils.llm_router import execute_with_fallback  
+from evaluation.benchmark_runner import run_benchmark # <-- 📈 Moved import to the top!
 
 # 2. HIGH-AVAILABILITY CLIENT SETUP
 print("🔌 Initializing Multi-API Client Router...")
@@ -41,10 +42,37 @@ if not clients:
     print("❌ ERROR: No API keys found. Please set at least one API key.")
     sys.exit(1)
 
-def detect_industry(clients, columns_list):
+def detect_industry(clients, columns_list, file_name=""):
     """THE AGENTIC ROUTER: Intelligently routes datasets using strict overrides and weighted scoring."""
-    print(f"🔍 Sniffing data schema: {columns_list}")
+    lower_name = file_name.lower()
     
+    # 🛡️ STEP 0: FILENAME SAFEGUARD (Prevents AI Column Hallucinations like "Status" -> "loan_status")
+    if any(w in lower_name for w in ["logistics", "freight", "shipping"]): 
+        print(f"🎯 Fast Route: Classified as [LOGISTICS] via Filename Override")
+        return "logistics"
+    if any(w in lower_name for w in ["hr", "attrition", "employee"]): 
+        print(f"🎯 Fast Route: Classified as [HR] via Filename Override")
+        return "hr"
+    if any(w in lower_name for w in ["banking", "churn", "credit"]): 
+        print(f"🎯 Fast Route: Classified as [BANKING] via Filename Override")
+        return "banking"
+    if any(w in lower_name for w in ["retail", "store"]): 
+        print(f"🎯 Fast Route: Classified as [RETAIL] via Filename Override")
+        return "retail"
+    if any(w in lower_name for w in ["ecommerce", "cart"]): 
+        print(f"🎯 Fast Route: Classified as [ECOMMERCE] via Filename Override")
+        return "ecommerce"
+    if any(w in lower_name for w in ["manufacturing", "production"]): 
+        print(f"🎯 Fast Route: Classified as [MANUFACTURING] via Filename Override")
+        return "manufacturing"
+    if any(w in lower_name for w in ["finance", "liquidity"]): 
+        print(f"🎯 Fast Route: Classified as [FINANCE] via Filename Override")
+        return "finance"
+    if any(w in lower_name for w in ["pharma", "clinical"]): 
+        print(f"🎯 Fast Route: Classified as [PHARMA] via Filename Override")
+        return "pharma"
+
+    print(f"🔍 Sniffing data schema: {columns_list}")
     cols_str = str(columns_list).lower()
     
     # ⚡ STEP 1: STRICT OVERRIDES (The Silver Bullets)
@@ -142,7 +170,7 @@ def main():
             continue 
         
         columns = df.columns.tolist()
-        industry = detect_industry(clients, columns)
+        industry = detect_industry(clients, columns, file_name) # 🛡️ Passed file_name here
         
         payload = generate_payload(df, industry_context=industry)
         
@@ -179,23 +207,18 @@ def main():
             with open(output_path, "w", encoding="utf-8") as f:
                 f.write(final_report)
             print(f"✅ Report saved to: {output_path}")
+            
+            # ==========================================
+            # 🚀 V3 DYNAMIC EVALUATION TIER
+            # ==========================================
+            # It now dynamically grades whatever file it just processed!
+            run_benchmark(dataset_path=file_path, version="v3", override_industry=industry)
+            
         except Exception as e:
-            print(f"❌ Failed to save report: {e}")
+            print(f"❌ Failed to save report or run evaluation: {e}")
             
     if not processed_any_file:
         print("\n⏸️ No valid data files found in data/raw/. Pipeline sleeping safely.")
 
-
 if __name__ == "__main__":
-    # 1. Run the main processing pipeline
     main()
-
-    # ==========================================
-    # 🚀 EVALUATION & BENCHMARKING TIER
-    # ==========================================
-    from evaluation.benchmark_runner import run_benchmark
-    
-    # 2. Run the dynamic benchmark engine on a specific file
-    consumer_file = "data/raw/Banking Customer Chrun Predicator Dataset.zip"
-    
-    run_benchmark(dataset_path=consumer_file, version="v2")
