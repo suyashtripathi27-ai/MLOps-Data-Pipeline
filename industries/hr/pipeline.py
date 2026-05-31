@@ -5,8 +5,7 @@ Orchestrates all 8 HR KPI modules with governance filters for sensitive HR data.
 import os
 from utils.master_orchestrator import run_master_orchestrator
 from utils.kpi_engine import KPIEngine
-
-# Import all HR microservices
+from utils.prompt_engine import generate_v3_system_prompt
 from .department_analysis import calc_department_metrics
 from .workforce_stability_analysis import calc_workforce_stability_metrics
 from .recruitment_analysis import calc_recruitment_metrics
@@ -110,37 +109,19 @@ def build_markdown_table(kpis):
 
 
 def run_hr_analysis(payload, clients, df):
-    """
-    Main HR Pipeline Orchestrator
-    1. Generate operational KPIs from all 8 modules
-    2. Apply HR-specific governance filters
-    3. Deduplicate missing/excluded metrics (Fixes Issue 5)
-    4. Build markdown tables
-    5. Hand off to Master Orchestrator for AI synthesis
-    """
-    # 1. Generate KPIs from all modules
     kpi_list = generate_dynamic_kpis(df)
-    
-    # 2. Apply HR governance (remove individual profiling, discrimination risks)
     safe_kpis = apply_hr_governance_filters(kpi_list)
-    
-    # 3. 🛑 DEDUPLICATE HERE 🛑 (This groups all your missing data diagnostics)
     final_kpis = KPIEngine.deduplicate_diagnostics(safe_kpis)
-    
-    # 4. Build markdown table using the deduplicated list
     kpi_markdown = build_markdown_table(final_kpis)
-    
-    # 5. Define prompt paths
+    system_prompt = generate_v3_system_prompt("hr")
     prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
-    sys_prompt_path = os.path.join(os.path.dirname(__file__), 'system_prompt.txt')
     
-    # 6. Hand off to the Master Orchestrator
     return run_master_orchestrator(
         industry_name="hr",
-        kpi_list=final_kpis,        
+        kpi_list=final_kpis,       
         kpi_markdown=kpi_markdown,  
         payload=payload,
         clients=clients,
         prompt_path=prompt_path,
-        sys_prompt_path=sys_prompt_path
+        system_prompt_text=system_prompt
     )
