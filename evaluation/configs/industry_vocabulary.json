@@ -1,21 +1,83 @@
 {
   "banking": {
     "tier1": [
-      "churn",
-      "portfolio",
-      "deposit base",
-      "credit quality",
-      "attrition",
-      "zero-balance",
-      "retention"
+      "churn", "portfolio", "deposit base", "credit quality", "attrition", 
+      "zero-balance", "retention", "default", "liquidity", "aml", "fraud"
     ],
     "tier2": [
-      "relationship depth",
-      "customer lifetime value",
-      "portfolio segmentation",
-      "risk-adjusted return",
-      "cross-sell penetration",
-      "liquidity pressure"
+      "relationship depth", "customer lifetime value", "portfolio segmentation", 
+      "risk-adjusted return", "cross-sell penetration", "liquidity pressure", 
+      "liquidity coverage ratio", "provisioning"
+    ]
+  },
+  "finance": {
+    "tier1": [
+      "liquidity", "margin", "ebitda", "opex", "cogs", "cash flow", 
+      "working capital", "forecast", "budget", "solvency"
+    ],
+    "tier2": [
+      "debt covenant", "operating leverage", "cost inflation", "dscr", 
+      "zero-based budgeting", "revenue concentration", "strategic planning"
+    ]
+  },
+  "ecommerce": {
+    "tier1": [
+      "retention", "churn", "loyalty", "conversion", "abandonment", 
+      "cac", "roas", "stockout", "overstock"
+    ],
+    "tier2": [
+      "customer lifetime value", "checkout friction", "customer acquisition cost", 
+      "payback period", "inventory distortion", "unit economics"
+    ]
+  },
+  "hr": {
+    "tier1": [
+      "attrition", "retention", "burnout", "engagement", "recruitment", 
+      "training", "performance", "turnover"
+    ],
+    "tier2": [
+      "workforce stability", "talent acquisition", "candidate funnel", 
+      "hiring effectiveness", "capability-building", "work-life balance"
+    ]
+  },
+  "logistics": {
+    "tier1": [
+      "transit time", "delay", "freight", "fuel", "warehouse", 
+      "dwell time", "carrier", "utilization"
+    ],
+    "tier2": [
+      "network efficiency", "throughput", "sla breach", "lane costs", 
+      "capacity utilization", "carrier concentration", "route optimization"
+    ]
+  },
+  "manufacturing": {
+    "tier1": [
+      "downtime", "oee", "defects", "scrap", "maintenance", 
+      "breakdown", "lead time", "stockout", "rework"
+    ],
+    "tier2": [
+      "production efficiency", "throughput", "cost of poor quality", 
+      "yield loss", "predictive maintenance", "supply chain disruption"
+    ]
+  },
+  "retail": {
+    "tier1": [
+      "footfall", "conversion", "shrinkage", "theft", "clearance", 
+      "markdown", "margin", "stockout", "overstock"
+    ],
+    "tier2": [
+      "store productivity", "same-store sales", "traffic conversion", 
+      "loss prevention", "inventory aging", "merchandising"
+    ]
+  },
+  "pharma": {
+    "tier1": [
+      "compliance", "deviation", "gmp", "yield", "scrap", 
+      "temperature", "storage", "recall", "quality", "safety"
+    ],
+    "tier2": [
+      "regulatory compliance", "inspection readiness", "capa", 
+      "cold chain integrity", "product stability", "market recall", "patient safety"
     ]
   }
 }
