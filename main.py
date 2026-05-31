@@ -198,4 +198,4 @@ if __name__ == "__main__":
     # 2. Run the dynamic benchmark engine on a specific file
     consumer_file = "data/raw/Banking Customer Chrun Predicator Dataset.zip"
     
-    run_benchmark(dataset_path=consumer_file, version="v1")
+    run_benchmark(dataset_path=consumer_file, version="v2")
