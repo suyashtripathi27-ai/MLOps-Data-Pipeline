@@ -15,6 +15,7 @@ from .quality_analysis import calc_quality_metrics
 from .safety_analysis import calc_safety_metrics
 from .supply_chain_analysis import calc_supply_chain_metrics
 from .workforce_analysis import calc_workforce_metrics
+from utils.categorical_analysis import calc_universal_categorical_metrics
 
 
 def generate_dynamic_kpis(df):
