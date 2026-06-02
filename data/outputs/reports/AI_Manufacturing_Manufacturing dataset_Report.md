@@ -1,3 +1,3 @@
 # System Error
 
-Failed to process manufacturing pipeline: name 'SemanticValidator' is not defined
+Failed to process manufacturing pipeline: No module named 'utils.categorical_analysis'

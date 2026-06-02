@@ -6,3 +6,4 @@ Timestamp,Version,Industry,Dataset,Scenario,Difficulty,Total,Max,Percent,Behavio
 20260531_113153,v3,logistics,US LOGISTICS,network_bottleneck,Easy,2,60,3.33,0,0,0,2,0,0
 20260531_113623,v3,logistics,US LOGISTICS,network_bottleneck,Easy,56,60,93.33,8,10,10,8,10,10
 20260602_093812,v3,manufacturing,Manufacturing dataset,governance_failure,Hard,2,60,3.33,0,0,0,2,0,0
+20260602_094333,v3,manufacturing,Manufacturing dataset,governance_failure,Hard,2,60,3.33,0,0,0,2,0,0
