@@ -46,7 +46,6 @@ def load_and_clean(file_path):
         raise ValueError("❌ Unsupported file format.")
         
     df = df.dropna(how='all', axis=0).dropna(how='all', axis=1)
-    
     df = df.loc[:, ~df.columns.duplicated()].copy()
     
     print(f"🧹 Base load complete. Initial Shape: {df.shape}")
@@ -74,7 +73,7 @@ UNIVERSAL_SCHEMA = {
     "amount": ["transaction_amount", "txn_amt", "value", "withdrawal", "deposit_amount"],
     "balance": ["account_balance", "ending_balance", "available_balance", "ledger_balance"],
     "customer_id": ["customer_code", "cust_id", "client_id"],
-    "loan_status": ["status", "payment_status", "loan_state"],
+    "loan_status": ["status", "payment_status", "loan_state", "load_status"],
     "outstanding_balance": ["loan_balance", "remaining_balance", "principal_remaining"],
     "fees_charged": ["fee_amount", "charges", "fee", "service_charge"],
     "aml_flag": ["aml_alert", "suspicious_flag", "fraud_flag", "is_suspicious"],
@@ -151,6 +150,7 @@ def run_schema_inference(df):
     print("🧠 Initiating Evidence-Based Semantic Schema Inference...")
     schema_mapping = {}
     evidence_log = []
+    mapped_targets = set()  # 🛡️ THE FIX: Track targets to prevent double-mapping!
     
     for original_col in df.columns:
         norm_col = normalize_string(original_col)
@@ -197,14 +197,23 @@ def run_schema_inference(df):
                     confidence = round(ratio, 2)
                     evidence.extend([f"Fuzzy Match: '{matched_alias}'", f"Profile Verified: {col_profile}"])
 
+        # 🛡️ THE FIX: Only map if the target hasn't been used yet!
         if mapped_to and confidence >= 0.85:
-            schema_mapping[original_col] = mapped_to
-            evidence_log.append({"column": original_col, "mapped_to": mapped_to, "confidence": confidence, "evidence": evidence})
+            if mapped_to not in mapped_targets:
+                schema_mapping[original_col] = mapped_to
+                mapped_targets.add(mapped_to)
+                evidence_log.append({"column": original_col, "mapped_to": mapped_to, "confidence": confidence, "evidence": evidence})
+            else:
+                print(f"⚠️ Skipped mapping `{original_col}` to `{mapped_to}` (Target already used)")
 
     for log in evidence_log:
         print(f"🎯 AI Mapped: `{log['column']}` -> `{log['mapped_to']}` | Conf: {log['confidence']} | Evidence: {log['evidence']}")
         
     df.rename(columns=schema_mapping, inplace=True)
+    
+    # 🛡️ THE FIX: Strip out any accidental duplicates immediately after renaming
+    df = df.loc[:, ~df.columns.duplicated()].copy()
+    
     return df
 
 def universal_clean(df):
