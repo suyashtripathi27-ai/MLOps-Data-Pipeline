@@ -11,7 +11,6 @@ def load_and_clean(file_path):
     print(f"📥 Attempting to load: {file_path}")
     
     if file_path.endswith('.csv'):
-        # FIXED: Removed the stray z.open line that was accidentally placed here
         df = pd.read_csv(file_path, sep=None, engine='python', encoding='utf-8-sig')
         
     elif file_path.endswith('.zip'):
@@ -22,7 +21,6 @@ def load_and_clean(file_path):
             
             if len(csv_files) == 1:
                 target_file = csv_files[0]
-                # FIXED: Added the sniffer here
                 with z.open(target_file) as f: df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8-sig')
             else:
                 core_keywords = ['trip', 'load', 'delivery', 'order', 'sales']
@@ -38,7 +36,6 @@ def load_and_clean(file_path):
                 for f_name in csv_files:
                     if f_name != target_file and (z.getinfo(f_name).file_size / (1024 * 1024)) < 50.0:
                         with z.open(f_name) as f:
-                            # FIXED: Added the sniffer here as well
                             dim_dfs[f_name.replace('.csv', '').split('/')[-1]] = pd.read_csv(f, sep=None, engine='python', encoding='utf-8-sig')
                             
                 df = enrich_fact_table(fact_df, dim_dfs)
@@ -49,8 +46,12 @@ def load_and_clean(file_path):
         raise ValueError("❌ Unsupported file format.")
         
     df = df.dropna(how='all', axis=0).dropna(how='all', axis=1)
+    
+    df = df.loc[:, ~df.columns.duplicated()].copy()
+    
     print(f"🧹 Base load complete. Initial Shape: {df.shape}")
     return df
+
 # ==========================================
 # 🧠 THE EVIDENCE-BASED SEMANTIC ENGINE
 # ==========================================
@@ -157,7 +158,6 @@ def run_schema_inference(df):
         confidence = 0.0
         evidence = []
 
-        # Layer 1: Exact Match
         for standard_name, aliases in UNIVERSAL_SCHEMA.items():
             if norm_col == normalize_string(standard_name) or norm_col in aliases:
                 mapped_to = standard_name
@@ -165,7 +165,6 @@ def run_schema_inference(df):
                 evidence.append("Exact normalized alias match")
                 break
         
-        # Layer 2: Value Pattern
         if not mapped_to:
             val_pattern = infer_from_values(df[original_col])
             if val_pattern == "logistics_location":
@@ -178,7 +177,6 @@ def run_schema_inference(df):
                     confidence = 0.95
                     evidence.extend(["Value Pattern: Logistics Location", "Name Context: Destination indicator"])
 
-        # Layer 3: Fuzzy Match
         if not mapped_to:
             all_known_terms = {alias: std for std, aliases in UNIVERSAL_SCHEMA.items() for alias in aliases}
             for std in UNIVERSAL_SCHEMA.keys(): all_known_terms[normalize_string(std)] = std
@@ -219,7 +217,8 @@ def universal_clean(df):
         
     numeric_cols = df.select_dtypes(include=['number']).columns
     for col in numeric_cols:
-        if df[col].isnull().sum() > 0: df[col] = df[col].fillna(df[col].median())
+        if df[col].isnull().any(): 
+            df[col] = df[col].fillna(df[col].median())
             
     for col in df.columns:
         if 'date' in col.lower() or 'time' in col.lower() or 'timestamp' in col.lower():
