@@ -8,3 +8,4 @@ Timestamp,Version,Industry,Dataset,Scenario,Difficulty,Total,Max,Percent,Behavio
 20260602_093812,v3,manufacturing,Manufacturing dataset,governance_failure,Hard,2,60,3.33,0,0,0,2,0,0
 20260602_094333,v3,manufacturing,Manufacturing dataset,governance_failure,Hard,2,60,3.33,0,0,0,2,0,0
 20260605_172426,v3,retail,Delivery dataswt,governance_failure,Hard,48,60,80.0,7,3,10,8,10,10
+20260605_175513,v3,logistics,Logistics operation dataset,governance_failure,Hard,48,60,80.0,7,3,10,8,10,10
