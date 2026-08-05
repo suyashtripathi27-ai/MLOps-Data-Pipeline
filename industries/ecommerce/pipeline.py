@@ -18,6 +18,7 @@ from .retention_analysis import calc_retention_metrics
 from .review_analysis import calc_review_metrics
 from .sales_analysis import calc_sales_metrics
 from .traffic_analysis import calc_traffic_metrics
+from utils.categorical_analysis import calc_universal_categorical_metrics # 👈 FIXED: Imported the universal module
 
 
 def generate_dynamic_kpis(df):
@@ -39,9 +40,15 @@ def generate_dynamic_kpis(df):
         calc_retention_metrics,
         calc_fraud_metrics,
         calc_forecasting_metrics,
+        calc_universal_categorical_metrics # 👈 FIXED: Added to the execution loop
     ]:
         try:
-            all_kpis.extend(module(df))
+            result = module(df)
+            # 🛠️ FIXED: Added safety checks to prevent crashes if a module returns a dict instead of a list
+            if isinstance(result, dict):
+                all_kpis.append(result)
+            elif isinstance(result, list):
+                all_kpis.extend(result)
         except Exception as e:
             print(f"⚠️ Warning: E-commerce module {module.__name__} failed: {e}")
     return all_kpis
@@ -55,7 +62,8 @@ def build_markdown_table(kpis):
     md = "| Category | KPI Name | Value | Formula | Source | Confidence | Warnings |\n"
     md += "| :--- | :--- | :--- | :--- | :--- | :--- | :--- |\n"
     for k in kpis:
-        md += f"| {k.get('category','')} | **{k.get('name','')}** | `{k.get('value','')}` | *{k.get('formula','')}* | `{k.get('source','')}` | {k.get('confidence','N/A')} | {k.get('warnings','None')} |\n"
+        if isinstance(k, dict): # 🛠️ FIXED: Added dictionary type check
+            md += f"| {k.get('category','')} | **{k.get('name','')}** | `{k.get('value','')}` | *{k.get('formula','')}* | `{k.get('source','')}` | {k.get('confidence','N/A')} | {k.get('warnings','None')} |\n"
     return md
 
 
@@ -65,6 +73,7 @@ def run_ecommerce_analysis(payload, clients, df):
     kpi_markdown = build_markdown_table(final_kpis)
     system_prompt = generate_v3_system_prompt("ecommerce")
     prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
+    
     return run_master_orchestrator(
         industry_name="ecommerce",
         kpi_list=final_kpis,
