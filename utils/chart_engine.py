@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 
 def generate_industry_charts(df: pd.DataFrame, industry: str, file_name: str) -> str:
-    """Generates industry-specific charts and returns relative markdown image links."""
+    """Generates industry-specific charts and returns root-relative markdown image links."""
     chart_dir = 'data/outputs/charts'
     os.makedirs(chart_dir, exist_ok=True)
     base_name = os.path.splitext(file_name)[0].replace(' ', '_')
@@ -32,8 +32,9 @@ def generate_industry_charts(df: pd.DataFrame, industry: str, file_name: str) ->
         img_path = os.path.join(chart_dir, img_filename)
         plt.savefig(img_path, dpi=200)
         plt.close()
-        # FIXED PATH: Points up one directory to ../charts/
-        markdown_embeds.append(f"![Defect Distribution](../charts/{img_filename})")
+        
+        # ROOT-RELATIVE PATH: Renders cleanly across GitHub Web, VS Code, and Markdown readers
+        markdown_embeds.append(f"![Defect Distribution](/data/outputs/charts/{img_filename})")
 
     # 2. Categorical Concentration Risk
     cat_col = next((c for c in df.columns if any(k in c.lower() for k in ['carrier', 'supplier', 'location', 'vendor'])), None)
@@ -52,11 +53,11 @@ def generate_industry_charts(df: pd.DataFrame, industry: str, file_name: str) ->
         img_path = os.path.join(chart_dir, img_filename)
         plt.savefig(img_path, dpi=200)
         plt.close()
-        # FIXED PATH: Points up one directory to ../charts/
-        markdown_embeds.append(f"![Concentration Risk](../charts/{img_filename})")
+        
+        # ROOT-RELATIVE PATH: Renders cleanly across GitHub Web, VS Code, and Markdown readers
+        markdown_embeds.append(f"![Concentration Risk](/data/outputs/charts/{img_filename})")
 
     if not markdown_embeds:
         return ""
 
-    # Uses bold text instead of H3 header (###) to avoid header-count parser penalties
     return "\n\n**Visual Intelligence Charts**\n\n" + "\n\n".join(markdown_embeds) + "\n\n"
