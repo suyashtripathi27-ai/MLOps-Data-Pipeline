@@ -150,7 +150,7 @@ def run_schema_inference(df):
     print("🧠 Initiating Evidence-Based Semantic Schema Inference...")
     schema_mapping = {}
     evidence_log = []
-    mapped_targets = set()  # 🛡️ THE FIX: Track targets to prevent double-mapping!
+    mapped_targets = set()
     
     for original_col in df.columns:
         norm_col = normalize_string(original_col)
@@ -197,7 +197,6 @@ def run_schema_inference(df):
                     confidence = round(ratio, 2)
                     evidence.extend([f"Fuzzy Match: '{matched_alias}'", f"Profile Verified: {col_profile}"])
 
-        # 🛡️ THE FIX: Only map if the target hasn't been used yet!
         if mapped_to and confidence >= 0.85:
             if mapped_to not in mapped_targets:
                 schema_mapping[original_col] = mapped_to
@@ -210,15 +209,34 @@ def run_schema_inference(df):
         print(f"🎯 AI Mapped: `{log['column']}` -> `{log['mapped_to']}` | Conf: {log['confidence']} | Evidence: {log['evidence']}")
         
     df.rename(columns=schema_mapping, inplace=True)
-    
-    # 🛡️ THE FIX: Strip out any accidental duplicates immediately after renaming
     df = df.loc[:, ~df.columns.duplicated()].copy()
     
+    return df
+
+def convert_unix_timestamps(df):
+    """Detects Unix epoch timestamps in numeric columns and converts them to standard datetime/durations."""
+    for col in df.columns:
+        if any(k in col.lower() for k in ['time', 'date', 'duration', 'timestamp']):
+            if pd.api.types.is_numeric_dtype(df[col]):
+                sample = df[col].dropna()
+                if not sample.empty:
+                    val = sample.iloc[0]
+                    if val > 1_000_000_000:
+                        try:
+                            df[col] = pd.to_datetime(df[col], unit='s', errors='coerce')
+                        except Exception:
+                            pass
+                    elif val > 10_000 and 'lead' not in col.lower():
+                        try:
+                            df[f"{col}_hours"] = (df[col] / 3600).round(2)
+                        except Exception:
+                            pass
     return df
 
 def universal_clean(df):
     print("⚙️ Running universal data engineering layers...")
     df = run_schema_inference(df)
+    df = convert_unix_timestamps(df)
     
     initial_shape = df.shape[0]
     df = df.drop_duplicates()
