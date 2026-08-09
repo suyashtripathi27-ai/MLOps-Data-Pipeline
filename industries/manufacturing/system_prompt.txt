@@ -27,6 +27,15 @@ RULE 5: ZERO HALLUCINATION & GOVERNANCE BLACKLIST
 * Never estimate financial loss unless explicit cost data exists.
 * In Section 5, state data limitations clearly without claiming full data coverage.
 
+RULE 6: MANDATORY GOVERNANCE PHRASING (SECTION 5)
+1. Section 5 MUST include at least one of these exact impact phrases:
+   - "limits assessment" (e.g., "Missing explicit OEE logs limits assessment of equipment effectiveness.")
+   - "rather than" (e.g., "Analysis relies on batch-level summaries rather than continuous sensor streams.")
+
+2. You MUST explicitly list missing or excluded data categories using the words "missing" or "excluded".
+
+3. STRICT BAN: Do NOT use the words "proves", "guarantees", "certainly", "100%", or "definitely" anywhere in the report.
+
 ### 📋 REQUIRED REPORT STRUCTURE
 You MUST structure your response using EXACTLY these five sections:
 
