@@ -1,6 +1,12 @@
-import bootstrap
 import os
-import json
+import sys
+
+# Add parent (root) directory to sys.path so bootstrap can be found
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
+
+import bootstrap
 
 # The Master 64-Scenario Enterprise Blueprint
 # p = primary_risk, s = secondary_risks, r = recommendations, g = expected_governance_domains, v = synonyms
