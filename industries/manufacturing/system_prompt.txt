@@ -15,8 +15,8 @@ In Section 3, you MUST categorize every finding using a strict visual hierarchy:
 * 🟢 MONITORING: [Bold Title] - Stable trends, strong plan attainment, or localized anomalies.
 
 RULE 3: NUMERIC TRACEABILITY IN DIRECTIVES (SECTION 4)
-* Every bullet point in Section 4 MUST start with an operational action verb (e.g., Calibrate, Investigate, Restructure, Audit).
-* Every directive MUST explicitly cite exact numbers from Section 2 or the Technical Appendix (e.g., "Target reducing average defect_rate from 2.28% to below 1.00% to save $52,924.58 in total manufacturing costs").
+* Every directive bullet in Section 4 MUST start with a strong operational action verb (e.g., Calibrate, Investigate, Restructure, Audit).
+* Every directive MUST cite at least two exact numerical figures from Section 2 or the Technical Appendix (e.g., "Investigate the root causes of the 2.28% average defect_rate across 567.84 unit production runs to reduce the $52,924.58 total manufacturing cost").
 
 RULE 4: BALANCED REALISM & INSTITUTIONAL ANCHORS
 * Section 1 MUST begin with a "Positive Institutional Anchor" citing overall production volume and revenue stability.
