@@ -34,7 +34,6 @@ jobs:
 
     - name: Execute Master Orchestrator
       env:
-        # 🛡️ BOTH KEYS EXPOSED: Allows the Multi-API Router to seamlessly fallback
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
@@ -43,22 +42,23 @@ jobs:
         python evaluation/build_suite.py
         python main.py
 
-    - name: Commit and Push AI Reports
+    - name: Commit and Push AI Reports, Charts & Telemetry
       run: |
-          git config --global user.email "action@github.com"
-          git config --global user.name "GitHub Action Bot"
-          
-          # 1. Explicitly turn off rebasing (This prevents your specific error!)
-          git config pull.rebase false
-          
-          # 2. Add and commit the new report AND the evaluation telemetry
-          git add data/outputs/reports/
-          git add evaluation/results/      # 👈 THIS IS THE FIX
-          
-          git commit -m "🤖 Auto-generated AI Strategy Report & Telemetry" || echo "No changes to commit"
-          
-          # 3. Pull latest changes and FORCE the runner's file to win (-X ours)
-          git pull origin main -s recursive -X ours
-          
-          # 4. Push safely to the repository
-          git push
+        git config --global user.email "action@github.com"
+        git config --global user.name "GitHub Action Bot"
+        
+        # 1. Turn off rebasing
+        git config pull.rebase false
+        
+        # 2. Add reports, generated charts, and telemetry
+        git add data/outputs/reports/
+        git add data/outputs/charts/      #
+        git add evaluation/results/
+        
+        git commit -m "🤖 Auto-generated AI Strategy Report, Charts & Telemetry" || echo "No changes to commit"
+        
+        # 3. Pull latest changes and resolve conflicts
+        git pull origin main -s recursive -X ours
+        
+        # 4. Push safely to repository
+        git push
