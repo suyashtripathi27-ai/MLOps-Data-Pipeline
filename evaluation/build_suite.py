@@ -1,3 +1,4 @@
+import bootstrap
 import os
 import json
 
