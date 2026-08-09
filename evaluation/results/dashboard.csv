@@ -13,3 +13,4 @@ Timestamp,Version,Industry,Dataset,Scenario,Difficulty,Total,Max,Percent,Behavio
 20260805_082206,v3,hr,hr,attrition_crisis,Easy,55,60,91.67,10,10,10,5,10,10
 20260805_082237,v3,logistics,Logistics operation dataset,governance_failure,Hard,49,60,81.67,8,3,10,8,10,10
 20260805_083156,v3,manufacturing,SUPPLY CHAIN,production_instability,Easy,2,60,3.33,0,0,0,2,0,0
+20260809_210245,v3,manufacturing,SUPPLY CHAIN,production_instability,Easy,54,60,90.0,9,10,10,5,10,10
