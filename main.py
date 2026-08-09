@@ -1,13 +1,16 @@
+# 0. BOOTSTRAPPER (MUST BE FIRST): Enforces path resolution & __init__.py generation
+import bootstrap
+
 import os
 import sys
 import importlib  
 from openai import OpenAI
 
-# 1. IMPORT OUR UNIVERSAL UTILITIES
+# 1. IMPORT UNIVERSAL UTILITIES
 from utils.cleaner import load_and_clean, universal_clean
 from utils.profiler import generate_payload
 from utils.llm_router import execute_with_fallback  
-from evaluation.benchmark_runner import run_benchmark # <-- 📈 Moved import to the top!
+from evaluation.benchmark_runner import run_benchmark
 
 # 2. HIGH-AVAILABILITY CLIENT SETUP
 print("🔌 Initializing Multi-API Client Router...")
@@ -46,30 +49,30 @@ def detect_industry(clients, columns_list, file_name=""):
     """THE AGENTIC ROUTER: Intelligently routes datasets using strict overrides and weighted scoring."""
     lower_name = file_name.lower()
     
-    # 🛡️ STEP 0: FILENAME SAFEGUARD (Prevents AI Column Hallucinations like "Status" -> "loan_status")
+    # 🛡️ STEP 0: FILENAME SAFEGUARD
     if any(w in lower_name for w in ["logistics", "freight", "shipping"]): 
-        print(f"🎯 Fast Route: Classified as [LOGISTICS] via Filename Override")
+        print("🎯 Fast Route: Classified as [LOGISTICS] via Filename Override")
         return "logistics"
     if any(w in lower_name for w in ["hr", "attrition", "employee"]): 
-        print(f"🎯 Fast Route: Classified as [HR] via Filename Override")
+        print("🎯 Fast Route: Classified as [HR] via Filename Override")
         return "hr"
     if any(w in lower_name for w in ["banking", "churn", "credit"]): 
-        print(f"🎯 Fast Route: Classified as [BANKING] via Filename Override")
+        print("🎯 Fast Route: Classified as [BANKING] via Filename Override")
         return "banking"
     if any(w in lower_name for w in ["retail", "store"]): 
-        print(f"🎯 Fast Route: Classified as [RETAIL] via Filename Override")
+        print("🎯 Fast Route: Classified as [RETAIL] via Filename Override")
         return "retail"
     if any(w in lower_name for w in ["ecommerce", "cart"]): 
-        print(f"🎯 Fast Route: Classified as [ECOMMERCE] via Filename Override")
+        print("🎯 Fast Route: Classified as [ECOMMERCE] via Filename Override")
         return "ecommerce"
-    if any(w in lower_name for w in ["manufacturing", "production"]): 
-        print(f"🎯 Fast Route: Classified as [MANUFACTURING] via Filename Override")
+    if any(w in lower_name for w in ["manufacturing", "production", "supply chain", "supply_chain"]): 
+        print("🎯 Fast Route: Classified as [MANUFACTURING] via Filename Override")
         return "manufacturing"
     if any(w in lower_name for w in ["finance", "liquidity"]): 
-        print(f"🎯 Fast Route: Classified as [FINANCE] via Filename Override")
+        print("🎯 Fast Route: Classified as [FINANCE] via Filename Override")
         return "finance"
     if any(w in lower_name for w in ["pharma", "clinical"]): 
-        print(f"🎯 Fast Route: Classified as [PHARMA] via Filename Override")
+        print("🎯 Fast Route: Classified as [PHARMA] via Filename Override")
         return "pharma"
 
     print(f"🔍 Sniffing data schema: {columns_list}")
@@ -88,7 +91,7 @@ def detect_industry(clients, columns_list, file_name=""):
         print("🎯 Fast Route: Classified as [PHARMA] via Heuristics")
         return "pharma"
         
-    if any(word in cols_str for word in ['downtime', 'oee', 'scrap']) or ('machine' in cols_str and 'defect' in cols_str):
+    if any(word in cols_str for word in ['downtime', 'oee', 'scrap', 'defect_rate', 'production_volume']) or ('machine' in cols_str and 'defect' in cols_str):
         print("🎯 Fast Route: Classified as [MANUFACTURING] via Heuristics")
         return "manufacturing"
 
@@ -96,7 +99,7 @@ def detect_industry(clients, columns_list, file_name=""):
         print("🎯 Fast Route: Classified as [LOGISTICS] via Heuristics")
         return "logistics"
 
-    # ⚖️ STEP 2: WEIGHTED SCORING (For ambiguous datasets)
+    # ⚖️ STEP 2: WEIGHTED SCORING
     scores = {
         "banking": sum(1 for k in ['loan', 'credit', 'mortgage', 'aml', 'kyc', 'overdraft', 'deposit', 'delinquency'] if k in cols_str),
         "finance": sum(1 for k in ['ebitda', 'cashflow', 'opex', 'cogs', 'liquidity', 'dividend', 'ledger', 'assets'] if k in cols_str),
@@ -104,12 +107,11 @@ def detect_industry(clients, columns_list, file_name=""):
     }
     
     best_match = max(scores, key=scores.get)
-    
     if scores[best_match] > 0:
         print(f"🎯 Fast Route: Classified as [{best_match.upper()}] via Weighted Score")
         return best_match
         
-    # 🧠 STEP 3: AI ROUTING (If heuristics fail completely)
+    # 🧠 STEP 3: AI ROUTING
     supported_industries = ["logistics", "retail", "banking", "pharma", "manufacturing", "finance", "ecommerce", "hr", "generic"]
     system_prompt = "You are a data schema router. Follow instructions exactly."
     
@@ -122,18 +124,22 @@ def detect_industry(clients, columns_list, file_name=""):
     
     try:
         raw_response = execute_with_fallback(clients, system_prompt, user_prompt).strip().lower()
-        
         for valid_industry in supported_industries:
             if valid_industry in raw_response:
                 print(f"🎯 AI Router Classified Industry As: [{valid_industry.upper()}]")
                 return valid_industry
-                
         return "generic"
-        
     except Exception as e:
-        print(f"⚠️ AI Routing failed (All APIs Exhausted). Defaulting to generic. Error: {e}")
+        print(f"⚠️ AI Routing failed. Defaulting to generic. Error: {e}")
         return "generic"
-        
+
+def is_valid_executive_report(report_text: str) -> bool:
+    """Validates that a report is a full executive analysis and not a system error message."""
+    if not report_text or len(report_text.strip()) < 300:
+        return False
+    if "System Error" in report_text or "Failed to process" in report_text:
+        return False
+    return True
 
 def main():
     print("🚀 Starting Universal Enterprise Pipeline...")
@@ -151,7 +157,6 @@ def main():
     processed_any_file = False
 
     for file_name in os.listdir(raw_dir):
-        
         if file_name.startswith('.') or file_name.lower() == 'process':
             continue
             
@@ -170,21 +175,20 @@ def main():
             continue 
         
         columns = df.columns.tolist()
-        industry = detect_industry(clients, columns, file_name) # 🛡️ Passed file_name here
-        
+        industry = detect_industry(clients, columns, file_name)
         payload = generate_payload(df, industry_context=industry)
         
         print(f"🔀 Routing to {industry} module...")
         
         ROUTER_MAP = {
-            "logistics":     ("industries.logistics.pipeline", "run_logistics_analysis"),
-            "retail":        ("industries.retail.pipeline",    "run_retail_analysis"),
-            "banking":       ("industries.banking.pipeline",   "run_banking_analysis"),
-            "pharma":        ("industries.pharma.pipeline",    "run_pharma_analysis"),
-            "finance":       ("industries.finance.pipeline",   "run_finance_analysis"),
+            "logistics":     ("industries.logistics.pipeline",     "run_logistics_analysis"),
+            "retail":        ("industries.retail.pipeline",        "run_retail_analysis"),
+            "banking":       ("industries.banking.pipeline",       "run_banking_analysis"),
+            "pharma":        ("industries.pharma.pipeline",        "run_pharma_analysis"),
+            "finance":       ("industries.finance.pipeline",       "run_finance_analysis"),
             "manufacturing": ("industries.manufacturing.pipeline", "run_manufacturing_analysis"),
-            "ecommerce":     ("industries.ecommerce.pipeline", "run_ecommerce_analysis"),
-            "hr":            ("industries.hr.pipeline",        "run_hr_analysis")
+            "ecommerce":     ("industries.ecommerce.pipeline",     "run_ecommerce_analysis"),
+            "hr":            ("industries.hr.pipeline",            "run_hr_analysis")
         }
 
         if industry in ROUTER_MAP:
@@ -195,28 +199,34 @@ def main():
                 final_report = analysis_func(payload, clients, df)
             except Exception as e:
                 print(f"❌ Failed to run pipeline for {industry}: {e}")
-                final_report = f"# System Error\n\nFailed to process {industry} pipeline: {e}"
+                # Log system error to logs directory instead of creating a corrupted report
+                log_file = f"data/outputs/logs/error_{os.path.splitext(file_name)[0]}.log"
+                with open(log_file, "w", encoding="utf-8") as f:
+                    f.write(f"Pipeline error for {industry}: {e}")
+                continue  # Skip evaluation on failed run
         else:
-            final_report = f"# Generic Analysis\n\nNo industry-specific pipeline detected for: {industry}."
+            print(f"⚠️ Unmapped industry: {industry}. Skipping evaluation.")
+            continue
             
         base_name = os.path.splitext(file_name)[0]
         report_name = f"AI_{industry.capitalize()}_{base_name}_Report.md"
         output_path = os.path.join(output_dir, report_name) 
         
-        try:
-            with open(output_path, "w", encoding="utf-8") as f:
-                f.write(final_report)
-            print(f"✅ Report saved to: {output_path}")
-            
-            # ==========================================
-            # 🚀 V3 DYNAMIC EVALUATION TIER
-            # ==========================================
-            # It now dynamically grades whatever file it just processed!
-            run_benchmark(dataset_path=file_path, version="v3", override_industry=industry)
-            
-        except Exception as e:
-            print(f"❌ Failed to save report or run evaluation: {e}")
-            
+        # Save report and run evaluation ONLY if report generated successfully
+        if is_valid_executive_report(final_report):
+            try:
+                with open(output_path, "w", encoding="utf-8") as f:
+                    f.write(final_report)
+                print(f"✅ Report saved to: {output_path}")
+                
+                # 🚀 V3 DYNAMIC EVALUATION TIER
+                run_benchmark(dataset_path=file_path, version="v3", override_industry=industry)
+                
+            except Exception as e:
+                print(f"❌ Failed to save report or run evaluation: {e}")
+        else:
+            print(f"⚠️ Generated report for {file_name} was invalid or incomplete. Skipping benchmark evaluation.")
+
     if not processed_any_file:
         print("\n⏸️ No valid data files found in data/raw/. Pipeline sleeping safely.")
 
