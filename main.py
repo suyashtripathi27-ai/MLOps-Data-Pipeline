@@ -10,6 +10,7 @@ from openai import OpenAI
 from utils.cleaner import load_and_clean, universal_clean
 from utils.profiler import generate_payload
 from utils.llm_router import execute_with_fallback  
+from utils.chart_engine import generate_industry_charts
 from evaluation.benchmark_runner import run_benchmark
 
 # 2. HIGH-AVAILABILITY CLIENT SETUP
@@ -176,7 +177,12 @@ def main():
         
         columns = df.columns.tolist()
         industry = detect_industry(clients, columns, file_name)
+        
+        # 📊 Auto-Generate Charts & Embed Markdown
+        chart_markdown = generate_industry_charts(df, industry, file_name)
+        
         payload = generate_payload(df, industry_context=industry)
+        payload["chart_markdown"] = chart_markdown
         
         print(f"🔀 Routing to {industry} module...")
         
@@ -199,20 +205,25 @@ def main():
                 final_report = analysis_func(payload, clients, df)
             except Exception as e:
                 print(f"❌ Failed to run pipeline for {industry}: {e}")
-                # Log system error to logs directory instead of creating a corrupted report
                 log_file = f"data/outputs/logs/error_{os.path.splitext(file_name)[0]}.log"
                 with open(log_file, "w", encoding="utf-8") as f:
                     f.write(f"Pipeline error for {industry}: {e}")
-                continue  # Skip evaluation on failed run
+                continue 
         else:
             print(f"⚠️ Unmapped industry: {industry}. Skipping evaluation.")
             continue
             
+        # Attach Chart Blocks to Markdown if not present
+        if chart_markdown and chart_markdown not in final_report:
+            if "# 2. Operational Risk Synthesis" in final_report:
+                final_report = final_report.replace("# 2. Operational Risk Synthesis", f"{chart_markdown}\n# 2. Operational Risk Synthesis")
+            else:
+                final_report = final_report + f"\n\n{chart_markdown}"
+
         base_name = os.path.splitext(file_name)[0]
         report_name = f"AI_{industry.capitalize()}_{base_name}_Report.md"
         output_path = os.path.join(output_dir, report_name) 
         
-        # Save report and run evaluation ONLY if report generated successfully
         if is_valid_executive_report(final_report):
             try:
                 with open(output_path, "w", encoding="utf-8") as f:
