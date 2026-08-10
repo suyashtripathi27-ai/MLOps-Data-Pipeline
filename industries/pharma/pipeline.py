@@ -1,6 +1,14 @@
 import os
+import sys
+
+# 1. Path Bootstrapping
+BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
 from utils.master_orchestrator import run_master_orchestrator
 from utils.kpi_engine import KPIEngine
+from utils.validator import SemanticValidator  # 👈 IMPORT ADDED
 
 from .sales_analysis import calc_pharma_sales_metrics
 from .shelf_life_analysis import calc_shelf_life_metrics
@@ -18,7 +26,7 @@ def generate_dynamic_kpis(df):
     """Executes all KPI modules dynamically and returns a list of dictionaries."""
     all_kpis = []
     
-    # Validate time-based columns in pharma (trial duration, time_to_hire, etc.)
+    # Validate time-based columns in pharma
     validator = SemanticValidator()
     time_columns = {
         'trial_duration_days', 'trial_duration_months', 'time_to_hire_days',
@@ -28,8 +36,9 @@ def generate_dynamic_kpis(df):
     
     for col in df.columns:
         if col.lower() in time_columns or 'duration' in col.lower() or 'tenure' in col.lower():
-            if not validator.is_valid_duration(df[col]):
-                print(f"⚠️ Warning: Column '{col}' may not be valid elapsed time data")
+            is_valid, msg = validator.is_valid_duration(df[col])  # 👈 FIXED TUPLE UNPACKING
+            if not is_valid:
+                print(f"⚠️ Warning: Column '{col}' may not be valid elapsed time data ({msg})")
     
     for module in [
         calc_pharma_sales_metrics,
@@ -61,16 +70,18 @@ def build_markdown_table(kpis):
         md += f"| {k.get('category','')} | **{k.get('name','')}** | `{k.get('value','')}` | *{k.get('formula','')}* | `{k.get('source','')}` | {k.get('confidence','N/A')} | {k.get('warnings','None')} |\n"
     return md
 
+
 def run_pharma_analysis(payload, clients, df): 
     raw_kpis = generate_dynamic_kpis(df)
     final_kpis = KPIEngine.deduplicate_diagnostics(raw_kpis)
     kpi_markdown = build_markdown_table(final_kpis)
-    system_prompt = generate_v3_system_prompt("pharma")
+    
     prompt_path = os.path.join(os.path.dirname(__file__), 'prompt.txt')
+    sys_prompt_path = os.path.join(os.path.dirname(__file__), 'system_prompt.txt')  # 👈 DEFINED VARIABLE
 
     return run_master_orchestrator(
         industry_name="pharma", 
-        kpi_list=final_kpis,           
+        kpi_list=final_kpis,        
         kpi_markdown=kpi_markdown,     
         payload=payload,
         clients=clients,
