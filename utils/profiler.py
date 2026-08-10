@@ -1,10 +1,12 @@
 import pandas as pd
 import numpy as np
+from utils.shared_analysis import SharedAnalysisEngine
 
 def generate_payload(df, industry_context="generic"):
     """
-    Calculates statistics, scores data reliability, and flags extreme outliers.
-    Returns a dictionary for flawless LLM API JSON integration.
+    Calculates statistics, scores data reliability, flags extreme outliers,
+    and attaches universal cross-industry company health metrics.
+    Returns a structured dictionary for LLM API integration.
     """
     print("📊 Generating statistical payload & sanity checks...")
     
@@ -77,9 +79,15 @@ def generate_payload(df, industry_context="generic"):
     all_warnings = warnings + sanity_flags
     if not all_warnings:
         all_warnings = ["None. Data looks statistically stable."]
+
+    # 4. Shared Universal Company Health Engine
+    try:
+        shared_engine = SharedAnalysisEngine()
+        universal_health = shared_engine.analyze_universal_health(df)
+    except Exception as e:
+        universal_health = {"error": f"Failed to compute universal health: {e}"}
         
-    # 4. Bundle into the Enterprise JSON Payload
-    # We convert describe() to a dictionary so the pipeline can parse it cleanly
+    # 5. Format Describe Stats cleanly for JSON
     stats_dict = df.describe().to_dict()
     clean_stats = {}
     for col, metrics in stats_dict.items():
@@ -90,8 +98,9 @@ def generate_payload(df, industry_context="generic"):
             elif isinstance(v, (int, float)):
                 clean_stats[col][k] = round(v, 2)
             else:
-                clean_stats[col][k] = str(v) # Safely handle Timestamps and Strings
+                clean_stats[col][k] = str(v)
         
+    # 6. Bundle into Enterprise JSON Payload
     payload = {
         "dataset_context": industry_context,
         "data_reliability_score": max(0, reliability_score),
@@ -100,6 +109,7 @@ def generate_payload(df, industry_context="generic"):
             "total_rows": total_rows,
             "total_columns": total_cols
         },
+        "universal_company_health": universal_health,  # 👈 SHARED CROSS-INDUSTRY METRICS
         "statistical_summary": clean_stats
     }
     
