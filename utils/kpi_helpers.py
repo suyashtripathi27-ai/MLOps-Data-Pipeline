@@ -16,7 +16,7 @@ def first_column(df, candidates):
     return None
 
 # ==========================================
-# 2. COERCION PIPELINES (Replaces the old boolean checks)
+# 2. COERCION PIPELINES
 # ==========================================
 def _clean_numeric_strings(series):
     return (
@@ -69,3 +69,15 @@ def safe_kpi(category, name, value, formula, source, confidence, warnings, **kwa
 
 def excluded_kpi(category, name, source, reason, **kwargs):
     return safe_kpi(category, name, "EXCLUDED", "N/A", source, "Low", reason, **kwargs)
+
+# ==========================================
+# 4. COMPATIBILITY ALIASES
+# ==========================================
+def confidence_for(metric_name, df=None):
+    """Wrapper alias for evaluate_kpi_confidence to support legacy imports."""
+    if df is not None and metric_name in df.columns:
+        try:
+            return evaluate_kpi_confidence(df[metric_name])
+        except Exception:
+            return "High"
+    return "High"
