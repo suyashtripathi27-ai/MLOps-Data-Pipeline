@@ -130,3 +130,8 @@ def calc_supply_chain_metrics(df):
         ))
     
     return kpis
+
+# ==========================================
+# COMPATIBILITY ALIAS
+# ==========================================
+calc_pharma_supply_metrics = calc_supply_chain_metrics
