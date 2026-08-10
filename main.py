@@ -46,40 +46,58 @@ if not clients:
     print("❌ ERROR: No API keys found. Please set at least one API key.")
     sys.exit(1)
 
-def detect_industry(clients, columns_list, file_name=""):
-    """THE AGENTIC ROUTER: Intelligently routes datasets using strict overrides and weighted scoring."""
+def detect_industry(clients, columns_list, file_name="", df=None):
+    """THE AGENTIC ROUTER: Routes datasets using strict overrides, value inspection, and weighted scoring."""
     lower_name = file_name.lower()
     
-    # 🛡️ STEP 0: FILENAME SAFEGUARD
-    if any(w in lower_name for w in ["logistics", "freight", "shipping"]): 
-        print("🎯 Fast Route: Classified as [LOGISTICS] via Filename Override")
-        return "logistics"
-    if any(w in lower_name for w in ["hr", "attrition", "employee"]): 
-        print("🎯 Fast Route: Classified as [HR] via Filename Override")
-        return "hr"
-    if any(w in lower_name for w in ["banking", "churn", "credit"]): 
-        print("🎯 Fast Route: Classified as [BANKING] via Filename Override")
-        return "banking"
-    if any(w in lower_name for w in ["retail", "store"]): 
-        print("🎯 Fast Route: Classified as [RETAIL] via Filename Override")
-        return "retail"
-    if any(w in lower_name for w in ["ecommerce", "cart"]): 
-        print("🎯 Fast Route: Classified as [ECOMMERCE] via Filename Override")
-        return "ecommerce"
-    if any(w in lower_name for w in ["manufacturing", "production", "supply chain", "supply_chain"]): 
-        print("🎯 Fast Route: Classified as [MANUFACTURING] via Filename Override")
-        return "manufacturing"
-    if any(w in lower_name for w in ["finance", "liquidity"]): 
-        print("🎯 Fast Route: Classified as [FINANCE] via Filename Override")
-        return "finance"
-    if any(w in lower_name for w in ["pharma", "clinical"]): 
-        print("🎯 Fast Route: Classified as [PHARMA] via Filename Override")
+    # Extract inner CSV filename if loaded from a ZIP
+    inner_name = df.attrs.get('inner_filename', '').lower() if (df is not None and hasattr(df, 'attrs')) else ""
+    combined_name = f"{lower_name} {inner_name}"
+
+    # 🛡️ STEP 0: FILENAME SAFEGUARD (Checks outer ZIP name AND inner CSV name)
+    if any(w in combined_name for w in ["pharma", "pharmacy", "clinical", "otc", "drug", "medicine"]): 
+        print("🎯 Fast Route: Classified as [PHARMA] via Filename Safeguard")
         return "pharma"
+    if any(w in combined_name for w in ["logistics", "freight", "shipping"]): 
+        print("🎯 Fast Route: Classified as [LOGISTICS] via Filename Safeguard")
+        return "logistics"
+    if any(w in combined_name for w in ["hr", "attrition", "employee"]): 
+        print("🎯 Fast Route: Classified as [HR] via Filename Safeguard")
+        return "hr"
+    if any(w in combined_name for w in ["banking", "churn", "credit"]): 
+        print("🎯 Fast Route: Classified as [BANKING] via Filename Safeguard")
+        return "banking"
+    if any(w in combined_name for w in ["retail", "store"]): 
+        print("🎯 Fast Route: Classified as [RETAIL] via Filename Safeguard")
+        return "retail"
+    if any(w in combined_name for w in ["ecommerce", "cart"]): 
+        print("🎯 Fast Route: Classified as [ECOMMERCE] via Filename Safeguard")
+        return "ecommerce"
+    if any(w in combined_name for w in ["manufacturing", "production", "supply chain", "supply_chain"]): 
+        print("🎯 Fast Route: Classified as [MANUFACTURING] via Filename Safeguard")
+        return "manufacturing"
+    if any(w in combined_name for w in ["finance", "liquidity"]): 
+        print("🎯 Fast Route: Classified as [FINANCE] via Filename Safeguard")
+        return "finance"
+
+    # 🛡️ STEP 0.5: VALUE-BASED INSPECTION (Scans actual product text values)
+    if df is not None and not df.empty:
+        text_cols = df.select_dtypes(include=['object', 'string']).columns
+        for col in text_cols:
+            sample_text = " ".join(df[col].dropna().astype(str).head(50)).lower()
+            pharma_terms = ["paracetamol", "ibuprofen", "aspirin", "cough", "syrup", "antacid", "vitamin", "tablet", "capsule", "otc", "pharmacy", "dose", "mg"]
+            if any(term in sample_text for term in pharma_terms):
+                print(f"🎯 Value Inspection Route: Detected OTC Pharma products in column [{col}] -> Classified as [PHARMA]")
+                return "pharma"
 
     print(f"🔍 Sniffing data schema: {columns_list}")
     cols_str = str(columns_list).lower()
     
     # ⚡ STEP 1: STRICT OVERRIDES (The Silver Bullets)
+    if any(word in cols_str for word in ['fda', 'adverse_event', 'clinical', 'dosage', 'therapeutic', 'otc', 'pharmacy', 'drug']):
+        print("🎯 Fast Route: Classified as [PHARMA] via Heuristics")
+        return "pharma"
+
     if any(word in cols_str for word in ['attrition', 'jobrole', 'maritalstatus', 'employee']):
         print("🎯 Fast Route: Classified as [HR] via Heuristics")
         return "hr"
@@ -87,10 +105,6 @@ def detect_industry(clients, columns_list, file_name=""):
     if any(word in cols_str for word in ['cart', 'checkout', 'pageview', 'ecommerce']):
         print("🎯 Fast Route: Classified as [ECOMMERCE] via Heuristics")
         return "ecommerce"
-        
-    if any(word in cols_str for word in ['fda', 'adverse_event', 'clinical', 'dosage', 'therapeutic']):
-        print("🎯 Fast Route: Classified as [PHARMA] via Heuristics")
-        return "pharma"
         
     if any(word in cols_str for word in ['downtime', 'oee', 'scrap', 'defect_rate', 'production_volume']) or ('machine' in cols_str and 'defect' in cols_str):
         print("🎯 Fast Route: Classified as [MANUFACTURING] via Heuristics")
@@ -176,7 +190,8 @@ def main():
             continue 
         
         columns = df.columns.tolist()
-        industry = detect_industry(clients, columns, file_name)
+        # Passed df=df so inner filename and sample values can be inspected
+        industry = detect_industry(clients, columns, file_name, df=df)
         
         # 📊 Auto-Generate Charts & Embed Markdown
         chart_markdown = generate_industry_charts(df, industry, file_name)
