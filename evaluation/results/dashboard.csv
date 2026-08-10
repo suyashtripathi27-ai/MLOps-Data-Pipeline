@@ -21,3 +21,4 @@ Timestamp,Version,Industry,Dataset,Scenario,Difficulty,Total,Max,Percent,Behavio
 20260810_064236,v3,manufacturing,SUPPLY CHAIN,production_instability,Easy,57,60,95.0,9,10,10,8,10,10
 20260810_065735,v3,manufacturing,SUPPLY CHAIN,production_instability,Easy,57,60,95.0,9,10,10,8,10,10
 20260810_065753,v3,retail,archive (4),store_performance_decline,Medium,51,60,85.0,9,10,10,2,10,10
+20260810_070021,v3,retail,archive (4),store_performance_decline,Medium,51,60,85.0,9,10,10,2,10,10
