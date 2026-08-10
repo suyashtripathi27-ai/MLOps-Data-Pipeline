@@ -9,9 +9,11 @@ from .relationship_detector import enrich_fact_table
 def load_and_clean(file_path):
     """Loads files, handles massive database ZIPs, and enriches fact tables."""
     print(f"📥 Attempting to load: {file_path}")
+    inner_filename = ""
     
     if file_path.endswith('.csv'):
         df = pd.read_csv(file_path, sep=None, engine='python', encoding='utf-8-sig')
+        inner_filename = os.path.basename(file_path)
         
     elif file_path.endswith('.zip'):
         print(f"📦 Inspecting ZIP archive for Star Schema...")
@@ -22,8 +24,9 @@ def load_and_clean(file_path):
             if len(csv_files) == 1:
                 target_file = csv_files[0]
                 with z.open(target_file) as f: df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8-sig')
+                inner_filename = target_file
             else:
-                core_keywords = ['trip', 'load', 'delivery', 'order', 'sales']
+                core_keywords = ['trip', 'load', 'delivery', 'order', 'sales', 'pharmacy', 'pharma', 'otc']
                 target_file = next((f for f in csv_files if any(k in f.lower() for k in core_keywords)), None)
                 if not target_file:
                     file_sizes = {f: z.getinfo(f).file_size for f in csv_files}
@@ -39,14 +42,19 @@ def load_and_clean(file_path):
                             dim_dfs[f_name.replace('.csv', '').split('/')[-1]] = pd.read_csv(f, sep=None, engine='python', encoding='utf-8-sig')
                             
                 df = enrich_fact_table(fact_df, dim_dfs)
+                inner_filename = target_file
                 
     elif file_path.endswith(('.xls', '.xlsx')):
         df = pd.read_excel(file_path)
+        inner_filename = os.path.basename(file_path)
     else:
         raise ValueError("❌ Unsupported file format.")
         
     df = df.dropna(how='all', axis=0).dropna(how='all', axis=1)
     df = df.loc[:, ~df.columns.duplicated()].copy()
+    
+    # Attach inner filename metadata to DataFrame
+    df.attrs['inner_filename'] = inner_filename
     
     print(f"🧹 Base load complete. Initial Shape: {df.shape}")
     return df
