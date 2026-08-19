@@ -11,17 +11,18 @@ def calc_pharma_sales_metrics(df):
     if len(df) == 0:
         return kpis
     
-    # Sales are COUNT (units) or MONEY (revenue), not time
-    sales_col = first_column(df, ["sales_volume", "units_sold", "sales_units", "quantity_sold"])
-    revenue_col = first_column(df, ["revenue", "sales_revenue", "total_sales", "gross_revenue"])
-    product_col = first_column(df, ["product_id", "drug_name", "product", "formulation"])
-    region_col = first_column(df, ["region", "territory", "market"])
-    class_col = first_column(df, ["drug_class", "therapeutic_class", "ata_code"])
+    # 🛠️ FIXED: Flipped the arguments to (list, df)
+    sales_col = first_column(["sales_volume", "units_sold", "sales_units", "quantity_sold"], df)
+    revenue_col = first_column(["revenue", "sales_revenue", "total_sales", "gross_revenue"], df)
+    product_col = first_column(["product_id", "drug_name", "product", "formulation"], df)
+    region_col = first_column(["region", "territory", "market"], df)
+    class_col = first_column(["drug_class", "therapeutic_class", "ata_code"], df)
     
     if not sales_col and not revenue_col:
         return kpis
     
-    conf, warns = confidence_for(df, [col for col in [sales_col, revenue_col, product_col, region_col, class_col] if col])
+    # 🛠️ FIXED: Flipped the arguments to (list, df)
+    conf, warns = confidence_for([col for col in [sales_col, revenue_col, product_col, region_col, class_col] if col], df)
     
     # Total sales volume
     if sales_col and pd.api.types.is_numeric_dtype(df[sales_col]):
