@@ -1,0 +1,13 @@
+{
+    "total_score": 7,
+    "max_score": 60,
+    "percentage": 11.67,
+    "dimensions": {
+        "behavioral_intelligence": 0,
+        "prioritization": 0,
+        "recommendation_traceability": 0,
+        "governance": 5,
+        "executive_readability": 0,
+        "industry_realism": 2
+    }
+}
