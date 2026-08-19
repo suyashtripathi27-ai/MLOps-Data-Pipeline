@@ -11,17 +11,18 @@ def calc_product_performance_metrics(df):
     if len(df) == 0:
         return kpis
     
-    # Product metrics are COUNT (units) or MONEY (revenue), not time
-    product_col = first_column(df, ["product_id", "drug_name", "product", "formulation"])
-    sales_col = first_column(df, ["sales_volume", "units_sold", "sales_units"])
-    revenue_col = first_column(df, ["revenue", "sales_revenue", "total_revenue"])
-    growth_col = first_column(df, ["growth_rate", "yoy_growth", "growth_pct"])
-    market_share_col = first_column(df, ["market_share", "market_share_pct", "share"])
+    # 🛠️ FIXED: Flipped the arguments to (list, df)
+    product_col = first_column(["product_id", "drug_name", "product", "formulation"], df)
+    sales_col = first_column(["sales_volume", "units_sold", "sales_units"], df)
+    revenue_col = first_column(["revenue", "sales_revenue", "total_revenue"], df)
+    growth_col = first_column(["growth_rate", "yoy_growth", "growth_pct"], df)
+    market_share_col = first_column(["market_share", "market_share_pct", "share"], df)
     
     if not product_col:
         return kpis
     
-    conf, warns = confidence_for(df, [col for col in [product_col, sales_col, revenue_col, growth_col, market_share_col] if col])
+    # 🛠️ FIXED: Flipped the arguments to (list, df)
+    conf, warns = confidence_for([col for col in [product_col, sales_col, revenue_col, growth_col, market_share_col] if col], df)
     
     # Total products
     total_products = df[product_col].nunique()
