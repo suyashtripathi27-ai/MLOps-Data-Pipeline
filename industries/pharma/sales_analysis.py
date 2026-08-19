@@ -11,7 +11,7 @@ def calc_pharma_sales_metrics(df):
     if len(df) == 0:
         return kpis
     
-    # 🛠️ FIXED: Flipped the arguments to (list, df)
+    # List first, DataFrame second
     sales_col = first_column(["sales_volume", "units_sold", "sales_units", "quantity_sold"], df)
     revenue_col = first_column(["revenue", "sales_revenue", "total_sales", "gross_revenue"], df)
     product_col = first_column(["product_id", "drug_name", "product", "formulation"], df)
@@ -21,8 +21,8 @@ def calc_pharma_sales_metrics(df):
     if not sales_col and not revenue_col:
         return kpis
     
-    # 🛠️ FIXED: Flipped the arguments to (list, df)
-    conf, warns = confidence_for([col for col in [sales_col, revenue_col, product_col, region_col, class_col] if col], df)
+    # 🛠️ FIXED: DataFrame first, List second!
+    conf, warns = confidence_for(df, [col for col in [sales_col, revenue_col, product_col, region_col, class_col] if col])
     
     # Total sales volume
     if sales_col and pd.api.types.is_numeric_dtype(df[sales_col]):
