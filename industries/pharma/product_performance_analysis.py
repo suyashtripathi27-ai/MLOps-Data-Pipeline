@@ -11,7 +11,7 @@ def calc_product_performance_metrics(df):
     if len(df) == 0:
         return kpis
     
-    # 🛠️ FIXED: Flipped the arguments to (list, df)
+    # List first, DataFrame second
     product_col = first_column(["product_id", "drug_name", "product", "formulation"], df)
     sales_col = first_column(["sales_volume", "units_sold", "sales_units"], df)
     revenue_col = first_column(["revenue", "sales_revenue", "total_revenue"], df)
@@ -21,8 +21,8 @@ def calc_product_performance_metrics(df):
     if not product_col:
         return kpis
     
-    # 🛠️ FIXED: Flipped the arguments to (list, df)
-    conf, warns = confidence_for([col for col in [product_col, sales_col, revenue_col, growth_col, market_share_col] if col], df)
+    # 🛠️ FIXED: DataFrame first, List second!
+    conf, warns = confidence_for(df, [col for col in [product_col, sales_col, revenue_col, growth_col, market_share_col] if col])
     
     # Total products
     total_products = df[product_col].nunique()
