@@ -48,8 +48,8 @@ if not clients:
 
 def detect_industry(clients, columns_list, file_name="", df=None):
     """
-    THE AGENTIC ROUTER: Routes datasets dynamically based on column schema.
-    Strictly ignores user filenames to prevent malicious or accidental misrouting.
+    THE AGENTIC ROUTER: Routes datasets dynamically based on column schema,
+    file name hints, and a semantic peek at the actual row data.
     """
     print(f"🔍 Sniffing data schema: {columns_list}")
     cols_str = str(columns_list).lower()
@@ -71,20 +71,32 @@ def detect_industry(clients, columns_list, file_name="", df=None):
         print("🎯 Fast Route: Classified as [LOGISTICS] via Schema Heuristics")
         return "logistics"
 
-    # 🧠 STEP 2: MULTI-API SEMANTIC ROUTING (The Core Engine)
+    # 🧠 STEP 2: MULTI-API SEMANTIC ROUTING WITH ROW PEEKING
     print("-> 🟢 Routing to AI Schema Sniffer...")
     supported_industries = ["logistics", "retail", "banking", "pharma", "manufacturing", "finance", "ecommerce", "hr"]
     
+    # 🛠️ THE FIX: Extract a small sample of the actual values to give the AI context
+    sample_values = {}
+    if df is not None and not df.empty:
+        text_cols = df.select_dtypes(include=['object', 'string']).columns[:4]
+        for col in text_cols:
+            sample_values[col] = df[col].dropna().unique()[:3].tolist()
+            
     system_prompt = "You are an Enterprise Data Schema Router. Follow instructions exactly."
     
     user_prompt = f"""
-    Analyze the following list of dataset columns: {columns_list}
+    Analyze the following dataset metadata:
+    - Outer Filename: {file_name}
+    - Columns: {columns_list}
+    - Sample Row Values: {sample_values}
+    
     Classify this dataset into EXACTLY ONE of the following 8 industries:
     [LOGISTICS, RETAIL, HR, BANKING, PHARMA, FINANCE, MANUFACTURING, ECOMMERCE]
     
-    Respond with ONLY the exact industry name in brackets. Example: [RETAIL]
-    If it is a mix of production and supply chain, prioritize [MANUFACTURING].
+    Respond with ONLY the exact industry name in brackets. Example: [PHARMA]
+    If the sample values contain medicines, drugs, OTC products, or clinical terms, prioritize [PHARMA].
     If it is purely transactional/monetary, prioritize [FINANCE].
+    If it is a mix of production and supply chain, prioritize [MANUFACTURING].
     """
     
     try:
