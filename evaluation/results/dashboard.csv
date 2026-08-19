@@ -28,3 +28,4 @@ Timestamp,Version,Industry,Dataset,Scenario,Difficulty,Total,Max,Percent,Behavio
 20260819_081931,v3,hr,hr,attrition_crisis,Easy,58,60,96.67,10,10,10,8,10,10
 20260819_091543,v3,retail,archive (4),store_performance_decline,Medium,51,60,85.0,9,10,10,2,10,10
 20260819_092046,v3,retail,archive (4),store_performance_decline,Medium,51,60,85.0,9,10,10,2,10,10
+20260819_092728,v3,pharma,archive (4),compliance_breach,Hard,7,60,11.67,0,0,0,5,0,2
