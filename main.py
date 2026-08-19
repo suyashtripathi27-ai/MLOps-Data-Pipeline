@@ -47,94 +47,44 @@ if not clients:
     sys.exit(1)
 
 def detect_industry(clients, columns_list, file_name="", df=None):
-    """THE AGENTIC ROUTER: Routes datasets using strict overrides, value inspection, and weighted scoring."""
-    lower_name = file_name.lower()
-    
-    # Extract inner CSV filename if loaded from a ZIP
-    inner_name = df.attrs.get('inner_filename', '').lower() if (df is not None and hasattr(df, 'attrs')) else ""
-    combined_name = f"{lower_name} {inner_name}"
-
-    # 🛡️ STEP 0: FILENAME SAFEGUARD (Checks outer ZIP name AND inner CSV name)
-    if any(w in combined_name for w in ["pharma", "pharmacy", "clinical", "otc", "drug", "medicine"]): 
-        print("🎯 Fast Route: Classified as [PHARMA] via Filename Safeguard")
-        return "pharma"
-    if any(w in combined_name for w in ["logistics", "freight", "shipping"]): 
-        print("🎯 Fast Route: Classified as [LOGISTICS] via Filename Safeguard")
-        return "logistics"
-    if any(w in combined_name for w in ["hr", "attrition", "employee"]): 
-        print("🎯 Fast Route: Classified as [HR] via Filename Safeguard")
-        return "hr"
-    if any(w in combined_name for w in ["banking", "churn", "credit"]): 
-        print("🎯 Fast Route: Classified as [BANKING] via Filename Safeguard")
-        return "banking"
-    if any(w in combined_name for w in ["retail", "store"]): 
-        print("🎯 Fast Route: Classified as [RETAIL] via Filename Safeguard")
-        return "retail"
-    if any(w in combined_name for w in ["ecommerce", "cart"]): 
-        print("🎯 Fast Route: Classified as [ECOMMERCE] via Filename Safeguard")
-        return "ecommerce"
-    if any(w in combined_name for w in ["manufacturing", "production", "supply chain", "supply_chain"]): 
-        print("🎯 Fast Route: Classified as [MANUFACTURING] via Filename Safeguard")
-        return "manufacturing"
-    if any(w in combined_name for w in ["finance", "liquidity"]): 
-        print("🎯 Fast Route: Classified as [FINANCE] via Filename Safeguard")
-        return "finance"
-
-    # 🛡️ STEP 0.5: VALUE-BASED INSPECTION (Scans actual product text values)
-    if df is not None and not df.empty:
-        text_cols = df.select_dtypes(include=['object', 'string']).columns
-        for col in text_cols:
-            sample_text = " ".join(df[col].dropna().astype(str).head(50)).lower()
-            pharma_terms = ["paracetamol", "ibuprofen", "aspirin", "cough", "syrup", "antacid", "vitamin", "tablet", "capsule", "otc", "pharmacy", "dose", "mg"]
-            if any(term in sample_text for term in pharma_terms):
-                print(f"🎯 Value Inspection Route: Detected OTC Pharma products in column [{col}] -> Classified as [PHARMA]")
-                return "pharma"
-
+    """
+    THE AGENTIC ROUTER: Routes datasets dynamically based on column schema.
+    Strictly ignores user filenames to prevent malicious or accidental misrouting.
+    """
     print(f"🔍 Sniffing data schema: {columns_list}")
     cols_str = str(columns_list).lower()
     
-    # ⚡ STEP 1: STRICT OVERRIDES (The Silver Bullets)
-    if any(word in cols_str for word in ['fda', 'adverse_event', 'clinical', 'dosage', 'therapeutic', 'otc', 'pharmacy', 'drug']):
-        print("🎯 Fast Route: Classified as [PHARMA] via Heuristics")
+    # ⚡ STEP 1: STRICT OVERRIDES BY COLUMNS ONLY (Saves API calls for obvious datasets)
+    if any(word in cols_str for word in ['fda', 'adverse_event', 'clinical', 'dosage', 'therapeutic']):
+        print("🎯 Fast Route: Classified as [PHARMA] via Schema Heuristics")
         return "pharma"
-
-    if any(word in cols_str for word in ['attrition', 'jobrole', 'maritalstatus', 'employee']):
-        print("🎯 Fast Route: Classified as [HR] via Heuristics")
+    if any(word in cols_str for word in ['attrition', 'jobrole', 'maritalstatus']):
+        print("🎯 Fast Route: Classified as [HR] via Schema Heuristics")
         return "hr"
-        
     if any(word in cols_str for word in ['cart', 'checkout', 'pageview', 'ecommerce']):
-        print("🎯 Fast Route: Classified as [ECOMMERCE] via Heuristics")
+        print("🎯 Fast Route: Classified as [ECOMMERCE] via Schema Heuristics")
         return "ecommerce"
-        
-    if any(word in cols_str for word in ['downtime', 'oee', 'scrap', 'defect_rate', 'production_volume']) or ('machine' in cols_str and 'defect' in cols_str):
-        print("🎯 Fast Route: Classified as [MANUFACTURING] via Heuristics")
+    if any(word in cols_str for word in ['downtime', 'oee', 'scrap', 'defect_rate', 'production_volume']):
+        print("🎯 Fast Route: Classified as [MANUFACTURING] via Schema Heuristics")
         return "manufacturing"
-
     if any(word in cols_str for word in ['demurrage', 'detention', 'freight', 'hub', 'osrm']):
-        print("🎯 Fast Route: Classified as [LOGISTICS] via Heuristics")
+        print("🎯 Fast Route: Classified as [LOGISTICS] via Schema Heuristics")
         return "logistics"
 
-    # ⚖️ STEP 2: WEIGHTED SCORING
-    scores = {
-        "banking": sum(1 for k in ['loan', 'credit', 'mortgage', 'aml', 'kyc', 'overdraft', 'deposit', 'delinquency'] if k in cols_str),
-        "finance": sum(1 for k in ['ebitda', 'cashflow', 'opex', 'cogs', 'liquidity', 'dividend', 'ledger', 'assets'] if k in cols_str),
-        "retail": sum(1 for k in ['store', 'footfall', 'pos', 'markdown', 'shrinkage', 'register', 'shelf', 'retail'] if k in cols_str)
-    }
+    # 🧠 STEP 2: MULTI-API SEMANTIC ROUTING (The Core Engine)
+    print("-> 🟢 Routing to AI Schema Sniffer...")
+    supported_industries = ["logistics", "retail", "banking", "pharma", "manufacturing", "finance", "ecommerce", "hr"]
     
-    best_match = max(scores, key=scores.get)
-    if scores[best_match] > 0:
-        print(f"🎯 Fast Route: Classified as [{best_match.upper()}] via Weighted Score")
-        return best_match
-        
-    # 🧠 STEP 3: AI ROUTING
-    supported_industries = ["logistics", "retail", "banking", "pharma", "manufacturing", "finance", "ecommerce", "hr", "generic"]
-    system_prompt = "You are a data schema router. Follow instructions exactly."
+    system_prompt = "You are an Enterprise Data Schema Router. Follow instructions exactly."
     
     user_prompt = f"""
-    Analyze these dataset columns: {columns_list}
-    Classify the industry of this dataset. 
-    You MUST reply with EXACTLY ONE WORD from this list in all lowercase: {supported_industries}.
-    If it doesn't clearly match, reply with 'generic'.
+    Analyze the following list of dataset columns: {columns_list}
+    Classify this dataset into EXACTLY ONE of the following 8 industries:
+    [LOGISTICS, RETAIL, HR, BANKING, PHARMA, FINANCE, MANUFACTURING, ECOMMERCE]
+    
+    Respond with ONLY the exact industry name in brackets. Example: [RETAIL]
+    If it is a mix of production and supply chain, prioritize [MANUFACTURING].
+    If it is purely transactional/monetary, prioritize [FINANCE].
     """
     
     try:
@@ -143,10 +93,12 @@ def detect_industry(clients, columns_list, file_name="", df=None):
             if valid_industry in raw_response:
                 print(f"🎯 AI Router Classified Industry As: [{valid_industry.upper()}]")
                 return valid_industry
-        return "generic"
+        
+        print("⚠️ AI Router returned ambiguous result. Defaulting to finance.")
+        return "finance"
     except Exception as e:
-        print(f"⚠️ AI Routing failed. Defaulting to generic. Error: {e}")
-        return "generic"
+        print(f"⚠️ AI Routing failed. Defaulting to finance. Error: {e}")
+        return "finance"
 
 def is_valid_executive_report(report_text: str) -> bool:
     """Validates that a report is a full executive analysis and not a system error message."""
@@ -190,7 +142,8 @@ def main():
             continue 
         
         columns = df.columns.tolist()
-        # Passed df=df so inner filename and sample values can be inspected
+        
+        # 🛠️ ROUTING IS NOW COMPLETELY AUTONOMOUS
         industry = detect_industry(clients, columns, file_name, df=df)
         
         # 📊 Auto-Generate Charts & Embed Markdown
