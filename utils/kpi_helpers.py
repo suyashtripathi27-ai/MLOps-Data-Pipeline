@@ -73,11 +73,14 @@ def excluded_kpi(category, name, source, reason, **kwargs):
 # ==========================================
 # 4. COMPATIBILITY ALIASES
 # ==========================================
-def confidence_for(metric_name, df=None):
-    """Wrapper alias for evaluate_kpi_confidence to support legacy imports."""
-    if df is not None and metric_name in df.columns:
-        try:
-            return evaluate_kpi_confidence(df[metric_name])
-        except Exception:
-            return "High"
-    return "High"
+def confidence_for(df, columns):
+    """Wrapper alias for evaluate_kpi_confidence to support legacy imports.
+    Every call site in industries/pharma/*.py invokes this as
+    confidence_for(df, [col1, col2, ...]) - keep this signature in sync
+    with evaluate_kpi_confidence(df, columns, ...)."""
+    if df is None or df.empty:
+        return "Low", "Empty dataframe."
+    try:
+        return evaluate_kpi_confidence(df, columns)
+    except Exception:
+        return "High", "None"
