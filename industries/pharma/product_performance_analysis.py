@@ -11,12 +11,12 @@ def calc_product_performance_metrics(df):
     if len(df) == 0:
         return kpis
     
-    # List first, DataFrame second
-    product_col = first_column(["product_id", "drug_name", "product", "formulation"], df)
-    sales_col = first_column(["sales_volume", "units_sold", "sales_units"], df)
-    revenue_col = first_column(["revenue", "sales_revenue", "total_revenue"], df)
-    growth_col = first_column(["growth_rate", "yoy_growth", "growth_pct"], df)
-    market_share_col = first_column(["market_share", "market_share_pct", "share"], df)
+    # DataFrame first, list second (matches utils.kpi_helpers.first_column's signature)
+    product_col = first_column(df, ["product_id", "drug_name", "product", "formulation"])
+    sales_col = first_column(df, ["sales_volume", "units_sold", "sales_units"])
+    revenue_col = first_column(df, ["revenue", "sales_revenue", "total_revenue"])
+    growth_col = first_column(df, ["growth_rate", "yoy_growth", "growth_pct"])
+    market_share_col = first_column(df, ["market_share", "market_share_pct", "share"])
     
     if not product_col:
         return kpis
