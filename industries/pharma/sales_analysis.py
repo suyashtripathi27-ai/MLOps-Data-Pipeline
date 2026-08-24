@@ -11,12 +11,12 @@ def calc_pharma_sales_metrics(df):
     if len(df) == 0:
         return kpis
     
-    # List first, DataFrame second
-    sales_col = first_column(["sales_volume", "units_sold", "sales_units", "quantity_sold"], df)
-    revenue_col = first_column(["revenue", "sales_revenue", "total_sales", "gross_revenue"], df)
-    product_col = first_column(["product_id", "drug_name", "product", "formulation"], df)
-    region_col = first_column(["region", "territory", "market"], df)
-    class_col = first_column(["drug_class", "therapeutic_class", "ata_code"], df)
+    # DataFrame first, list second (matches utils.kpi_helpers.first_column's signature)
+    sales_col = first_column(df, ["sales_volume", "units_sold", "sales_units", "quantity_sold"])
+    revenue_col = first_column(df, ["revenue", "sales_revenue", "total_sales", "gross_revenue"])
+    product_col = first_column(df, ["product_id", "drug_name", "product", "formulation"])
+    region_col = first_column(df, ["region", "territory", "market"])
+    class_col = first_column(df, ["drug_class", "therapeutic_class", "ata_code"])
     
     if not sales_col and not revenue_col:
         return kpis
