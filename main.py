@@ -94,8 +94,15 @@ def detect_industry(clients, columns_list, file_name="", df=None):
     [LOGISTICS, RETAIL, HR, BANKING, PHARMA, FINANCE, MANUFACTURING, ECOMMERCE]
     
     Respond with ONLY the exact industry name in brackets. Example: [PHARMA]
-    If the sample values contain medicines, drugs, OTC products, or clinical terms, prioritize [PHARMA].
-    If it is purely transactional/monetary, prioritize [FINANCE].
+
+    Weigh SCHEMA/STRUCTURE more heavily than product-name semantics. A dataset with only
+    transactional sales columns (date, product name, salesperson, quantity/boxes shipped,
+    revenue, country/region) is a SALES/DISTRIBUTION dataset, even if the products happen to
+    be medicines, drugs, or OTC items — classify that as [RETAIL], not [PHARMA].
+    Only choose [PHARMA] if the columns themselves reflect pharma OPERATIONS: batch/lot
+    tracking, manufacturing yield, out-of-spec/deviation rates, clinical trial enrollment,
+    adverse events, regulatory submissions, or shelf-life/expiry monitoring at a batch level.
+    If it is purely transactional/monetary with no domain-specific operational columns, prioritize [FINANCE].
     If it is a mix of production and supply chain, prioritize [MANUFACTURING].
     """
     
