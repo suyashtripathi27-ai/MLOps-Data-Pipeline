@@ -28,8 +28,13 @@ def calc_seasonality_metrics(df, enable_debug=False):
                 kpis.append(engine.build_kpi("📅 Seasonality", "Peak Sales Month", f"Month {int(monthly.idxmax())} (${monthly.max():,.2f})", "Month with max revenue", f"`{rev_col}`, `{date_col}`"))
             
             tot_rev = work_df[rev_col].sum()
-            q4_rev = work_df.loc[work_df["quarter"] == 4, rev_col].sum()
-            kpis.append(engine.build_kpi("📅 Seasonality", "Q4 Contribution", f"{(q4_rev / tot_rev * 100) if tot_rev > 0 else 0:.2f}%", "Q4 / Total * 100", f"`{rev_col}`, `{date_col}`"))
+            q4_mask = work_df["quarter"] == 4
+            q4_rev = work_df.loc[q4_mask, rev_col].sum()
+            q4_pct = (q4_rev / tot_rev * 100) if tot_rev > 0 else 0
+            quarters_present = sorted(work_df["quarter"].unique().tolist())
+            q4_warning = (f"No Q4 records in dataset (data covers quarters {quarters_present} only) "
+                          f"— this reflects missing data, not an actual seasonal decline") if not q4_mask.any() else "None"
+            kpis.append(engine.build_kpi("📅 Seasonality", "Q4 Contribution", f"{q4_pct:.2f}%", "Q4 / Total * 100", f"`{rev_col}`, `{date_col}`", warnings=q4_warning))
             
             var = work_df[rev_col].std() / work_df[rev_col].mean() if work_df[rev_col].mean() > 0 else 0
             kpis.append(engine.build_kpi("📅 Seasonality", "Demand Variability", f"{var:.3f}", "StdDev/Mean", f"`{rev_col}`", warnings="High variability" if var > 0.5 else "None"))
