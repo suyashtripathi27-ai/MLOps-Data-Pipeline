@@ -110,6 +110,12 @@ def detect_industry(clients, columns_list, file_name="", df=None):
         raw_response = execute_with_fallback(clients, system_prompt, user_prompt).strip().lower()
         for valid_industry in supported_industries:
             if valid_industry in raw_response:
+                candidate = valid_industry
+                verified = _verify_operational_depth(candidate, cols_str, columns_list)
+                if verified != candidate:
+                    print(f"⚠️ AI classified [{candidate.upper()}] but no {candidate}-operational "
+                          f"columns were found in the schema — overriding to [{verified.upper()}]")
+                    return verified
                 print(f"🎯 AI Router Classified Industry As: [{valid_industry.upper()}]")
                 return valid_industry
         
@@ -118,6 +124,54 @@ def detect_industry(clients, columns_list, file_name="", df=None):
     except Exception as e:
         print(f"⚠️ AI Routing failed. Defaulting to finance. Error: {e}")
         return "finance"
+
+
+# Industries whose analysis modules need deep, industry-specific OPERATIONAL columns
+# to produce anything meaningful. Topical/semantic content (e.g. drug names, staff
+# titles) is not enough evidence on its own — these keywords must appear in the
+# actual COLUMN NAMES, not just sample values, or the classification is rejected.
+OPERATIONAL_EVIDENCE = {
+    "pharma":        ['fda', 'adverse_event', 'clinical', 'dosage', 'therapeutic',
+                       'batch', 'yield', 'gmp', 'deviation', 'shelf_life', 'expiry',
+                       'trial', 'regulatory', 'formulation'],
+    "hr":            ['attrition', 'jobrole', 'maritalstatus', 'employee', 'tenure',
+                       'engagement_score', 'headcount', 'recruitment'],
+    "manufacturing": ['downtime', 'oee', 'scrap', 'defect_rate', 'production_volume',
+                       'machine', 'maintenance', 'throughput_rate'],
+    "logistics":     ['demurrage', 'detention', 'freight', 'hub', 'osrm', 'route',
+                       'fleet', 'sla', 'carrier'],
+    "banking":       ['account_balance', 'loan', 'deposit', 'branch', 'interest_rate',
+                       'credit_score', 'overdraft', 'npa'],
+}
+
+# Where a rejected strict-industry guess should fall back to, based on a quick
+# look at whether the schema still resembles a general sales/commerce table.
+GENERIC_FALLBACK_SIGNALS = ['product', 'revenue', 'amount', 'price', 'quantity',
+                             'boxes', 'units', 'order', 'customer', 'sales']
+
+
+def _verify_operational_depth(candidate_industry, cols_str, columns_list):
+    """
+    Deterministic safety net that runs after the AI's classification.
+    Prevents committing to an operationally-strict industry (pharma, manufacturing,
+    banking, HR, logistics) purely because product names or job titles *sound* like
+    that industry, when the schema itself has none of that industry's real
+    operational columns. Falls back to RETAIL for generic sales-shaped data, or
+    ECOMMERCE/FINANCE when that fits better, otherwise leaves the AI's answer as-is.
+    """
+    required_keywords = OPERATIONAL_EVIDENCE.get(candidate_industry)
+    if required_keywords is None:
+        return candidate_industry  # not a "strict" industry — trust the AI as-is
+
+    if any(kw in cols_str for kw in required_keywords):
+        return candidate_industry  # real operational evidence found — trust it
+
+    # No operational evidence. Pick the safest generic landing spot.
+    if any(kw in cols_str for kw in ['cart', 'checkout', 'pageview']):
+        return "ecommerce"
+    if any(kw in cols_str for kw in GENERIC_FALLBACK_SIGNALS):
+        return "retail"
+    return "finance"
 
 def is_valid_executive_report(report_text: str) -> bool:
     """Validates that a report is a full executive analysis and not a system error message."""
