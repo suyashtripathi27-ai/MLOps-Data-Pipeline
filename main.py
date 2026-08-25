@@ -49,30 +49,100 @@ if not clients:
 # industry classification. No dataset values — only column NAMES — ever factor
 # into this decision, and none of it is sent to any external API.
 INDUSTRY_KEYWORDS = {
-    "pharma":        ['fda', 'adverse_event', 'clinical', 'dosage', 'therapeutic', 'batch',
-                       'yield', 'gmp', 'deviation', 'shelf_life', 'expiry', 'trial',
-                       'regulatory', 'formulation', 'drug_class', 'active_ingredient'],
-    "hr":            ['attrition', 'jobrole', 'maritalstatus', 'employee_id', 'tenure',
-                       'engagement_score', 'headcount', 'recruitment', 'performance_rating',
-                       'training_hours'],
-    "ecommerce":     ['cart', 'checkout', 'pageview', 'session', 'conversion_rate',
-                       'add_to_cart', 'bounce_rate', 'website', 'wishlist'],
-    "manufacturing": ['downtime', 'oee', 'scrap', 'defect_rate', 'production_volume',
-                       'machine_id', 'maintenance', 'throughput_rate', 'work_order'],
-    "logistics":     ['demurrage', 'detention', 'freight', 'hub', 'osrm', 'route_id',
-                       'fleet', 'sla', 'carrier', 'shipment_id', 'delivery_time'],
-    "banking":       ['balance', 'loan', 'deposit', 'branch', 'interest_rate',
-                       'credit_score', 'overdraft', 'npa', 'atm', 'ifsc', 'kyc'],
-    "finance":       ['cashflow', 'ebitda', 'balance_sheet', 'expense_category',
-                       'budget_variance', 'roi', 'npv', 'liquidity_ratio', 'gross_margin'],
-    "retail":        ['store', 'boxes_shipped', 'sales_person', 'footfall', 'markdown',
-                       'shrinkage', 'pos_terminal', 'sku', 'discount_pct', 'department'],
+    "pharma": [
+        'fda', 'adverse_event', 'clinical', 'dosage', 'therapeutic', 'batch',
+        'yield', 'gmp', 'deviation', 'shelf_life', 'expiry', 'trial',
+        'regulatory', 'formulation', 'drug_class', 'active_ingredient',
+        'ndc_code', 'pharmacovigilance', 'capa', 'form_483', 'warning_letter',
+        'sops', 'sterility', 'titer', 'assay', 'placebo', 'blinded',
+        'serialization', 'counterfeit', 'dsicsa', 'patent_cliff', 'biosimilar',
+        'formulary', 'pbm', 'copay', 'api_concentration', 'route_of_administration',
+        'clinical_phase', 'efficacy_score', 'sae_count', 'oos_rate',
+        'cold_chain_breach', 'temperature_excursion', 'nda_submission'
+    ],
+    "hr": [
+        'attrition', 'jobrole', 'maritalstatus', 'employee_id', 'tenure',
+        'engagement_score', 'headcount', 'recruitment', 'performance_rating',
+        'training_hours', 'fmla', 'eeoc', 'grievance', 'compa_ratio',
+        'vesting', 'payroll', 'succession_planning', 'bench_strength',
+        'time_to_fill', 'time_to_hire', 'exit_interview', 'enps',
+        'absenteeism', 'presenteeism', 'onboarding', 'offboarding',
+        'pto_balance', 'cost_per_hire', 'voluntary_leave', 'flight_risk',
+        'base_salary', 'annual_ctc', 'sick_leave', 'date_of_joining', 'termination_date'
+    ],
+    "ecommerce": [
+        'cart', 'checkout', 'pageview', 'session', 'conversion_rate',
+        'add_to_cart', 'bounce_rate', 'website', 'wishlist', 'cac',
+        'cpa', 'roas', 'ctr', 'cpc', 'rma_number', 'reverse_logistics',
+        'restock_fee', 'cart_abandonment', 'payment_gateway', 'affiliate',
+        'retargeting', 'bopis', 'dropshipping', 'web_order', 'online_order_number',
+        'customer_lifetime_value', 'clv', 'site_visits', 'unique_visitors',
+        'utm_source', 'split_shipment', 'click_and_collect'
+    ],
+    "manufacturing": [
+        'downtime', 'oee', 'scrap', 'defect_rate', 'production_volume',
+        'machine_id', 'maintenance', 'throughput_rate', 'work_order',
+        'takt_time', 'cycle_time', 'bottleneck', 'changeover', 'mtbf',
+        'mttr', 'rework', 'first_pass_yield', 'rft', 'six_sigma',
+        'calibration', 'kanban', 'bom', 'cogs', 'absorption', 'spindle_time',
+        'production_line', 'assembly_line', 'scrap_units', 'rejected_units',
+        'unplanned_downtime', 'energy_consumption_kwh', 'osha_recordables',
+        'wip_inventory', 'work_in_progress', 'equipment_lifecycle'
+    ],
+    "logistics": [
+        'demurrage', 'detention', 'freight', 'hub', 'osrm', 'route_id',
+        'fleet', 'sla', 'carrier', 'shipment_id', 'delivery_time',
+        'transit_time', 'waybill', 'awb', 'bol', 'otif', 'cross_docking',
+        'ftl', 'ltl', 'fuel_surcharge', 'accessorial', 'deadhead',
+        'hos', 'eld_compliance', 'geofencing', 'wms', 'routing', 'telematics',
+        'drop_size', 'proof_of_delivery', 'pod_status', 'freight_class',
+        'nmfc', 'incoterms', 'customs_status', 'tare_weight', 'payload_weight'
+    ],
+    "banking": [
+        'balance', 'loan', 'deposit', 'branch', 'interest_rate',
+        'credit_score', 'overdraft', 'npa', 'atm', 'ifsc', 'kyc',
+        'npl_ratio', 'delinquency', 'charge_off', 'fico', 'ltv', 'dti',
+        'forbearance', 'sar', 'aml', 'structuring', 'chargeback',
+        'nim', 'yield_curve', 'repricing', 'ddos', 'account_balance',
+        'ledger_balance', 'cibil_score', 'non_performing_asset', 
+        'loan_to_value', 'suspicious_flag', 'pep_status'
+    ],
+    "finance": [
+        'cashflow', 'ebitda', 'balance_sheet', 'expense_category',
+        'budget_variance', 'roi', 'npv', 'liquidity_ratio', 'gross_margin',
+        'dscr', 'burn_rate', 'runway', 'receivables', 'payables',
+        'dso', 'dpo', 'solvency', 'forex', 'hedging', 'derivatives',
+        'mark_to_market', 'wacc', 'gearing', 'dividend_yield',
+        'operating_profit', 'accounts_receivable', 'accounts_payable',
+        'shareholders_equity', 'current_liabilities', 'operating_cashflow',
+        'capital_expenditure', 'capex', 'opex', 'amortization'
+    ],
+    "retail": [
+        'store', 'boxes_shipped', 'sales_person', 'footfall', 'markdown',
+        'shrinkage', 'pos_terminal', 'sku', 'discount_pct', 'department',
+        'atv', 'upt', 'gmroi', 'sell_through', 'planogram', 'dead_stock',
+        'lfl', 'dwell_time', 'omnichannel', 'endless_aisle', 'visual_merchandising',
+        'cannibalization', 'msrp', 'loss_leader', 'store_num', 'shop_id',
+        'average_transaction_value', 'units_per_transaction', 'inventory_loss',
+        'clearance_rate', 'markdown_amount', 'comp_sales', 'private_label'
+    ],
 }
 
 # Fallback signal set used only when NOTHING above matched at all — picks the
-# safest general-purpose landing spot from broad table shape.
-GENERIC_SALES_SIGNALS = ['product', 'revenue', 'amount', 'price', 'quantity',
-                          'boxes', 'units', 'order', 'customer', 'sales']
+# safest general-purpose landing spot from broad table shape. Deliberately uses
+# specific compound terms rather than bare common English words (e.g. "order_id"
+# not "order") — a bare word like "order" false-triggers on ordinary prose like
+# "in order of preference" in a survey question header, which has nothing to do
+# with a sales order.
+GENERIC_SALES_SIGNALS = [
+    'product', 'revenue', 'amount', 'unit_price', 'quantity', 'boxes', 
+    'order_id', 'order_date', 'order_number', 'customer_id', 'sales',
+    'subtotal', 'invoice_id', 'invoice_number', 'transaction_id', 
+    'billing_address', 'shipping_address', 'payment_status', 'line_item', 
+    'total_tax', 'grand_total', 'receipt_number', 'purchase_date',
+    'item_code', 'item_description', 'qty_sold', 'gross_sales', 'net_sales',
+    'discount_applied', 'sales_rep', 'vendor_id', 'supplier_id'
+]
 
 
 # 3. PROCESSED-FILE TRACKING (prevents re-analyzing unchanged datasets on every run)
