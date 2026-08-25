@@ -50,10 +50,11 @@ jobs:
         # 1. Turn off rebasing
         git config pull.rebase false
         
-        # 2. Add reports, generated charts, and telemetry
+        # 2. Add reports, generated charts, telemetry, and the processed-file manifest
         git add data/outputs/reports/
         git add data/outputs/charts/      #
         git add evaluation/results/
+        git add data/outputs/logs/.processed_manifest.json
         
         git commit -m "🤖 Auto-generated AI Strategy Report, Charts & Telemetry" || echo "No changes to commit"
         
