@@ -32,3 +32,4 @@ Timestamp,Version,Industry,Dataset,Scenario,Difficulty,Total,Max,Percent,Behavio
 20260819_093651,v3,pharma,archive (4),compliance_breach,Hard,35,60,58.33,3,0,10,5,10,7
 20260824_043356,v3,pharma,archive (4),compliance_breach,Hard,7,60,11.67,0,0,0,5,0,2
 20260824_044151,v3,retail,archive (4),store_performance_decline,Medium,47,60,78.33,9,3,10,5,10,10
+20260825_200958,v3,retail,archive (4),store_performance_decline,Medium,44,60,73.33,9,3,10,2,10,10
