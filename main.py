@@ -75,6 +75,39 @@ GENERIC_SALES_SIGNALS = ['product', 'revenue', 'amount', 'price', 'quantity',
                           'boxes', 'units', 'order', 'customer', 'sales']
 
 
+# 3. PROCESSED-FILE TRACKING (prevents re-analyzing unchanged datasets on every run)
+import hashlib
+import json
+
+MANIFEST_PATH = "data/outputs/logs/.processed_manifest.json"
+
+
+def _file_hash(file_path):
+    """Content hash (not just filename/mtime) so re-uploading the same file
+    is skipped, but a genuinely edited file with the same name is reprocessed."""
+    h = hashlib.sha256()
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def _load_manifest():
+    if os.path.exists(MANIFEST_PATH):
+        try:
+            with open(MANIFEST_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return {}
+    return {}
+
+
+def _save_manifest(manifest):
+    os.makedirs(os.path.dirname(MANIFEST_PATH), exist_ok=True)
+    with open(MANIFEST_PATH, "w", encoding="utf-8") as f:
+        json.dump(manifest, f, indent=2)
+
+
 def detect_industry(columns_list, file_name=""):
     """
     FULLY LOCAL, DETERMINISTIC INDUSTRY ROUTER.
@@ -139,6 +172,7 @@ def main():
     os.makedirs('data/outputs/logs/', exist_ok=True)
 
     processed_any_file = False
+    manifest = _load_manifest()
 
     for file_name in os.listdir(raw_dir):
         if file_name.startswith('.') or file_name.lower() == 'process':
@@ -148,6 +182,13 @@ def main():
             continue
 
         file_path = os.path.join(raw_dir, file_name)
+
+        # ⏭️ SKIP FILES ALREADY ANALYZED (same content, already has a saved report)
+        current_hash = _file_hash(file_path)
+        if manifest.get(file_name) == current_hash:
+            print(f"⏭️  Skipping {file_name} — already analyzed, content unchanged.")
+            continue
+
         print(f"\n🚀 Processing dataset: {file_name}")
         processed_any_file = True
         
@@ -217,6 +258,10 @@ def main():
                 
                 # 🚀 V3 DYNAMIC EVALUATION TIER
                 run_benchmark(dataset_path=file_path, version="v3", override_industry=industry)
+
+                # ✅ Mark as processed only after a full successful run
+                manifest[file_name] = current_hash
+                _save_manifest(manifest)
                 
             except Exception as e:
                 print(f"❌ Failed to save report or run evaluation: {e}")
