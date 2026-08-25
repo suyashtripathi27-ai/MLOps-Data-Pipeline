@@ -261,7 +261,19 @@ def run_schema_inference(df):
             all_known_terms = {alias: std for std, aliases in UNIVERSAL_SCHEMA.items() for alias in aliases}
             for std in UNIVERSAL_SCHEMA.keys(): all_known_terms[normalize_string(std)] = std
             
-            matches = difflib.get_close_matches(norm_col, all_known_terms.keys(), n=1, cutoff=0.85)
+            # 🛡️ MIN-LENGTH GUARD: fuzzy matching on very short column names is unsafe —
+            # a single-character edit on a 3-4 letter word (e.g. "age" -> "wage") can
+            # clear a 0.85 ratio purely by coincidence, silently mapping an unrelated
+            # column into the schema (proven case: "age" matched "wage", an alias for
+            # "base_salary", at ratio 0.857). Real intentional fuzzy matches in this
+            # schema are abbreviations of multi-word terms and are comfortably longer
+            # than this, so short names skip fuzzy matching entirely rather than risk
+            # a coincidental collision.
+            MIN_FUZZY_MATCH_LENGTH = 5
+            matches = (
+                difflib.get_close_matches(norm_col, all_known_terms.keys(), n=1, cutoff=0.85)
+                if len(norm_col) >= MIN_FUZZY_MATCH_LENGTH else []
+            )
             if matches:
                 matched_alias = matches[0]
                 proposed_std = all_known_terms[matched_alias]
