@@ -9,7 +9,6 @@ from openai import OpenAI
 # 1. IMPORT UNIVERSAL UTILITIES
 from utils.cleaner import load_and_clean, universal_clean
 from utils.profiler import generate_payload
-from utils.llm_router import execute_with_fallback  
 from utils.chart_engine import generate_industry_charts
 from evaluation.benchmark_runner import run_benchmark
 
@@ -46,131 +45,76 @@ if not clients:
     print("❌ ERROR: No API keys found. Please set at least one API key.")
     sys.exit(1)
 
-def detect_industry(clients, columns_list, file_name="", df=None):
-    """
-    THE AGENTIC ROUTER: Routes datasets dynamically based on column schema,
-    file name hints, and a semantic peek at the actual row data.
-    """
-    print(f"🔍 Sniffing data schema: {columns_list}")
-    cols_str = str(columns_list).lower()
-    
-    # ⚡ STEP 1: STRICT OVERRIDES BY COLUMNS ONLY (Saves API calls for obvious datasets)
-    if any(word in cols_str for word in ['fda', 'adverse_event', 'clinical', 'dosage', 'therapeutic']):
-        print("🎯 Fast Route: Classified as [PHARMA] via Schema Heuristics")
-        return "pharma"
-    if any(word in cols_str for word in ['attrition', 'jobrole', 'maritalstatus']):
-        print("🎯 Fast Route: Classified as [HR] via Schema Heuristics")
-        return "hr"
-    if any(word in cols_str for word in ['cart', 'checkout', 'pageview', 'ecommerce']):
-        print("🎯 Fast Route: Classified as [ECOMMERCE] via Schema Heuristics")
-        return "ecommerce"
-    if any(word in cols_str for word in ['downtime', 'oee', 'scrap', 'defect_rate', 'production_volume']):
-        print("🎯 Fast Route: Classified as [MANUFACTURING] via Schema Heuristics")
-        return "manufacturing"
-    if any(word in cols_str for word in ['demurrage', 'detention', 'freight', 'hub', 'osrm']):
-        print("🎯 Fast Route: Classified as [LOGISTICS] via Schema Heuristics")
-        return "logistics"
-
-    # 🧠 STEP 2: MULTI-API SEMANTIC ROUTING WITH ROW PEEKING
-    print("-> 🟢 Routing to AI Schema Sniffer...")
-    supported_industries = ["logistics", "retail", "banking", "pharma", "manufacturing", "finance", "ecommerce", "hr"]
-    
-    # 🛠️ THE FIX: Extract a small sample of the actual values to give the AI context
-    sample_values = {}
-    if df is not None and not df.empty:
-        text_cols = df.select_dtypes(include=['object', 'string']).columns[:4]
-        for col in text_cols:
-            sample_values[col] = df[col].dropna().unique()[:3].tolist()
-            
-    system_prompt = "You are an Enterprise Data Schema Router. Follow instructions exactly."
-    
-    user_prompt = f"""
-    Analyze the following dataset metadata:
-    - Outer Filename: {file_name}
-    - Columns: {columns_list}
-    - Sample Row Values: {sample_values}
-    
-    Classify this dataset into EXACTLY ONE of the following 8 industries:
-    [LOGISTICS, RETAIL, HR, BANKING, PHARMA, FINANCE, MANUFACTURING, ECOMMERCE]
-    
-    Respond with ONLY the exact industry name in brackets. Example: [PHARMA]
-
-    Weigh SCHEMA/STRUCTURE more heavily than product-name semantics. A dataset with only
-    transactional sales columns (date, product name, salesperson, quantity/boxes shipped,
-    revenue, country/region) is a SALES/DISTRIBUTION dataset, even if the products happen to
-    be medicines, drugs, or OTC items — classify that as [RETAIL], not [PHARMA].
-    Only choose [PHARMA] if the columns themselves reflect pharma OPERATIONS: batch/lot
-    tracking, manufacturing yield, out-of-spec/deviation rates, clinical trial enrollment,
-    adverse events, regulatory submissions, or shelf-life/expiry monitoring at a batch level.
-    If it is purely transactional/monetary with no domain-specific operational columns, prioritize [FINANCE].
-    If it is a mix of production and supply chain, prioritize [MANUFACTURING].
-    """
-    
-    try:
-        raw_response = execute_with_fallback(clients, system_prompt, user_prompt).strip().lower()
-        for valid_industry in supported_industries:
-            if valid_industry in raw_response:
-                candidate = valid_industry
-                verified = _verify_operational_depth(candidate, cols_str, columns_list)
-                if verified != candidate:
-                    print(f"⚠️ AI classified [{candidate.upper()}] but no {candidate}-operational "
-                          f"columns were found in the schema — overriding to [{verified.upper()}]")
-                    return verified
-                print(f"🎯 AI Router Classified Industry As: [{valid_industry.upper()}]")
-                return valid_industry
-        
-        print("⚠️ AI Router returned ambiguous result. Defaulting to finance.")
-        return "finance"
-    except Exception as e:
-        print(f"⚠️ AI Routing failed. Defaulting to finance. Error: {e}")
-        return "finance"
-
-
-# Industries whose analysis modules need deep, industry-specific OPERATIONAL columns
-# to produce anything meaningful. Topical/semantic content (e.g. drug names, staff
-# titles) is not enough evidence on its own — these keywords must appear in the
-# actual COLUMN NAMES, not just sample values, or the classification is rejected.
-OPERATIONAL_EVIDENCE = {
-    "pharma":        ['fda', 'adverse_event', 'clinical', 'dosage', 'therapeutic',
-                       'batch', 'yield', 'gmp', 'deviation', 'shelf_life', 'expiry',
-                       'trial', 'regulatory', 'formulation'],
-    "hr":            ['attrition', 'jobrole', 'maritalstatus', 'employee', 'tenure',
-                       'engagement_score', 'headcount', 'recruitment'],
+# Per-industry column-name signal library used for fully LOCAL, deterministic
+# industry classification. No dataset values — only column NAMES — ever factor
+# into this decision, and none of it is sent to any external API.
+INDUSTRY_KEYWORDS = {
+    "pharma":        ['fda', 'adverse_event', 'clinical', 'dosage', 'therapeutic', 'batch',
+                       'yield', 'gmp', 'deviation', 'shelf_life', 'expiry', 'trial',
+                       'regulatory', 'formulation', 'drug_class', 'active_ingredient'],
+    "hr":            ['attrition', 'jobrole', 'maritalstatus', 'employee_id', 'tenure',
+                       'engagement_score', 'headcount', 'recruitment', 'performance_rating',
+                       'training_hours'],
+    "ecommerce":     ['cart', 'checkout', 'pageview', 'session', 'conversion_rate',
+                       'add_to_cart', 'bounce_rate', 'website', 'wishlist'],
     "manufacturing": ['downtime', 'oee', 'scrap', 'defect_rate', 'production_volume',
-                       'machine', 'maintenance', 'throughput_rate'],
-    "logistics":     ['demurrage', 'detention', 'freight', 'hub', 'osrm', 'route',
-                       'fleet', 'sla', 'carrier'],
+                       'machine_id', 'maintenance', 'throughput_rate', 'work_order'],
+    "logistics":     ['demurrage', 'detention', 'freight', 'hub', 'osrm', 'route_id',
+                       'fleet', 'sla', 'carrier', 'shipment_id', 'delivery_time'],
     "banking":       ['account_balance', 'loan', 'deposit', 'branch', 'interest_rate',
-                       'credit_score', 'overdraft', 'npa'],
+                       'credit_score', 'overdraft', 'npa', 'atm', 'ifsc', 'kyc'],
+    "finance":       ['cashflow', 'ebitda', 'balance_sheet', 'expense_category',
+                       'budget_variance', 'roi', 'npv', 'liquidity_ratio', 'gross_margin'],
+    "retail":        ['store', 'boxes_shipped', 'sales_person', 'footfall', 'markdown',
+                       'shrinkage', 'pos_terminal', 'sku', 'discount_pct', 'department'],
 }
 
-# Where a rejected strict-industry guess should fall back to, based on a quick
-# look at whether the schema still resembles a general sales/commerce table.
-GENERIC_FALLBACK_SIGNALS = ['product', 'revenue', 'amount', 'price', 'quantity',
-                             'boxes', 'units', 'order', 'customer', 'sales']
+# Fallback signal set used only when NOTHING above matched at all — picks the
+# safest general-purpose landing spot from broad table shape.
+GENERIC_SALES_SIGNALS = ['product', 'revenue', 'amount', 'price', 'quantity',
+                          'boxes', 'units', 'order', 'customer', 'sales']
 
 
-def _verify_operational_depth(candidate_industry, cols_str, columns_list):
+def detect_industry(columns_list, file_name=""):
     """
-    Deterministic safety net that runs after the AI's classification.
-    Prevents committing to an operationally-strict industry (pharma, manufacturing,
-    banking, HR, logistics) purely because product names or job titles *sound* like
-    that industry, when the schema itself has none of that industry's real
-    operational columns. Falls back to RETAIL for generic sales-shaped data, or
-    ECOMMERCE/FINANCE when that fits better, otherwise leaves the AI's answer as-is.
+    FULLY LOCAL, DETERMINISTIC INDUSTRY ROUTER.
+
+    No AI call happens here, and no dataset values (row content) are ever
+    inspected or transmitted for this decision — only the column NAMES already
+    in memory. Every dataset that reaches this pipeline gets classified purely
+    by this system's own logic, scored against a curated per-industry keyword
+    library. Ties/near-misses fall back deterministically to the closest
+    general-purpose industry rather than guessing.
     """
-    required_keywords = OPERATIONAL_EVIDENCE.get(candidate_industry)
-    if required_keywords is None:
-        return candidate_industry  # not a "strict" industry — trust the AI as-is
+    print(f"🔍 Sniffing data schema locally: {columns_list}")
+    cols_str = str(columns_list).lower()
+    fname_str = str(file_name).lower()
 
-    if any(kw in cols_str for kw in required_keywords):
-        return candidate_industry  # real operational evidence found — trust it
+    scores = {}
+    for industry, keywords in INDUSTRY_KEYWORDS.items():
+        score = sum(1 for kw in keywords if kw in cols_str)
+        if industry in fname_str:
+            score += 1  # small filename-hint tiebreaker
+        scores[industry] = score
 
-    # No operational evidence. Pick the safest generic landing spot.
+    best_industry = max(scores, key=scores.get)
+    best_score = scores[best_industry]
+
+    if best_score > 0:
+        print(f"🎯 Classified as [{best_industry.upper()}] via local schema scoring "
+              f"({best_score} operational column signal(s) matched)")
+        return best_industry
+
+    # No industry-specific operational evidence anywhere in the schema.
+    # Fall back to the safest generic landing spot based on general table shape.
     if any(kw in cols_str for kw in ['cart', 'checkout', 'pageview']):
+        print("🎯 No strong industry signal — defaulting to [ECOMMERCE] (cart/checkout shape)")
         return "ecommerce"
-    if any(kw in cols_str for kw in GENERIC_FALLBACK_SIGNALS):
+    if any(kw in cols_str for kw in GENERIC_SALES_SIGNALS):
+        print("🎯 No strong industry signal — defaulting to [RETAIL] (generic sales/transaction shape)")
         return "retail"
+
+    print("⚠️ No industry signal detected at all in the schema — defaulting to [FINANCE]")
     return "finance"
 
 def is_valid_executive_report(report_text: str) -> bool:
@@ -216,8 +160,8 @@ def main():
         
         columns = df.columns.tolist()
         
-        # 🛠️ ROUTING IS NOW COMPLETELY AUTONOMOUS
-        industry = detect_industry(clients, columns, file_name, df=df)
+        # 🔒 ROUTING IS FULLY LOCAL — no data leaves the system for this step
+        industry = detect_industry(columns, file_name)
         
         # 📊 Auto-Generate Charts & Embed Markdown
         chart_markdown = generate_industry_charts(df, industry, file_name)
