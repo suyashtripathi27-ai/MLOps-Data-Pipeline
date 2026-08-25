@@ -45,3 +45,4 @@ Timestamp,Version,Industry,Dataset,Scenario,Difficulty,Total,Max,Percent,Behavio
 20260825_222049,v3,retail,archive (7),store_performance_decline,Medium,47,60,78.33,9,6,10,2,10,10
 20260825_222117,v3,retail,archive (6),store_performance_decline,Medium,36,60,60.0,4,0,10,2,10,10
 20260825_223720,v3,retail,archive (7),store_performance_decline,Medium,51,60,85.0,9,10,10,2,10,10
+20260825_225454,v3,finance,taiwanese+bankruptcy+prediction,margin_erosion,Easy,48,60,80.0,7,6,10,5,10,10
