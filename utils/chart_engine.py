@@ -33,7 +33,7 @@ def generate_industry_charts(df: pd.DataFrame, industry: str, file_name: str) ->
         ax.legend()
         plt.tight_layout()
         
-        img_filename = f"{base_name}_{target_num.lower()}_dist.png"
+        img_filename = f"{base_name}_{target_num.lower().replace(' ', '_')}_dist.png"
         img_path = os.path.join(chart_dir, img_filename)
         plt.savefig(img_path, dpi=200)
         plt.close()
@@ -55,7 +55,7 @@ def generate_industry_charts(df: pd.DataFrame, industry: str, file_name: str) ->
             ax.text(i, v + 0.5, f'{v:.1f}%', ha='center', fontweight='bold', fontsize=9)
         plt.tight_layout()
         
-        img_filename = f"{base_name}_{target_cat.lower()}_share.png"
+        img_filename = f"{base_name}_{target_cat.lower().replace(' ', '_')}_share.png"
         img_path = os.path.join(chart_dir, img_filename)
         plt.savefig(img_path, dpi=200)
         plt.close()
