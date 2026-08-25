@@ -4,151 +4,291 @@ import re
 # ==========================================
 # LAYER 1: THE MASTER ONTOLOGY (Multi-Industry + Future State)
 # ==========================================
+Here is the massively expanded `INDUSTRY_ONTOLOGIES` dictionary. I have deepened the existing clusters with more granular vocabulary and added entirely new clusters covering operations, compliance, marketing, and strategic risks for all 8 industries.
+
+```python
 INDUSTRY_ONTOLOGIES = {
     "manufacturing": {
         "production_instability_cluster": {
-            "keywords": ["downtime", "maintenance", "oee", "efficiency", "utilization", "delay", "idle"],
-            "impact_areas": ["operational_efficiency", "throughput_risk", "capex_roi"],
+            "keywords": ["downtime", "maintenance", "oee", "efficiency", "utilization", "delay", "idle", "cycle time", "takt time", "bottleneck", "changeover", "breakdown", "mtbf", "mttr", "spindle time"],
+            "impact_areas": ["operational_efficiency", "throughput_risk", "capex_roi", "capacity_constraints"],
             "related_signals": ["quality_degradation_cluster", "supply_chain_cluster"],
             "criticality": "internal_operational"
         },
         "quality_degradation_cluster": {
-            "keywords": ["defect", "quality", "scrap", "reject", "fail", "oos", "purity"],
-            "impact_areas": ["cost_of_poor_quality", "customer_satisfaction", "compliance_risk"],
-            "related_signals": ["production_instability_cluster"],
+            "keywords": ["defect", "quality", "scrap", "reject", "fail", "oos", "purity", "rework", "first pass yield", "rft", "variance", "six sigma", "tolerance", "calibration", "warranty claim"],
+            "impact_areas": ["cost_of_poor_quality", "customer_satisfaction", "compliance_risk", "brand_reputation"],
+            "related_signals": ["production_instability_cluster", "warranty_risk_cluster"],
             "criticality": "customer_facing"
         },
         "workforce_risk_cluster": {
-            "keywords": ["safety", "incident", "accident", "turnover", "absenteeism", "labor"],
-            "impact_areas": ["regulatory_compliance", "employee_safety", "liability_cost"],
+            "keywords": ["safety", "incident", "accident", "turnover", "absenteeism", "labor", "osha", "near miss", "ergonomics", "fatigue", "union", "strike", "grievance", "training matrix"],
+            "impact_areas": ["regulatory_compliance", "employee_safety", "liability_cost", "production_continuity"],
             "related_signals": ["production_instability_cluster"],
             "criticality": "internal_operational"
         },
         "supply_chain_cluster": {
-            "keywords": ["inventory", "stock", "wip", "turnover", "lead_time", "freight", "transit"],
-            "impact_areas": ["working_capital", "stockout_risk", "holding_costs"],
+            "keywords": ["inventory", "stock", "wip", "turnover", "lead_time", "freight", "transit", "raw materials", "vendor fill rate", "safety stock", "jit", "kanban", "stockout", "expedite", "bom"],
+            "impact_areas": ["working_capital", "stockout_risk", "holding_costs", "production_stoppage"],
             "related_signals": ["financial_performance_cluster"],
             "criticality": "internal_operational"
         },
         "financial_performance_cluster": {
-            "keywords": ["sales", "revenue", "profit", "cost", "margin", "expense", "roi"],
-            "impact_areas": ["margin_erosion", "revenue_growth", "ebitda_impact"],
+            "keywords": ["sales", "revenue", "profit", "cost", "margin", "expense", "roi", "cogs", "absorption", "overhead", "capex", "opex", "depreciation", "ebitda", "payback period"],
+            "impact_areas": ["margin_erosion", "revenue_growth", "ebitda_impact", "shareholder_value"],
             "related_signals": ["supply_chain_cluster", "production_instability_cluster"],
             "criticality": "internal_operational"
+        },
+        "environmental_sustainability_cluster": {
+            "keywords": ["emissions", "carbon footprint", "waste", "effluent", "energy consumption", "kwh", "water usage", "esg", "recycling", "spill", "pollution", "hazardous"],
+            "impact_areas": ["regulatory_fines", "public_relations", "sustainability_goals"],
+            "related_signals": ["workforce_risk_cluster"],
+            "criticality": "customer_facing"
         }
     },
     "ecommerce": {
         "fulfillment_risk_cluster": {
-            "keywords": ["delivery", "shipping", "delay", "fulfillment", "transit", "logistics"],
-            "impact_areas": ["customer_satisfaction", "sla_breach", "logistics_cost"],
-            "related_signals": ["inventory_health_cluster"],
+            "keywords": ["delivery", "shipping", "delay", "fulfillment", "transit", "logistics", "last mile", "split shipment", "backorder", "pick pack", "dispatch", "carrier exception", "misroute"],
+            "impact_areas": ["customer_satisfaction", "sla_breach", "logistics_cost", "nps_drop"],
+            "related_signals": ["inventory_health_cluster", "returns_management_cluster"],
             "criticality": "customer_facing"
         },
         "inventory_health_cluster": {
-            "keywords": ["stock", "stockout", "turnover", "overstock", "sku"],
-            "impact_areas": ["working_capital", "lost_sales"],
+            "keywords": ["stock", "stockout", "turnover", "overstock", "sku", "dead stock", "obsolete", "days of supply", "reorder point", "shrinkage", "allocations", "sell-through"],
+            "impact_areas": ["working_capital", "lost_sales", "storage_fees", "markdown_risk"],
             "related_signals": ["fulfillment_risk_cluster"],
             "criticality": "internal_operational"
+        },
+        "customer_acquisition_cluster": {
+            "keywords": ["cac", "cpa", "roas", "ctr", "cpc", "conversion rate", "bounce rate", "impression", "click-through", "funnel", "landing page", "affiliate", "retargeting"],
+            "impact_areas": ["marketing_roi", "revenue_growth", "burn_rate"],
+            "related_signals": ["platform_stability_cluster"],
+            "criticality": "internal_operational"
+        },
+        "returns_management_cluster": {
+            "keywords": ["rma", "return", "refund", "exchange", "reverse logistics", "restocking fee", "wardrobing", "damage", "salvage", "return rate"],
+            "impact_areas": ["margin_erosion", "fraud_loss", "warehouse_congestion"],
+            "related_signals": ["inventory_health_cluster", "fulfillment_risk_cluster"],
+            "criticality": "internal_operational"
+        },
+        "platform_stability_cluster": {
+            "keywords": ["uptime", "downtime", "latency", "load speed", "cart abandonment", "checkout error", "payment gateway", "api failure", "bug", "404", "session timeout"],
+            "impact_areas": ["immediate_revenue_loss", "user_experience", "seo_ranking"],
+            "related_signals": ["customer_acquisition_cluster"],
+            "criticality": "customer_facing"
         }
     },
     "hr": {
         "retention_risk_cluster": {
-            "keywords": ["turnover", "attrition", "flight risk", "resignation", "tenure"],
-            "impact_areas": ["talent_drain", "recruiting_costs", "continuity_risk"],
-            "related_signals": ["employee_engagement_cluster"],
+            "keywords": ["turnover", "attrition", "flight risk", "resignation", "tenure", "voluntary leave", "exit interview", "poaching", "churn", "survival rate"],
+            "impact_areas": ["talent_drain", "recruiting_costs", "continuity_risk", "institutional_knowledge_loss"],
+            "related_signals": ["employee_engagement_cluster", "compensation_risk_cluster"],
+            "criticality": "internal_operational"
+        },
+        "talent_acquisition_cluster": {
+            "keywords": ["time to fill", "time to hire", "cost per hire", "applicant", "sourcing", "pipeline", "offer acceptance rate", "onboarding", "screening", "headcount"],
+            "impact_areas": ["growth_bottlenecks", "recruitment_spend", "team_burnout"],
+            "related_signals": ["retention_risk_cluster"],
+            "criticality": "internal_operational"
+        },
+        "employee_engagement_cluster": {
+            "keywords": ["enps", "satisfaction", "survey", "absenteeism", "burnout", "productivity", "morale", "presenteeism", "culture", "feedback", "wellbeing"],
+            "impact_areas": ["productivity_loss", "culture_toxicity", "employer_brand"],
+            "related_signals": ["retention_risk_cluster"],
+            "criticality": "internal_operational"
+        },
+        "compliance_labor_cluster": {
+            "keywords": ["fmla", "eeoc", "diversity", "inclusion", "grievance", "litigation", "harassment", "visa", "sponsorship", "flsa", "overtime violation", "workers comp"],
+            "impact_areas": ["legal_liability", "reputational_damage", "regulatory_fines"],
+            "related_signals": ["workforce_risk_cluster"],
+            "criticality": "internal_operational"
+        },
+        "compensation_risk_cluster": {
+            "keywords": ["pay gap", "equity", "bonus", "commission", "benefits", "market rate", "compa-ratio", "merit increase", "stock options", "vesting", "payroll"],
+            "impact_areas": ["budget_overruns", "flight_risk", "internal_inequity"],
+            "related_signals": ["retention_risk_cluster", "compliance_labor_cluster"],
             "criticality": "internal_operational"
         }
     },
     "pharma": {
         "compliance_risk_cluster": {
-            "keywords": ["fda", "audit", "gmp", "deviation", "sterility", "temperature", "excursion"],
-            "impact_areas": ["regulatory_action", "batch_rejection", "market_recall"],
-            "related_signals": ["quality_degradation_cluster"],
+            "keywords": ["fda", "audit", "gmp", "deviation", "sterility", "temperature", "excursion", "capa", "form 483", "warning letter", "sops", "validation", "pharmacovigilance"],
+            "impact_areas": ["regulatory_action", "batch_rejection", "market_recall", "facility_shutdown"],
+            "related_signals": ["quality_degradation_cluster", "supply_chain_integrity_cluster"],
             "criticality": "customer_facing"
         },
         "yield_degradation_cluster": {
-            "keywords": ["yield", "titer", "batch", "loss", "scrap", "api"],
-            "impact_areas": ["cost_of_goods", "supply_shortage"],
+            "keywords": ["yield", "titer", "batch", "loss", "scrap", "api", "fermentation", "purification", "assay", "potency", "impurity", "shelf life", "degradation"],
+            "impact_areas": ["cost_of_goods", "supply_shortage", "margin_erosion"],
             "related_signals": ["compliance_risk_cluster"],
             "criticality": "internal_operational"
-        }
+        },
+        "clinical_trial_cluster": {
+            "keywords": ["efficacy", "adverse event", "sae", "enrollment", "dropout", "placebo", "phase", "investigator", "protocol deviation", "data management", "endpoint", "blinded"],
+            "impact_areas": ["time_to_market", "r_and_d_sunk_cost", "regulatory_approval_delay"],
+            "related_signals": ["pipeline_risk_cluster"],
+            "criticality": "internal_operational"
+        },
+        "supply_chain_integrity_cluster": {
+            "keywords": ["cold chain", "serialization", "counterfeit", "traceability", "track and trace", "tamper", "dsicsa", "logistics", "temperature mapping", "ambient"],
+            "impact_areas": ["patient_safety", "product_loss", "brand_damage"],
+            "related_signals": ["compliance_risk_cluster"],
+            "criticality": "customer_facing"
+        },
+        "pipeline_risk_cluster": {
+            "keywords": ["patent cliff", "exclusivity", "formulation", "generic competition", "nda", "submission", "time to market", "orphan drug", "biosimilar"],
+            "impact_areas": ["long_term_revenue", "market_share", "investor_confidence"],
+            "related_signals": ["clinical_trial_cluster"],
+            "criticality": "internal_operational"
+        },
+        "pharmacy_dispensing_cluster": {
+            "keywords": ["otc", "rx", "prescription", "dispense", "pharmacy", "ndc_code", "pharmacist", "dosage", "co-pay", "claims"],
+            "impact_areas": ["patient_adherence", "store_revenue", "inventory_turnover"],
+            "related_signals": ["supply_chain_integrity_cluster"],
+            "criticality": "customer_facing"
+        },
     },
     "finance": {
         "liquidity_risk_cluster": {
-            "keywords": ["cash flow", "working capital", "dscr", "burn rate", "runway", "receivables"],
-            "impact_areas": ["solvency_risk", "operational_funding", "debt_covenant"],
-            "related_signals": ["margin_erosion_cluster"],
+            "keywords": ["cash flow", "working capital", "dscr", "burn rate", "runway", "receivables", "payables", "days sales outstanding", "dso", "dpo", "quick ratio", "current ratio", "solvency"],
+            "impact_areas": ["solvency_risk", "operational_funding", "debt_covenant", "bankruptcy_risk"],
+            "related_signals": ["margin_erosion_cluster", "credit_counterparty_cluster"],
             "criticality": "internal_operational"
         },
         "margin_erosion_cluster": {
-            "keywords": ["ebitda", "gross margin", "cogs", "opex", "variance"],
+            "keywords": ["ebitda", "gross margin", "cogs", "opex", "variance", "net income", "operating profit", "pricing pressure", "inflation", "cost overrun", "yield"],
             "impact_areas": ["profitability", "valuation", "dividend_risk"],
             "related_signals": ["liquidity_risk_cluster"],
+            "criticality": "internal_operational"
+        },
+        "market_risk_cluster": {
+            "keywords": ["interest rate", "fx", "forex", "volatility", "beta", "hedging", "derivatives", "commodity price", "swap", "exposure", "yield curve", "mark-to-market"],
+            "impact_areas": ["portfolio_devaluation", "earnings_volatility", "capital_erosion"],
+            "related_signals": ["liquidity_risk_cluster"],
+            "criticality": "internal_operational"
+        },
+        "credit_counterparty_cluster": {
+            "keywords": ["default", "credit rating", "downgrade", "exposure", "ar aging", "bad debt", "write-off", "provision", "collateral", "guarantor"],
+            "impact_areas": ["revenue_loss", "cash_flow_interruption", "asset_impairment"],
+            "related_signals": ["liquidity_risk_cluster"],
+            "criticality": "internal_operational"
+        },
+        "capital_structure_cluster": {
+            "keywords": ["leverage", "debt covenant", "equity dilution", "wacc", "cost of capital", "debt-to-equity", "gearing", "share buyback", "dividend yield", "issuance"],
+            "impact_areas": ["borrowing_capacity", "shareholder_return", "control_dilution"],
+            "related_signals": ["market_risk_cluster"],
             "criticality": "internal_operational"
         }
     },
     "banking": {
         "credit_risk_cluster": {
-            "keywords": ["npl", "default", "delinquency", "charge off", "fico", "ltv"],
-            "impact_areas": ["capital_adequacy", "provision_expense", "asset_quality"],
-            "related_signals": ["liquidity_risk_cluster"],
+            "keywords": ["npl", "default", "delinquency", "charge off", "fico", "ltv", "dti", "provision", "forbearance", "collection", "recovery rate", "loss given default", "lgd", "pd"],
+            "impact_areas": ["capital_adequacy", "provision_expense", "asset_quality", "profitability"],
+            "related_signals": ["liquidity_risk_cluster", "deposit_concentration_cluster"],
             "criticality": "customer_facing"
         },
         "aml_fraud_cluster": {
-            "keywords": ["sar", "aml", "kyc", "fraud", "suspicious", "breach"],
-            "impact_areas": ["regulatory_fine", "reputational_damage", "license_risk"],
-            "related_signals": [],
+            "keywords": ["sar", "aml", "kyc", "fraud", "suspicious", "breach", "sanctions", "pep", "structuring", "money laundering", "identity theft", "account takeover", "chargeback"],
+            "impact_areas": ["regulatory_fine", "reputational_damage", "license_risk", "direct_financial_loss"],
+            "related_signals": ["cybersecurity_risk_cluster"],
             "criticality": "customer_facing"
         },
         "customer_retention_cluster": {
-            "keywords": ["churn", "attrition", "retention", "inactive", "one-time"],
+            "keywords": ["churn", "attrition", "retention", "inactive", "one-time", "account closure", "balance transfer", "wallet share", "cross-sell", "up-sell"],
             "impact_areas": ["revenue_stability", "portfolio_growth", "customer_lifetime_value"],
             "related_signals": ["engagement_stability_cluster"],
             "criticality": "internal_operational"
         },
         "deposit_concentration_cluster": {
-            "keywords": ["balance", "deposit", "concentration", "liquidity", "top 5%"],
-            "impact_areas": ["liquidity_risk", "funding_stability"],
-            "related_signals": ["credit_risk_cluster"],
+            "keywords": ["balance", "deposit", "concentration", "liquidity", "top 5%", "run on bank", "flight to quality", "hot money", "cd withdrawal", "funding gap"],
+            "impact_areas": ["liquidity_risk", "funding_stability", "regulatory_intervention"],
+            "related_signals": ["credit_risk_cluster", "interest_rate_risk_cluster"],
             "criticality": "internal_operational"
         },
         "engagement_stability_cluster": {
-            "keywords": ["active_member", "credit_card", "usage", "engagement", "active accounts"],
-            "impact_areas": ["customer_loyalty", "cross_sell_potential"],
+            "keywords": ["active_member", "credit_card", "usage", "engagement", "active accounts", "transactions per month", "app logins", "digital adoption", "feature usage"],
+            "impact_areas": ["customer_loyalty", "cross_sell_potential", "fee_income"],
             "related_signals": ["customer_retention_cluster"],
             "criticality": "internal_operational"
+        },
+        "interest_rate_risk_cluster": {
+            "keywords": ["alm", "nim", "net interest margin", "duration gap", "yield curve", "repricing", "rate hike", "spread", "basis risk"],
+            "impact_areas": ["earnings_compression", "economic_value_of_equity"],
+            "related_signals": ["deposit_concentration_cluster", "credit_risk_cluster"],
+            "criticality": "internal_operational"
+        },
+        "cybersecurity_risk_cluster": {
+            "keywords": ["data breach", "phishing", "ransomware", "ddos", "vulnerability", "patching", "unauthorized access", "malware", "encryption", "social engineering"],
+            "impact_areas": ["system_outage", "data_loss", "massive_fines", "loss_of_trust"],
+            "related_signals": ["aml_fraud_cluster"],
+            "criticality": "customer_facing"
         }
     },
     "retail": {
         "store_performance_cluster": {
-            "keywords": ["footfall", "conversion", "basket size", "upt", "shrinkage", "theft"],
-            "impact_areas": ["store_profitability", "comp_sales", "inventory_loss"],
-            "related_signals": ["inventory_health_cluster"],
+            "keywords": ["footfall", "conversion", "basket size", "upt", "shrinkage", "theft", "atv", "sales per square foot", "comp sales", "lfl", "dwell time", "pos"],
+            "impact_areas": ["store_profitability", "comp_sales", "inventory_loss", "lease_roi"],
+            "related_signals": ["inventory_health_cluster", "workforce_risk_cluster"],
             "criticality": "customer_facing"
         },
         "inventory_health_cluster": {
-            "keywords": ["stockout", "overstock", "turnover", "markdown", "clearance"],
-            "impact_areas": ["working_capital", "margin_erosion"],
-            "related_signals": ["store_performance_cluster"],
+            "keywords": ["stockout", "overstock", "turnover", "markdown", "clearance", "gmroi", "sell-through", "weeks of supply", "planogram", "out of stock", "oos", "allocation"],
+            "impact_areas": ["working_capital", "margin_erosion", "lost_sales"],
+            "related_signals": ["store_performance_cluster", "merchandising_cluster"],
             "criticality": "internal_operational"
+        },
+        "omnichannel_integration_cluster": {
+            "keywords": ["bopis", "ship from store", "click and collect", "endless aisle", "boris", "inventory visibility", "cross-channel", "unified commerce"],
+            "impact_areas": ["customer_experience", "fulfillment_efficiency", "sales_attribution"],
+            "related_signals": ["inventory_health_cluster"],
+            "criticality": "customer_facing"
+        },
+        "merchandising_cluster": {
+            "keywords": ["assortment", "elasticity", "pricing tier", "private label", "category management", "visual merchandising", "promotional lift", "cannibalization"],
+            "impact_areas": ["gross_margin", "brand_positioning", "market_share"],
+            "related_signals": ["inventory_health_cluster"],
+            "criticality": "internal_operational"
+        },
+        "customer_loyalty_cluster": {
+            "keywords": ["clv", "points", "churn", "reward redemption", "tier status", "loyalty program", "frequency", "recency", "rfm", "promoter"],
+            "impact_areas": ["repeat_purchase_rate", "marketing_efficiency", "lifetime_value"],
+            "related_signals": ["omnichannel_integration_cluster"],
+            "criticality": "customer_facing"
         }
     },
     "logistics": {
         "network_bottleneck_cluster": {
-            "keywords": ["transit time", "delay", "detention", "demurrage", "port", "routing"],
-            "impact_areas": ["sla_breach", "customer_churn", "asset_utilization"],
-            "related_signals": ["freight_cost_cluster"],
+            "keywords": ["transit time", "delay", "detention", "demurrage", "port", "routing", "congestion", "dwell time", "hub", "sortation", "bottleneck", "capacity constraint", "rollover"],
+            "impact_areas": ["sla_breach", "customer_churn", "asset_utilization", "penalty_fees"],
+            "related_signals": ["freight_cost_cluster", "fleet_management_cluster"],
             "criticality": "customer_facing"
         },
         "freight_cost_cluster": {
-            "keywords": ["fuel", "spot rate", "carrier", "lane cost", "accessorial"],
-            "impact_areas": ["margin_erosion", "contract_profitability"],
+            "keywords": ["fuel", "spot rate", "carrier", "lane cost", "accessorial", "toll", "tariff", "surcharge", "linehaul", "fsc", "cost per mile", "empty miles"],
+            "impact_areas": ["margin_erosion", "contract_profitability", "pricing_competitiveness"],
+            "related_signals": ["network_bottleneck_cluster"],
+            "criticality": "internal_operational"
+        },
+        "fleet_management_cluster": {
+            "keywords": ["telematics", "fuel efficiency", "idle time", "maintenance", "breakdown", "hours of service", "hos", "eld", "utilization", "deadhead", "depreciation", "driver shortage"],
+            "impact_areas": ["capex_efficiency", "operating_costs", "safety_compliance"],
+            "related_signals": ["network_bottleneck_cluster", "freight_cost_cluster"],
+            "criticality": "internal_operational"
+        },
+        "last_mile_delivery_cluster": {
+            "keywords": ["pod", "routing", "missed delivery", "density", "drop size", "residential fee", "signature", "attempted delivery", "geofencing", "time window"],
+            "impact_areas": ["customer_satisfaction", "cost_to_serve", "driver_productivity"],
+            "related_signals": ["network_bottleneck_cluster"],
+            "criticality": "customer_facing"
+        },
+        "warehouse_operations_cluster": {
+            "keywords": ["pick rate", "putaway", "cross-docking", "space utilization", "slotting", "shrinkage", "cycle count", "wms", "pallet", "forklift", "labor management"],
+            "impact_areas": ["order_cycle_time", "storage_costs", "inventory_accuracy"],
             "related_signals": ["network_bottleneck_cluster"],
             "criticality": "internal_operational"
         }
     }
 }
-
 # ==========================================
 # LAYER 2: SIGNAL ENRICHMENT ENGINE
 # ==========================================
