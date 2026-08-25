@@ -15,7 +15,7 @@ INDUSTRY_ONTOLOGIES = {
         "quality_degradation_cluster": {
             "keywords": ["defect", "quality", "scrap", "reject", "fail", "oos", "purity", "rework", "first pass yield", "rft", "variance", "six sigma", "tolerance", "calibration", "warranty claim"],
             "impact_areas": ["cost_of_poor_quality", "customer_satisfaction", "compliance_risk", "brand_reputation"],
-            "related_signals": ["production_instability_cluster", "warranty_risk_cluster"],
+            "related_signals": ["production_instability_cluster"],
             "criticality": "customer_facing"
         },
         "workforce_risk_cluster": {
@@ -41,6 +41,12 @@ INDUSTRY_ONTOLOGIES = {
             "impact_areas": ["regulatory_fines", "public_relations", "sustainability_goals"],
             "related_signals": ["workforce_risk_cluster"],
             "criticality": "customer_facing"
+        },
+        "equipment_lifecycle_cluster": {
+            "keywords": ["depreciation", "salvage value", "useful life", "commissioning", "decommissioning", "retrofitting", "asset lifecycle", "amortization"],
+            "impact_areas": ["capital_planning", "asset_book_value", "tax_liability"],
+            "related_signals": ["financial_performance_cluster"],
+            "criticality": "internal_operational"
         }
     },
     "ecommerce": {
@@ -105,6 +111,12 @@ INDUSTRY_ONTOLOGIES = {
             "impact_areas": ["budget_overruns", "flight_risk", "internal_inequity"],
             "related_signals": ["retention_risk_cluster", "compliance_labor_cluster"],
             "criticality": "internal_operational"
+        },
+        "workforce_planning_cluster": {
+            "keywords": ["succession planning", "skills gap", "bench strength", "span of control", "headcount forecast", "org design", "talent mapping"],
+            "impact_areas": ["strategic_growth", "leadership_continuity", "restructuring_costs"],
+            "related_signals": ["talent_acquisition_cluster"],
+            "criticality": "internal_operational"
         }
     },
     "pharma": {
@@ -144,6 +156,12 @@ INDUSTRY_ONTOLOGIES = {
             "related_signals": ["supply_chain_integrity_cluster"],
             "criticality": "customer_facing"
         },
+        "market_access_cluster": {
+            "keywords": ["formulary", "reimbursement", "payer", "pbm", "rebate", "copay card", "medicare", "medicaid", "pricing tier"],
+            "impact_areas": ["drug_adoption", "gross_to_net_revenue", "market_penetration"],
+            "related_signals": ["pipeline_risk_cluster"],
+            "criticality": "customer_facing"
+        }
     },
     "finance": {
         "liquidity_risk_cluster": {
@@ -251,6 +269,12 @@ INDUSTRY_ONTOLOGIES = {
             "impact_areas": ["repeat_purchase_rate", "marketing_efficiency", "lifetime_value"],
             "related_signals": ["omnichannel_integration_cluster"],
             "criticality": "customer_facing"
+        },
+        "pricing_strategy_cluster": {
+            "keywords": ["map pricing", "msrp", "dynamic pricing", "price matching", "price elasticity", "loss leader", "markup", "competitor pricing"],
+            "impact_areas": ["gross_margin", "competitive_positioning", "sales_velocity"],
+            "related_signals": ["merchandising_cluster"],
+            "criticality": "internal_operational"
         }
     },
     "logistics": {
