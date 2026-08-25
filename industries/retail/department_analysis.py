@@ -13,7 +13,7 @@ def calc_department_metrics(df, enable_debug=False):
     kpis = []
     if len(df) == 0: return kpis
     
-    dept_col, dept_series = engine.get_column(["department", "category", "dept_name", "category_id"])
+    dept_col, dept_series = engine.get_column(["department", "category", "dept_name", "category_id", "product", "product_name", "product_id"])
     sales_col, sales_series = engine.get_numeric(["sales", "revenue", "dept_sales", "category_sales"])
     qty_col, qty_series = engine.get_numeric(["quantity", "units_sold", "qty"])
     
