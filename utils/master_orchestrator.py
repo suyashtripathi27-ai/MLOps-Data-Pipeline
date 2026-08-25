@@ -12,25 +12,38 @@ def run_master_orchestrator(industry_name, kpi_list, kpi_markdown, payload, clie
     Handles signal prioritization, LLM generation, and governance for all industries.
     """
     # 1. Extract and Prioritize Signals
-    signals_dict = synthesize_operational_signals(kpi_list, industry=industry_name)
-    
-    # 🔥 TOP CLUSTER FILTERING
-    narrative_blocks = signals_dict.get("PRIORITIZED_NARRATIVE_BLOCKS", {})
-    top_3_clusters = dict(list(narrative_blocks.items())[:3])
-    
-    # Calculate average confidence for governance later
-    confidences = [data.get('aggregated_confidence', 1.0) for data in top_3_clusters.values()]
-    avg_confidence = sum(confidences) / len(confidences) if confidences else 1.0
-    
-    # Safely handle the payload
+    # Safely handle the payload first so its reliability data is available below
     if isinstance(payload, str):
         try: 
             payload = json.loads(payload)
         except: 
             payload = {"raw_data": payload}
+
+    signals_dict = synthesize_operational_signals(
+        kpi_list,
+        industry=industry_name,
+        data_reliability_score=payload.get("data_reliability_score"),
+        system_warnings=payload.get("system_warnings")
+    )
+    
+    # 🔥 TOP CLUSTER FILTERING
+    # 🛠️ FIXED: insight_engine.py returns "OPERATIONAL_INTELLIGENCE", not
+    # "PRIORITIZED_NARRATIVE_BLOCKS" — the old key never matched anything, so
+    # top_3_clusters (and every confidence score derived from it) was always empty.
+    narrative_blocks = signals_dict.get("OPERATIONAL_INTELLIGENCE", {})
+    top_3_clusters = dict(list(narrative_blocks.items())[:3])
+    
+    # Calculate average confidence for governance later
+    confidences = [data.get('aggregated_confidence', 1.0) for data in top_3_clusters.values()]
+    avg_confidence = sum(confidences) / len(confidences) if confidences else 1.0
             
-    # Send ONLY the top 3 clusters to keep AI focused
-    payload['prioritized_signals'] = {"PRIORITIZED_NARRATIVE_BLOCKS": top_3_clusters}
+    # Send the top 3 prioritized clusters, plus the real governance signals
+    # (excluded/missing metrics + data-integrity sanity flags) that
+    # insight_engine.py already computed.
+    payload['prioritized_signals'] = {
+        "PRIORITIZED_NARRATIVE_BLOCKS": top_3_clusters,
+        "GOVERNANCE_INTELLIGENCE": signals_dict.get("GOVERNANCE_INTELLIGENCE", [])
+    }
     
     # 2. Load Prompts
     if not os.path.exists(prompt_path):
