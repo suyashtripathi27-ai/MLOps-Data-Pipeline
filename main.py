@@ -61,7 +61,7 @@ INDUSTRY_KEYWORDS = {
                        'machine_id', 'maintenance', 'throughput_rate', 'work_order'],
     "logistics":     ['demurrage', 'detention', 'freight', 'hub', 'osrm', 'route_id',
                        'fleet', 'sla', 'carrier', 'shipment_id', 'delivery_time'],
-    "banking":       ['account_balance', 'loan', 'deposit', 'branch', 'interest_rate',
+    "banking":       ['balance', 'loan', 'deposit', 'branch', 'interest_rate',
                        'credit_score', 'overdraft', 'npa', 'atm', 'ifsc', 'kyc'],
     "finance":       ['cashflow', 'ebitda', 'balance_sheet', 'expense_category',
                        'budget_variance', 'roi', 'npv', 'liquidity_ratio', 'gross_margin'],
@@ -133,10 +133,19 @@ def detect_industry(columns_list, file_name=""):
     best_industry = max(scores, key=scores.get)
     best_score = scores[best_industry]
 
-    if best_score > 0:
+    # A single coincidental keyword hit (e.g. "deposit" inside "Fixed_Deposits" on
+    # an investment-preference survey, not an actual bank account record) is too
+    # weak to commit to an operationally-strict industry. Real datasets for these
+    # industries consistently produce multiple independent matches; a lone hit is
+    # more often a false positive than a genuine signal.
+    MIN_CONFIDENT_SCORE = 2
+    if best_score >= MIN_CONFIDENT_SCORE:
         print(f"🎯 Classified as [{best_industry.upper()}] via local schema scoring "
               f"({best_score} operational column signal(s) matched)")
         return best_industry
+    if best_score == 1:
+        print(f"⚠️ Only a single weak signal for [{best_industry.upper()}] "
+              f"(possible false positive) — treating as no strong match.")
 
     # No industry-specific operational evidence anywhere in the schema.
     # Fall back to the safest generic landing spot based on general table shape.
