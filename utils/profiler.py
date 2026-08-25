@@ -23,6 +23,20 @@ def generate_payload(df, industry_context="generic"):
     if missing_percent.max() > 20:
         reliability_score -= 20
         warnings.append("High missing data detected (Some columns > 20% empty).")
+
+    # Check 2: Sample Size Penalty — a dataset can have zero missing values and
+    # zero outliers while still being too small to support confident business
+    # claims (e.g. a 40-row survey). This was previously unchecked, so a tiny
+    # dataset could still score a perfect 100/100 reliability.
+    if total_rows < 30:
+        reliability_score -= 30
+        warnings.append(f"Very small sample size (n={total_rows}) — statistical measures "
+                         f"(means, variability, correlations) carry high uncertainty and "
+                         f"should be treated as directional, not conclusive.")
+    elif total_rows < 100:
+        reliability_score -= 15
+        warnings.append(f"Small sample size (n={total_rows}) — findings should be treated "
+                         f"with added caution until validated on a larger dataset.")
         
     # 3. Statistical Sanity Validator
     numeric_cols = df.select_dtypes(include=['number']).columns
