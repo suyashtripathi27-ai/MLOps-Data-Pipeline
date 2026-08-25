@@ -136,6 +136,9 @@ UNIVERSAL_SCHEMA = {
     "days_without_incident": ["safe_days", "days_since_accident"],
     "asset_utilization_pct": ["assetutilization", "utilizationrate", "capacityused"],
     "cycle_time": ["process_time", "lead_time_per_unit", "machine_cycle", "tact_time"],
+    "defect_target": ["pass/fail", "class", "target", "label", "status", "yield_flag", "is_defect"],
+    "sensor_timestamp": ["time", "timestamp", "datetime", "date_recorded"],
+    "sensor_id": ["sensor", "feature", "channel", "signal"],
     "wip_inventory": ["work_in_progress", "wip_stock", "semi_finished_goods", "wip"],
     "rework_hours": ["rework_time", "correction_hours", "repair_labor", "re_processing_time"],
 
