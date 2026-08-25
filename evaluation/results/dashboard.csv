@@ -40,3 +40,5 @@ Timestamp,Version,Industry,Dataset,Scenario,Difficulty,Total,Max,Percent,Behavio
 20260825_213229,v3,manufacturing,archive (6),production_instability,Easy,54,60,90.0,9,10,10,5,10,10
 20260825_213924,v3,finance,archive (5),margin_erosion,Easy,45,60,75.0,7,3,10,5,10,10
 20260825_214932,v3,manufacturing,archive (6),production_instability,Easy,55,60,91.67,10,10,10,5,10,10
+20260825_215229,v3,banking,archive (7),churn_crisis,Hard,52,60,86.67,7,10,10,5,10,10
+20260825_215252,v3,manufacturing,archive (6),production_instability,Easy,58,60,96.67,10,10,10,8,10,10
