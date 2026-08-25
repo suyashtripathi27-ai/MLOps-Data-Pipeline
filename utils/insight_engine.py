@@ -4,9 +4,6 @@ import re
 # ==========================================
 # LAYER 1: THE MASTER ONTOLOGY (Multi-Industry + Future State)
 # ==========================================
-Here is the massively expanded `INDUSTRY_ONTOLOGIES` dictionary. I have deepened the existing clusters with more granular vocabulary and added entirely new clusters covering operations, compliance, marketing, and strategic risks for all 8 industries.
-
-```python
 INDUSTRY_ONTOLOGIES = {
     "manufacturing": {
         "production_instability_cluster": {
