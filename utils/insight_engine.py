@@ -310,6 +310,7 @@ INDUSTRY_ONTOLOGIES = {
         }
     }
 }
+
 # ==========================================
 # LAYER 2: SIGNAL ENRICHMENT ENGINE
 # ==========================================
@@ -321,20 +322,20 @@ def map_to_ontology(category, name, industry="manufacturing"):
             return cluster_name, rules["impact_areas"], rules["related_signals"], rules["criticality"]
             
     return "general_operations_cluster", ["general_monitoring"], [], "internal_operational"
-
+ 
 def calculate_numeric_confidence(label):
     mapping = {"🟢 High": 0.92, "High": 0.92, "🟡 Medium": 0.65, "Medium": 0.65, "🔴 Low": 0.35, "Low": 0.35}
     return mapping.get(label, 0.50)
-
+ 
 def determine_operational_scope(name, category):
     text = f"{category} {name}".lower()
     if any(k in text for k in ['total', 'overall', 'revenue', 'average']):
         return "systemic"
     return "localized"
-
+ 
 def clean_dimension_name(category):
     return re.sub(r'[^\w\s]', '', category).strip().replace(' ', '_').lower()
-
+ 
 def generate_signal(kpi, industry):
     warning = str(kpi.get("warnings", "None"))
     category = kpi.get("category", "General")
@@ -373,7 +374,7 @@ def generate_signal(kpi, industry):
         signal["time_sensitivity"] = "none"
         
     return signal
-
+ 
 # ==========================================
 # LAYER 3: DEDUPLICATION, WEIGHTING & ESCALATION
 # ==========================================
@@ -408,9 +409,9 @@ def consolidate_signals(signals_list):
         if sig["severity"] == "HIGH":
             consolidated[cluster]["highest_severity"] = "HIGH"
             consolidated[cluster]["time_sensitivity"] = "immediate_attention"
-
+ 
     return consolidated
-
+ 
 def apply_cross_cluster_escalation(clusters, industry):
     if industry == "manufacturing":
         if "production_instability_cluster" in clusters and "quality_degradation_cluster" in clusters:
@@ -423,7 +424,7 @@ def apply_cross_cluster_escalation(clusters, industry):
             clusters["fulfillment_risk_cluster"]["time_sensitivity"] = "CRITICAL_BOARD_LEVEL"
             
     return clusters
-
+ 
 def calculate_priority_scores(clusters):
     for cluster_name, data in clusters.items():
         avg_conf = sum(data["raw_confidences"]) / len(data["raw_confidences"])
@@ -448,11 +449,11 @@ def calculate_priority_scores(clusters):
         del data["unique_evidence_types"]
         
     return clusters
-
+ 
 # ==========================================
 # LAYER 4: THE NEW SEPARATED SYNTHESIS PIPELINE
 # ==========================================
-def synthesize_operational_signals(kpi_list, industry="manufacturing"):
+def synthesize_operational_signals(kpi_list, industry="manufacturing", data_reliability_score=None, system_warnings=None):
     """
     Separates operational intelligence from governance intelligence.
     Prevents missing data warnings from generating false positive risk clusters.
@@ -460,7 +461,7 @@ def synthesize_operational_signals(kpi_list, industry="manufacturing"):
     # 1. Split signals by explicit classification
     operational_kpis = [k for k in kpi_list if k.get("signal_type", "operational") != "governance"]
     governance_kpis = [k for k in kpi_list if k.get("signal_type") == "governance"]
-
+ 
     # 2. OPERATIONAL INTELLIGENCE (Full clustering & scoring)
     raw_signals = [generate_signal(kpi, industry) for kpi in operational_kpis]
     grouped_clusters = consolidate_signals(raw_signals)
@@ -470,7 +471,7 @@ def synthesize_operational_signals(kpi_list, industry="manufacturing"):
     sorted_operational_blocks = dict(
         sorted(scored_clusters.items(), key=lambda item: item[1]['cluster_priority_score'], reverse=True)
     )
-
+ 
     # 3. GOVERNANCE INTELLIGENCE (Direct mapping, no clustering hallucination)
     governance_signals = []
     for k in governance_kpis:
@@ -479,9 +480,29 @@ def synthesize_operational_signals(kpi_list, industry="manufacturing"):
             "issue": k.get("warnings", "Data excluded by governance engine."),
             "affected_area": k.get("category", "System Diagnostics")
         })
-
+ 
+    # 3b. DATA INTEGRITY SIGNALS (from utils.profiler's statistical sanity engine)
+    # This surfaces the reliability score and sanity-check flags (extreme outliers,
+    # cold-chain violations, negative dosages, etc.) that were previously computed
+    # to silently adjust a score, but never actually reached the report narrative.
+    if data_reliability_score is not None:
+        severity = "HIGH" if data_reliability_score < 50 else "MEDIUM" if data_reliability_score < 80 else "LOW"
+        governance_signals.append({
+            "severity": severity,
+            "issue": f"Overall Data Reliability Score: {data_reliability_score}/100",
+            "affected_area": "Data Integrity"
+        })
+    for warning in (system_warnings or []):
+        if warning and "looks statistically stable" not in warning:
+            governance_signals.append({
+                "severity": "MEDIUM",
+                "issue": warning,
+                "affected_area": "Statistical Sanity Check"
+            })
+ 
     # 4. Strict return structure for LLM routing
     return {
         "OPERATIONAL_INTELLIGENCE": sorted_operational_blocks,
         "GOVERNANCE_INTELLIGENCE": governance_signals
     }
+ 
