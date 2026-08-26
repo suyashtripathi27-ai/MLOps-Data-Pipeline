@@ -13,37 +13,44 @@ from utils.chart_engine import generate_industry_charts
 from evaluation.benchmark_runner import run_benchmark
 
 # 2. HIGH-AVAILABILITY CLIENT SETUP
-print("🔌 Initializing Multi-API Client Router...")
-clients = {}
+# Deliberately NOT run at import time. Importing this module (e.g. to reuse
+# detect_industry() or INDUSTRY_KEYWORDS elsewhere -- a demo app, a notebook,
+# a test) must not require API keys or exit the process. This is only called
+# from main() itself, right before it's actually needed.
+def _initialize_clients():
+    print("🔌 Initializing Multi-API Client Router...")
+    clients = {}
 
-gemini_key = os.getenv("GEMINI_API_KEY")
-if gemini_key:
-    clients["gemini"] = OpenAI(
-        api_key=gemini_key,
-        base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-    )
+    gemini_key = os.getenv("GEMINI_API_KEY")
+    if gemini_key:
+        clients["gemini"] = OpenAI(
+            api_key=gemini_key,
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+        )
 
-groq_key = os.getenv("GROQ_API_KEY")
-if groq_key:
-    clients["groq"] = OpenAI(
-        api_key=groq_key,
-        base_url="https://api.groq.com/openai/v1"
-    )
+    groq_key = os.getenv("GROQ_API_KEY")
+    if groq_key:
+        clients["groq"] = OpenAI(
+            api_key=groq_key,
+            base_url="https://api.groq.com/openai/v1"
+        )
 
-or_key = os.getenv("OPENROUTER_API_KEY")
-if or_key:
-    clients["openrouter"] = OpenAI(
-        api_key=or_key,
-        base_url="https://openrouter.ai/api/v1"
-    )
+    or_key = os.getenv("OPENROUTER_API_KEY")
+    if or_key:
+        clients["openrouter"] = OpenAI(
+            api_key=or_key,
+            base_url="https://openrouter.ai/api/v1"
+        )
 
-hf_key = os.getenv("HUGGINGFACE_API_KEY")
-if hf_key:
-    clients["huggingface"] = hf_key
+    hf_key = os.getenv("HUGGINGFACE_API_KEY")
+    if hf_key:
+        clients["huggingface"] = hf_key
 
-if not clients:
-    print("❌ ERROR: No API keys found. Please set at least one API key.")
-    sys.exit(1)
+    if not clients:
+        print("❌ ERROR: No API keys found. Please set at least one API key.")
+        sys.exit(1)
+
+    return clients
 
 # Per-industry column-name signal library used for fully LOCAL, deterministic
 # industry classification. No dataset values — only column NAMES — ever factor
@@ -290,7 +297,9 @@ def is_valid_executive_report(report_text: str) -> bool:
 
 def main():
     print("🚀 Starting Universal Enterprise Pipeline...")
-    
+
+    clients = _initialize_clients()
+
     raw_dir = 'data/raw/'
     if not os.path.exists(raw_dir):
         print(f"❌ Error: Directory '{raw_dir}' not found.")
