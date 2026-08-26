@@ -39,7 +39,7 @@ st.set_page_config(page_title="MLOps Data Pipeline — Live Demo", layout="wide"
 
 st.title("MLOps Data Pipeline")
 st.caption(
-    "Upload a CSV or Excel file and watch the fully local, deterministic part of "
+    "Upload a CSV, Excel, or ZIP file and watch the fully local, deterministic part of "
     "this pipeline run live: industry classification, data cleaning, KPI "
     "generation, and governance scoring — with zero AI calls, zero API cost, "
     "and your file never leaving this session."
@@ -49,7 +49,7 @@ tab_demo, tab_examples, tab_about = st.tabs(["Try it live", "Example reports", "
 
 # ---------------------------------------------------------------------------
 with tab_demo:
-    uploaded = st.file_uploader("Upload a CSV or Excel file", type=["csv", "xlsx", "xls"])
+    uploaded = st.file_uploader("Upload a CSV, Excel, or ZIP file", type=["csv", "xlsx", "xls", "zip"])
 
     if uploaded is not None:
         tmp_path = os.path.join("/tmp", uploaded.name)
