@@ -30,6 +30,29 @@ def _is_high_cardinality_noise(series: pd.Series, total_rows: int) -> bool:
     return series.nunique(dropna=True) / total_rows > 0.5
 
 
+def _looks_like_date_column(series: pd.Series, col_name: str) -> bool:
+    """
+    True if a string/object column is actually a date in disguise -- a very
+    common case when a CSV's date column doesn't get parsed to a real
+    datetime dtype. Such a column should never be treated as a business
+    category: it produces a meaningless 'top 5 share' chart when values
+    repeat near-uniformly (e.g. 143 dates each accounting for ~0.7% of rows
+    -- not a real concentration, just how many rows share each date), and
+    the column-name-based date_cols detection used for the trend chart
+    already handles it properly instead.
+    """
+    if 'date' in col_name.lower() or 'time' in col_name.lower():
+        return True
+    try:
+        sample = series.dropna().head(20)
+        if len(sample) == 0:
+            return False
+        pd.to_datetime(sample, errors='raise')
+        return True
+    except Exception:
+        return False
+
+
 def generate_industry_charts(df: pd.DataFrame, industry: str, file_name: str) -> str:
     """Generates universal charts for any dataset and returns root-relative markdown links."""
     chart_dir = 'data/outputs/charts'
@@ -73,6 +96,7 @@ def generate_industry_charts(df: pd.DataFrame, industry: str, file_name: str) ->
 
     # 2. TOP CATEGORICAL SHARE / CONCENTRATION CHART (Product, Country, Sales Rep, Category)
     cat_cols = df.select_dtypes(include=['object', 'category', 'string']).columns.tolist()
+    cat_cols = [c for c in cat_cols if not _looks_like_date_column(df[c], c)]
     priority_cat = next((c for c in cat_cols if any(k in c.lower() for k in ['product', 'country', 'sales', 'carrier', 'supplier', 'location', 'category', 'department'])), None)
     # Fallback: among non-noise categorical columns (not near-unique-per-row,
     # like Surname or free text), pick the LOWEST-cardinality one -- the more
