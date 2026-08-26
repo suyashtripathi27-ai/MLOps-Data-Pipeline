@@ -68,7 +68,8 @@ INDUSTRY_KEYWORDS = {
         'time_to_fill', 'time_to_hire', 'exit_interview', 'enps',
         'absenteeism', 'presenteeism', 'onboarding', 'offboarding',
         'pto_balance', 'cost_per_hire', 'voluntary_leave', 'flight_risk',
-        'base_salary', 'annual_ctc', 'sick_leave', 'date_of_joining', 'termination_date'
+        'base_salary', 'annual_ctc', 'sick_leave', 'date_of_joining', 'termination_date',
+        'salary', 'join_date', 'performance_score'
     ],
     "ecommerce": [
         'cart', 'checkout', 'pageview', 'session', 'conversion_rate',
@@ -105,7 +106,7 @@ INDUSTRY_KEYWORDS = {
         'forbearance', 'sar', 'aml', 'structuring', 'chargeback',
         'nim', 'yield_curve', 'repricing', 'ddos', 'account_balance',
         'ledger_balance', 'cibil_score', 'non_performing_asset', 
-        'loan_to_value', 'suspicious_flag', 'pep_status'
+        'loan_to_value', 'suspicious_flag', 'pep_status', 'euribor', 'poutcome'
     ],
     "finance": [
         'cashflow', 'ebitda', 'balance_sheet', 'expense_category',

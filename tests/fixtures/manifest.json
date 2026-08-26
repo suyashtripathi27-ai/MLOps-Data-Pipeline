@@ -1,0 +1,171 @@
+{
+  "_comment": "One entry per fixture file. 'expected_industry' is the industry detect_industry() should land on. 'min_kpis' is a floor on how many KPIs the industry pipeline should generate from this file (catches silent KPI-generation failures like the pharma confidence_for crash from earlier this project). 'source' is where to get the file if it's not present yet. 'notes' records why this fixture exists / what bug it guards against. Entries whose file doesn't exist yet show as SKIP (not FAIL) unless run with --strict.",
+  "retail/clean.zip": {
+    "expected_industry": "retail",
+    "min_kpis": 15,
+    "source": "already provided this session",
+    "notes": "OTC pharmacy sales ledger (Date, Product, Sales Person, Boxes Shipped, Amount ($), Country). Guards against product-name-based industry misclassification (previously misrouted to PHARMA before the schema-vs-content-semantics fix)."
+  },
+  "retail/messy.csv": {
+    "expected_industry": "retail",
+    "min_kpis": 8,
+    "source": "provided by user",
+    "notes": "retail_store_sales.csv from the Dirty Retail Store Sales dataset -- was uploaded as 'archive (8).zip', not renamed to Messy.zip, but content matches."
+  },
+  "retail/mixed.csv": {
+    "expected_industry": "retail",
+    "min_kpis": 10,
+    "source": "build manually: take retail/clean.zip's data, duplicate ~25% of rows, inject messiness into just that subset",
+    "notes": "Mostly-clean data with a deliberately corrupted minority -- checks that governance/confidence isolates the problem to the affected columns instead of tanking the whole report."
+  },
+  "ecommerce/clean.csv": {
+    "expected_industry": "retail",
+    "min_kpis": 8,
+    "source": "provided by user",
+    "notes": "online_retail_II.csv, real UK online retailer transactions, ~91MB. CORRECTED: this file has zero web-behavioral columns (no cart/session/checkout) -- it's a pure invoice-level transaction ledger, structurally identical to retail. Classifying as RETAIL is correct, not a bug, per the archive(4) precedent."
+  },
+  "ecommerce/messy.csv": {
+    "expected_industry": "ecommerce",
+    "min_kpis": 8,
+    "source": "STILL MISSING -- see https://www.kaggle.com/datasets/kandeelai22/messy-e-commerce-sales-dataset",
+    "notes": "Not yet provided."
+  },
+  "ecommerce/mixed.csv": {
+    "expected_industry": "ecommerce",
+    "min_kpis": 8,
+    "source": "build manually from ecommerce/clean.csv",
+    "notes": "See retail/mixed.csv note for the general recipe."
+  },
+  "banking/clean.csv": {
+    "expected_industry": "banking",
+    "min_kpis": 5,
+    "source": "provided by user",
+    "notes": "bank-additional-full.csv, 41k rows, Portuguese bank term-deposit campaign."
+  },
+  "banking/messy.csv": {
+    "expected_industry": "banking",
+    "min_kpis": 5,
+    "source": "provided by user",
+    "notes": "credit_train.csv -- different dataset than originally suggested (a credit-scoring train/test set rather than loan-status), still legitimately messy banking-adjacent data."
+  },
+  "banking/mixed.csv": {
+    "expected_industry": "banking",
+    "min_kpis": 5,
+    "source": "build manually from banking/clean.csv",
+    "notes": "See retail/mixed.csv note for the general recipe."
+  },
+  "finance/clean.csv": {
+    "expected_industry": "finance",
+    "min_kpis": 5,
+    "source": "already provided this session",
+    "notes": "Personal investment preference survey, short clean column headers (gender, age, Mutual_Funds, Fixed_Deposits, PPF, ...). Baseline case for this dataset."
+  },
+  "finance/messy.csv": {
+    "expected_industry": "finance",
+    "min_kpis": 5,
+    "source": "already provided this session",
+    "notes": "SAME data as finance/clean.csv but with the original verbose natural-language column headers. This exact file caused two real bugs: 'deposit' inside 'Fixed_Deposits' falsely scored BANKING, and 'order' inside 'in order of preference' falsely triggered the RETAIL fallback. Both are fixed now -- this fixture is the regression check for both."
+  },
+  "finance/mixed.csv": {
+    "expected_industry": "finance",
+    "min_kpis": 3,
+    "source": "already provided this session",
+    "notes": "Taiwanese Bankruptcy Prediction dataset. Mostly clean normalized 0-1 ratios, but several columns (e.g. 'Operating Expense Rate') have ~33% of rows corrupted with ~9.99e9 sentinel values. Guards against the confidence_engine regression where IQR-based outlier detection misses contamination above ~25%. Expect the affected KPI to show Low confidence with an explicit warning, not High/None."
+  },
+  "manufacturing/clean.csv": {
+    "expected_industry": "manufacturing",
+    "min_kpis": 8,
+    "source": "provided by user",
+    "notes": "manufacturing_defect_dataset.csv"
+  },
+  "manufacturing/messy.csv": {
+    "expected_industry": "manufacturing",
+    "min_kpis": 3,
+    "source": "provided by user",
+    "notes": "defects.csv -- legitimately tiny (10 days of parts-defect counts, 3 columns: Day/Sample/Defects), lowered min_kpis to match its narrow scope."
+  },
+  "manufacturing/mixed.csv": {
+    "expected_industry": "manufacturing",
+    "min_kpis": 8,
+    "source": "build manually from manufacturing/clean.csv",
+    "notes": "See retail/mixed.csv note for the general recipe."
+  },
+  "logistics/clean.csv": {
+    "expected_industry": "logistics",
+    "min_kpis": 8,
+    "source": "provided by user",
+    "notes": "Delivery_Logistics.csv, 25k rows, documented as clean."
+  },
+  "logistics/messy.csv": {
+    "expected_industry": "logistics",
+    "min_kpis": 8,
+    "source": "STILL MISSING -- Clean.zip and Messy.zip you uploaded were byte-identical duplicates. Re-download from https://www.kaggle.com/datasets/ayeshaseherr/delivery-logistics-dataset",
+    "notes": "Not yet provided (duplicate detected and removed)."
+  },
+  "logistics/mixed.csv": {
+    "expected_industry": "logistics",
+    "min_kpis": 8,
+    "source": "build manually from logistics/clean.csv",
+    "notes": "See retail/mixed.csv note for the general recipe."
+  },
+  "hr/clean.csv": {
+    "expected_industry": "hr",
+    "min_kpis": 8,
+    "source": "provided by user",
+    "notes": "IBM HR Analytics, 1470 rows, 35 columns."
+  },
+  "hr/messy.csv": {
+    "expected_industry": "hr",
+    "min_kpis": 8,
+    "source": "provided by user",
+    "notes": "Messy_Employee_dataset.csv -- also worth checking whether 'age' gets fuzzy-mismapped the way it did on the finance survey earlier this session."
+  },
+  "hr/mixed.csv": {
+    "expected_industry": "hr",
+    "min_kpis": 8,
+    "source": "build manually from hr/clean.csv",
+    "notes": "See retail/mixed.csv note for the general recipe."
+  },
+  "pharma/clean.csv": {
+    "expected_industry": "pharma",
+    "min_kpis": 5,
+    "source": "https://www.kaggle.com/datasets/milanzdravkovic/pharma-sales-data",
+    "notes": "6 years, 8 ATC drug categories, clean. NOTE: this is drug SALES data (like retail/clean.zip) -- may legitimately classify as RETAIL rather than PHARMA if it lacks operational pharma columns. If so that's correct behavior -- update expected_industry to 'retail' if that's what it does, per the archive(4) reasoning from earlier this session."
+  },
+  "pharma/messy.csv": {
+    "expected_industry": "OPEN QUESTION -- currently lands on retail",
+    "min_kpis": 3,
+    "source": "provided by user",
+    "notes": "messy_cancer_lab_dataset.csv, diagnostics lab data. OPEN PRODUCT QUESTION: this is clinical diagnostics LAB data (Histology, Cytology, Haematology departments), not drug manufacturing/clinical trials. It doesn't genuinely fit PHARMA as currently defined (no batch/yield/GMP/trial concepts) -- it lands on RETAIL via a coincidental weak 'order_id' signal, which isn't a meaningful classification either, just where the fallback happens to land. Real decision needed: should PHARMA's definition broaden to cover clinical/diagnostics lab operations (add keywords like pathologist, histology, specimen, lab_number), or is this genuinely a 9th vertical (healthcare/diagnostics) you don't support? Left as a failing case on purpose until that's decided."
+  },
+  "pharma/mixed.csv": {
+    "expected_industry": "pharma",
+    "min_kpis": 5,
+    "source": "build manually from pharma/clean.csv",
+    "notes": "See retail/mixed.csv note for the general recipe."
+  },
+  "finance/clean_financials_multitable.zip": {
+    "expected_industry": "finance",
+    "min_kpis": 3,
+    "source": "provided by user",
+    "notes": "6 related CSVs (balance sheet/income/cashflow, annual+quarterly) in one zip -- good candidate to actually exercise the star-schema/multi-table relationship detector, which none of our other fixtures have triggered."
+  },
+  "finance/messy_transactions.csv": {
+    "expected_industry": "retail",
+    "min_kpis": 3,
+    "source": "provided by user",
+    "notes": "dirty_financial_transactions.csv, additional messy finance fixture alongside the investment-survey one. CORRECTED: despite the Kaggle title 'financial transactions', the actual schema (Transaction_ID, Product_Name, Quantity, Price, Payment_Method) is a plain retail/ecommerce sales ledger with zero real accounting concepts (no P&L, balance sheet, cashflow). RETAIL is the correct classification."
+  },
+  "pharma/clean_sales_multigranularity.zip": {
+    "expected_industry": "pharma",
+    "min_kpis": 3,
+    "source": "provided by user",
+    "notes": "4 related CSVs (daily/weekly/hourly/monthly OTC sales) in one zip. NOTE: this is drug SALES data like retail/messy.csv -- may legitimately classify as RETAIL rather than PHARMA if it lacks operational pharma columns. That would be correct behavior, not a bug, per the archive(4) reasoning from earlier this session -- update expected_industry to 'retail' if that's what it does. KNOWN LIMITATION, not fixed: columns are raw ATC drug classification codes (M01AB, N02BE, R03...) with no English words for any local keyword heuristic to recognize. Correctly identifying these as pharma requires either an AI call or a hardcoded ATC-code lookup table -- this is the accepted tradeoff of the fully-local, non-AI classification design. Currently falls through to the hardcoded FINANCE default. Left failing intentionally so this doesn't get silently forgotten; revisit only if this becomes a real customer case."
+  },
+  "retail/clean.csv": {
+    "expected_industry": "retail",
+    "min_kpis": 10,
+    "source": "provided by user",
+    "notes": "retail_sales_dataset.csv -- the canonical clean retail fixture (Transaction ID, Date, Customer ID, Gender, Age, Product Category, Quantity, Price/Unit, Total Amount)."
+  }
+}
