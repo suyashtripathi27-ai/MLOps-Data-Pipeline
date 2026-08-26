@@ -1,0 +1,10 @@
+pandas
+numpy
+openpyxl
+openai
+matplotlib
+seaborn
+rapidfuzz
+google-generativeai
+tenacity
+pydantic
