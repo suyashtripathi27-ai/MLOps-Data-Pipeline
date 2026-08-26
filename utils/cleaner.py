@@ -6,6 +6,27 @@ import difflib
 import re
 from .relationship_detector import enrich_fact_table
 
+
+def smart_parse_dates(series: pd.Series) -> pd.Series:
+    """
+    Tries both date-order interpretations and keeps whichever actually
+    parses more of the data -- instead of assuming MM/DD/YYYY (pandas'
+    default) and silently failing on any DD/MM/YYYY dataset, which is the
+    standard format outside the US and was previously causing every
+    date-based KPI (seasonality, trends, growth rates) to silently never
+    compute at all for a large share of real-world datasets.
+    Returns the better-parsed series (as datetime64, with unparseable
+    values as NaT) rather than raising or returning the raw column.
+    """
+    default_parse = pd.to_datetime(series, errors='coerce')
+    dayfirst_parse = pd.to_datetime(series, errors='coerce', dayfirst=True)
+
+    default_valid = default_parse.notna().sum()
+    dayfirst_valid = dayfirst_parse.notna().sum()
+
+    return dayfirst_parse if dayfirst_valid > default_valid else default_parse
+
+
 def load_and_clean(file_path):
     """Loads files, handles massive database ZIPs, and enriches fact tables."""
     print(f"📥 Attempting to load: {file_path}")
@@ -341,7 +362,9 @@ def universal_clean(df):
             
     for col in df.columns:
         if 'date' in col.lower() or 'time' in col.lower() or 'timestamp' in col.lower():
-            try: df[col] = pd.to_datetime(df[col])
-            except: pass
+            try:
+                df[col] = smart_parse_dates(df[col])
+            except Exception:
+                pass
             
     return df
