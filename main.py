@@ -106,7 +106,9 @@ INDUSTRY_KEYWORDS = {
         'forbearance', 'sar', 'aml', 'structuring', 'chargeback',
         'nim', 'yield_curve', 'repricing', 'ddos', 'account_balance',
         'ledger_balance', 'cibil_score', 'non_performing_asset', 
-        'loan_to_value', 'suspicious_flag', 'pep_status', 'euribor', 'poutcome'
+        'loan_to_value', 'suspicious_flag', 'pep_status', 'euribor', 'poutcome',
+        'upb', 'lien_status', 'balloon', 'neg_am', 'fed_guarantee',
+        'prepay_penalty', 'ami_hud'
     ],
     "finance": [
         'cashflow', 'ebitda', 'balance_sheet', 'expense_category',
@@ -189,6 +191,12 @@ def detect_industry(columns_list, file_name=""):
     by this system's own logic, scored against a curated per-industry keyword
     library. Ties/near-misses fall back deterministically to the closest
     general-purpose industry rather than guessing.
+
+    Every low-confidence outcome (a single weak keyword match, or no match at
+    all) is logged to CLASSIFICATION_REVIEW_LOG for later human review — this
+    turns every ambiguous real-world dataset into a candidate for expanding
+    INDUSTRY_KEYWORDS, the same way every bug found by hand this project was
+    found: by noticing a dataset that didn't confidently match anything.
     """
     print(f"🔍 Sniffing data schema locally: {columns_list}")
     cols_str = str(columns_list).lower()
@@ -217,18 +225,60 @@ def detect_industry(columns_list, file_name=""):
     if best_score == 1:
         print(f"⚠️ Only a single weak signal for [{best_industry.upper()}] "
               f"(possible false positive) — treating as no strong match.")
+        _log_classification_for_review(columns_list, file_name, scores,
+                                         "weak_signal", best_industry)
 
     # No industry-specific operational evidence anywhere in the schema.
     # Fall back to the safest generic landing spot based on general table shape.
     if any(kw in cols_str for kw in ['cart', 'checkout', 'pageview']):
         print("🎯 No strong industry signal — defaulting to [ECOMMERCE] (cart/checkout shape)")
+        _log_classification_for_review(columns_list, file_name, scores,
+                                         "no_signal_fallback", "ecommerce")
         return "ecommerce"
     if any(kw in cols_str for kw in GENERIC_SALES_SIGNALS):
         print("🎯 No strong industry signal — defaulting to [RETAIL] (generic sales/transaction shape)")
+        _log_classification_for_review(columns_list, file_name, scores,
+                                         "no_signal_fallback", "retail")
         return "retail"
 
     print("⚠️ No industry signal detected at all in the schema — defaulting to [FINANCE]")
+    _log_classification_for_review(columns_list, file_name, scores,
+                                     "no_signal_hardcoded_default", "finance")
     return "finance"
+
+
+CLASSIFICATION_REVIEW_LOG = "data/outputs/logs/classification_review_log.jsonl"
+
+
+def _log_classification_for_review(columns_list, file_name, scores, reason, landed_on):
+    """
+    Append-only, human-reviewed learning loop. Never changes runtime behavior
+    by itself — it only records that this run's classification was uncertain,
+    why, and what every industry scored. Review this file periodically (see
+    scripts/review_classification_log.py) and use real, recurring patterns in
+    it to add new entries to INDUSTRY_KEYWORDS deliberately, the same way every
+    keyword added this project came from a real dataset that didn't classify
+    confidently the first time.
+    """
+    import json
+    from datetime import datetime, timezone
+
+    entry = {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "file_name": file_name,
+        "columns": columns_list,
+        "scores": scores,
+        "reason": reason,
+        "landed_on": landed_on,
+    }
+    try:
+        os.makedirs(os.path.dirname(CLASSIFICATION_REVIEW_LOG), exist_ok=True)
+        with open(CLASSIFICATION_REVIEW_LOG, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry) + "\n")
+    except OSError as e:
+        print(f"⚠️ Could not write to classification review log: {e}")
+
+
 
 def is_valid_executive_report(report_text: str) -> bool:
     """Validates that a report is a full executive analysis and not a system error message."""
