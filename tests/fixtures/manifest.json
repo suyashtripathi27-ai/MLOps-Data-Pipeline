@@ -167,5 +167,11 @@
     "min_kpis": 10,
     "source": "provided by user",
     "notes": "retail_sales_dataset.csv -- the canonical clean retail fixture (Transaction ID, Date, Customer ID, Gender, Age, Product Category, Quantity, Price/Unit, Total Amount)."
+  },
+  "banking/clean_gse_mortgage_pudb.zip": {
+    "expected_industry": "banking",
+    "min_kpis": 3,
+    "source": "provided by user -- real FHFA Public Use Database (PUDB), 2024 Multifamily Loan Acquisitions Census Tract File, Fannie Mae + Freddie Mac",
+    "notes": "Real government-published GSE mortgage/housing-finance data -- a completely different banking sub-vertical (mortgage underwriting/fair-lending) from the retail-consumer-banking vocabulary the original keyword list was built around. Found and fixed two real bugs from this file: (1) UNIVERSAL_SCHEMA had bare 'ltv' as an alias for 'clv' (customer lifetime value) -- LTV (Loan-To-Value) and CLV (Customer Lifetime Value) are both legitimate uses of the same acronym in totally different domains, and the wrong one owned it, silently destroying a real banking signal on every mortgage dataset. Moved 'ltv' to 'ltv_ratio' where it belongs. (2) Even with that fixed, banking's keyword list had zero mortgage-specific vocabulary (upb, lien_status, balloon, neg_am, fed_guarantee, prepay_penalty, ami_hud) -- added. Before the fix this fell through to the hardcoded FINANCE default with zero real signal; after the fix it scores 8 independent banking matches."
   }
 }
