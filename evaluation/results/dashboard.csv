@@ -52,3 +52,4 @@ Timestamp,Version,Industry,Dataset,Scenario,Difficulty,Total,Max,Percent,Behavio
 20260826_202410,v3,banking,2024_pudb_mf_ctf,churn_crisis,Hard,41,60,68.33,3,0,10,8,10,10
 20260826_202422,v3,finance,archive (7),margin_erosion,Easy,49,60,81.67,4,10,10,5,10,10
 20260826_202656,v3,banking,clean_gse_mortgage_pudb,churn_crisis,Hard,38,60,63.33,0,0,10,8,10,10
+20260826_211815,v3,hr,Banking Customer Chrun Predicator Dataset,governance_failure,Hard,42,60,70.0,7,3,10,2,10,10
