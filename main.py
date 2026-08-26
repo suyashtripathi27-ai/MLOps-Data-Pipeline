@@ -105,7 +105,9 @@ INDUSTRY_KEYWORDS = {
         'ftl', 'ltl', 'fuel_surcharge', 'accessorial', 'deadhead',
         'hos', 'eld_compliance', 'geofencing', 'wms', 'routing', 'telematics',
         'drop_size', 'proof_of_delivery', 'pod_status', 'freight_class',
-        'nmfc', 'incoterms', 'customs_status', 'tare_weight', 'payload_weight'
+        'nmfc', 'incoterms', 'customs_status', 'tare_weight', 'payload_weight',
+        'trip_uuid', 'route_schedule', 'source_center', 'destination_center',
+        'cutoff_factor', 'od_start_time', 'od_end_time', 'distance_to_destination'
     ],
     "banking": [
         'balance', 'loan', 'deposit', 'branch', 'interest_rate',
