@@ -179,5 +179,11 @@
     "min_kpis": 3,
     "source": "provided by user -- the classic Kaggle 'Bank Customer Churn' dataset (Churn_Modelling.csv)",
     "notes": "Found and fixed a real bug from this exact file: the uploaded filename had a typo ('Chrun' instead of 'Churn'), and the substring 'hr' inside 'chrun' triggered the filename-hint tiebreaker for HR, coincidentally matching HR's real column signals (Tenure, EstimatedSalary -- both legitimately ambiguous between customer and employee meanings) into an exact 3-3 tie with banking's real signals (credit_score, balance, + 'banking' legitimately in the filename). The tie broke to HR purely due to dict insertion order, not any meaningful confidence difference. Fixed the filename-hint check to require whole-word matching instead of raw substring matching -- this protects every industry from this class of coincidental-typo collision, not just this one case. NOTE: RowNumber gets fuzzy-mapped to 'shipment_id' (0.89 ratio against 'pronumber') -- didn't cause a wrong classification here since it only contributes 1 point (below threshold), but 'RowNumber' is a very generic term worth reviewing if it causes problems on a future dataset."
+  },
+  "logistics/clean_delhivery_trips.csv": {
+    "expected_industry": "logistics",
+    "min_kpis": 3,
+    "source": "provided by user -- the well-known Kaggle Delhivery logistics feature-engineering dataset, 144,867 rows",
+    "notes": "Real last-mile/parcel-delivery trip data. Genuinely scored only 1 point ('osrm') before the fix -- the existing logistics keyword list was built around trucking/freight terminology (demurrage, waybill, nmfc, ftl/ltl) with zero coverage for route-optimization/last-mile vocabulary (trip_uuid, route_schedule, source_center/destination_center, cutoff). Same pattern as the GSE mortgage vs retail-banking gap found earlier -- one sub-vertical's keyword coverage doesn't generalize to a sibling sub-vertical within the same broader industry. Added trip_uuid, route_schedule, source_center, destination_center, cutoff_factor, od_start_time/od_end_time, distance_to_destination -- now scores 9."
   }
 }
