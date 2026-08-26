@@ -3,6 +3,7 @@ import bootstrap
 
 import os
 import sys
+import re
 import importlib  
 from openai import OpenAI
 
@@ -115,7 +116,7 @@ INDUSTRY_KEYWORDS = {
         'ledger_balance', 'cibil_score', 'non_performing_asset', 
         'loan_to_value', 'suspicious_flag', 'pep_status', 'euribor', 'poutcome',
         'upb', 'lien_status', 'balloon', 'neg_am', 'fed_guarantee',
-        'prepay_penalty', 'ami_hud'
+        'prepay_penalty', 'ami_hud', 'numofproducts', 'hascrcard', 'activemember'
     ],
     "finance": [
         'cashflow', 'ebitda', 'balance_sheet', 'expense_category',
@@ -212,7 +213,13 @@ def detect_industry(columns_list, file_name=""):
     scores = {}
     for industry, keywords in INDUSTRY_KEYWORDS.items():
         score = sum(1 for kw in keywords if kw in cols_str)
-        if industry in fname_str:
+        # Word-boundary match, not raw substring -- a raw substring check let
+        # "hr" match inside "chrun" (a typo for "churn"), coincidentally
+        # handing HR a free point that had nothing to do with the industry
+        # name actually appearing in the filename. Short industry names like
+        # "hr" are especially prone to this; whole-word matching fixes it for
+        # all of them at once.
+        if re.search(r'\b' + re.escape(industry) + r'\b', fname_str):
             score += 1  # small filename-hint tiebreaker
         scores[industry] = score
 
