@@ -15,6 +15,7 @@ from .engagement_analysis import calc_engagement_metrics
 from .training_analysis import calc_training_metrics
 from .compensation_analysis import calc_compensation_metrics
 from .compliance_analysis import calc_compliance_metrics
+from utils.categorical_analysis import calc_universal_categorical_metrics
 
 
 def generate_dynamic_kpis(df):
@@ -37,6 +38,7 @@ def generate_dynamic_kpis(df):
         # SENSITIVE: Compensation & Compliance require governance filters
         ("Compensation", calc_compensation_metrics),
         ("Compliance", calc_compliance_metrics),
+        ("Categorical Analysis", calc_universal_categorical_metrics),
     ]
     
     for module_name, module_func in hr_modules:
