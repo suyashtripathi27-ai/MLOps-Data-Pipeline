@@ -11,6 +11,7 @@ from .risk_analysis import calc_risk_metrics
 from .fraud_analysis import calc_fraud_metrics
 from .investment_analysis import calc_investment_metrics
 from .forecasting_analysis import calc_forecasting_metrics
+from utils.categorical_analysis import calc_universal_categorical_metrics
 
 
 def generate_dynamic_kpis(df):
@@ -26,6 +27,7 @@ def generate_dynamic_kpis(df):
         calc_fraud_metrics,
         calc_investment_metrics,
         calc_forecasting_metrics,
+        calc_universal_categorical_metrics,
     ]:
         try:
             all_kpis.extend(module(df))
