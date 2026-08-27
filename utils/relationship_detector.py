@@ -23,7 +23,12 @@ def enrich_fact_table(fact_df, all_dfs):
         common_keys = list(set(fk_columns).intersection(set(dim_df.columns)))
         
         if common_keys:
-            join_key = common_keys[0] # Take the first matching key
+            join_key = sorted(common_keys)[0]  # deterministic choice -- set
+            # iteration order varies by Python's hash seed across process
+            # runs, so picking common_keys[0] directly could join on a
+            # different key on different runs of the exact same input file
+            # whenever 2+ foreign-key-shaped columns are shared, breaking
+            # the reproducibility this project's regression suite depends on.
             print(f"🔗 Match found! Joining `{dim_name}` onto Fact Table using key: `{join_key}`")
             
             # Step 3: SAFE Left Join
