@@ -1,110 +1,171 @@
-import pandas as pd
+import os
+import json
+import csv
+from datetime import datetime
+from evaluation.evaluation_engine import EvaluationEngine
 
-# ==========================================
-# 1. BULK DIAGNOSTICS (For the Technical Appendix)
-# ==========================================
-def check_negative_values(df, columns):
-    """Flags any impossible negative values (like negative distances or times)."""
-    warnings = []
-    for col in columns:
-        if col in df.columns and pd.api.types.is_numeric_dtype(df[col]):
-            neg_count = (df[col] < 0).sum()
-            if neg_count > 0:
-                warnings.append(f"⚠️ {neg_count} negative values found in `{col}`.")
-    return warnings
-
-def validate_dates(df, start_col, end_col):
-    """Flags chronologically impossible dates (e.g., end time before start time)."""
-    warnings = []
-    if start_col in df.columns and end_col in df.columns:
-        invalid_dates = (df[end_col] < df[start_col]).sum()
-        if invalid_dates > 0:
-            warnings.append(f"⚠️ {invalid_dates} rows where `{end_col}` occurs before `{start_col}`.")
-    return warnings
-
-
-# ==========================================
-# 2. STRICT KPI GATEKEEPER (For Business Logic)
-# ==========================================
-class SemanticValidator:
-    """Checks for semantic corruption to approve or reject specific KPIs."""
-
-    @staticmethod
-    def is_valid_datetime(series):
-        """Checks if a column is a valid datetime and not a Unix Epoch anomaly."""
-        if not pd.api.types.is_datetime64_any_dtype(series):
-            return False, "Not a datetime data type."
+def get_scenario_from_filename(filename: str, industry: str) -> str:
+    """Universally routes the dataset to the correct scenario across all 64 architectures."""
+    lower_name = filename.lower()
+    
+    if industry == "hr":
+        if any(w in lower_name for w in ["attrition", "turnover", "retention"]): return "attrition_crisis"
+        if any(w in lower_name for w in ["burnout", "wellbeing", "overtime"]): return "burnout_risk"
+        if any(w in lower_name for w in ["recruit", "hire", "talent"]): return "recruitment_failure"
+        if any(w in lower_name for w in ["learning", "training", "skill"]): return "learning_impact_failure"
+        if any(w in lower_name for w in ["leader", "succession"]): return "leadership_gap"
+        if any(w in lower_name for w in ["workforce", "headcount", "capacity"]): return "workforce_planning_risk"
+        if any(w in lower_name for w in ["diversity", "inclusion", "equity"]): return "diversity_inclusion_risk"
+        if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
+        return "attrition_crisis"
         
-        # Check for Epoch anomalies (e.g., 1970)
-        min_year = series.dt.year.min()
-        if min_year < 2000:
-            return False, f"Detected Unix epoch anomaly (Year {min_year})."
-            
-        return True, "Valid"
+    elif industry == "retail":
+        if any(w in lower_name for w in ["store", "footfall", "performance"]): return "store_performance_decline"
+        if any(w in lower_name for w in ["inventory", "stock", "aging"]): return "inventory_health_failure"
+        if any(w in lower_name for w in ["markdown", "clearance"]): return "markdown_pressure"
+        if any(w in lower_name for w in ["shrinkage", "theft", "loss"]): return "shrinkage_risk"
+        if any(w in lower_name for w in ["price", "pricing", "margin"]): return "pricing_pressure"
+        if any(w in lower_name for w in ["promotion", "campaign"]): return "promotion_inefficiency"
+        if any(w in lower_name for w in ["productivity", "labor", "staff"]): return "workforce_productivity_decline"
+        if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
+        return "store_performance_decline"
 
-    @staticmethod
-    def is_valid_duration(series):
-        """Checks if a time duration or distance is semantically valid (no negatives)."""
-        if not pd.api.types.is_numeric_dtype(series):
-            return False, "Not numeric."
+    elif industry == "finance":
+        if any(w in lower_name for w in ["liquidity", "cash"]): return "liquidity_crisis"
+        if any(w in lower_name for w in ["margin", "ebitda"]): return "margin_erosion"
+        if any(w in lower_name for w in ["concentration", "revenue"]): return "revenue_concentration"
+        if any(w in lower_name for w in ["forecast", "variance"]): return "forecast_breakdown"
+        if any(w in lower_name for w in ["working capital", "receivable"]): return "working_capital_stress"
+        if any(w in lower_name for w in ["covenant", "debt"]): return "debt_covenant_risk"
+        if any(w in lower_name for w in ["inflation", "opex", "cost"]): return "cost_inflation_pressure"
+        if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
+        return "margin_erosion"
+
+    elif industry == "ecommerce":
+        if any(w in lower_name for w in ["churn", "retention", "clv"]): return "customer_churn"
+        if any(w in lower_name for w in ["cart", "abandonment"]): return "cart_abandonment"
+        if any(w in lower_name for w in ["cac", "acquisition", "roas"]): return "cac_explosion"
+        if any(w in lower_name for w in ["inventory", "distortion"]): return "inventory_distortion"
+        if any(w in lower_name for w in ["fulfillment", "delivery"]): return "fulfillment_breakdown"
+        if any(w in lower_name for w in ["promotion", "discount"]): return "promotion_dependency"
+        if any(w in lower_name for w in ["marketplace", "channel"]): return "marketplace_risk"
+        if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
+        return "customer_churn"
+
+    elif industry == "manufacturing":
+        if any(w in lower_name for w in ["oee", "instability", "production"]): return "production_instability"
+        if any(w in lower_name for w in ["quality", "defect", "rework"]): return "quality_failure"
+        if any(w in lower_name for w in ["maintenance", "mtbf"]): return "maintenance_failure"
+        if any(w in lower_name for w in ["material", "shortage"]): return "material_shortage"
+        if any(w in lower_name for w in ["capacity", "constraint"]): return "capacity_constraint"
+        if any(w in lower_name for w in ["scrap", "waste"]): return "scrap_cost_explosion"
+        if any(w in lower_name for w in ["supplier", "procurement"]): return "supplier_dependency"
+        if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
+        return "production_instability"
+
+    elif industry == "pharma":
+        if any(w in lower_name for w in ["compliance", "gmp", "fda"]): return "compliance_breach"
+        if any(w in lower_name for w in ["yield", "batch"]): return "yield_degradation"
+        if any(w in lower_name for w in ["cold chain", "temperature"]): return "cold_chain_failure"
+        if any(w in lower_name for w in ["recall", "safety"]): return "market_recall_risk"
+        if any(w in lower_name for w in ["sterility", "contamination"]): return "sterility_failure"
+        if any(w in lower_name for w in ["deviation", "capa"]): return "deviation_spike"
+        if any(w in lower_name for w in ["supplier", "quality"]): return "supplier_quality_risk"
+        if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
+        return "compliance_breach"
+
+    elif industry == "logistics":
+        if any(w in lower_name for w in ["bottleneck", "network", "throughput"]): return "network_bottleneck"
+        if any(w in lower_name for w in ["freight", "cost", "fuel"]): return "freight_cost_pressure"
+        if any(w in lower_name for w in ["warehouse", "congestion"]): return "warehouse_congestion"
+        if any(w in lower_name for w in ["carrier", "concentration"]): return "carrier_concentration"
+        if any(w in lower_name for w in ["sla", "breach", "service"]): return "sla_breach_crisis"
+        if any(w in lower_name for w in ["route", "efficiency"]): return "route_efficiency_decline"
+        if any(w in lower_name for w in ["asset", "utilization", "fleet"]): return "asset_utilization_failure"
+        if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
+        return "network_bottleneck"
+
+    elif industry == "banking":
+        if any(w in lower_name for w in ["churn", "attrition"]): return "churn_crisis"
+        if any(w in lower_name for w in ["credit", "default", "loan"]): return "credit_deterioration"
+        if any(w in lower_name for w in ["liquidity", "deposit"]): return "liquidity_pressure"
+        if any(w in lower_name for w in ["aml", "fraud"]): return "aml_fraud_risk"
+        if any(w in lower_name for w in ["relationship", "depth"]): return "relationship_depth_decline"
+        if any(w in lower_name for w in ["concentration", "exposure"]): return "concentration_risk"
+        if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
+        return "churn_crisis"
+
+    return "generic_analysis"
+
+def run_benchmark(dataset_path: str, version: str = "v3", override_industry: str = None):
+    print(f"\n🚀 Starting Universal Benchmark Suite ({version}) on {dataset_path}...")
+    
+    base_name = os.path.basename(dataset_path)
+    dataset_name = os.path.splitext(base_name)[0]
+    
+    # 🎯 Dynamic Industry Mapping
+    industry = override_industry if override_industry else "banking"
+    
+    # 🎯 Dynamic Scenario Routing
+    scenario = get_scenario_from_filename(dataset_name, industry)
+    print(f"🎯 Auto-Routed to: Industry=[{industry.upper()}] | Scenario=[{scenario.upper()}]")
+    
+    report_path = f"data/outputs/reports/AI_{industry.capitalize()}_{dataset_name}_Report.md"
+    metadata_path = f"evaluation/benchmark_cases/{industry}/{scenario}/metadata.json"
+    vocab_path = "evaluation/configs/industry_vocabulary.json"
+    
+    if not os.path.exists(report_path):
+        print(f"❌ Benchmark failed: Report not found at {report_path}")
+        return
         
-        # If more than 5% of the data is negative, the entire metric is considered corrupt
-        neg_ratio = (series < 0).mean()
-        if neg_ratio > 0.05:
-            return False, f"High semantic corruption: {neg_ratio:.1%} of values are negative."
-            
-        return True, "Valid"
-
-    @staticmethod
-    def is_valid_percentage(series):
-        """Checks if a percentage metric is bounded 0-100."""
-        if not pd.api.types.is_numeric_dtype(series):
-            return False, "Not numeric."
+    with open(report_path, "r", encoding="utf-8") as f:
+        report_markdown = f.read()
         
-        # Reject if mathematically impossible percentages exist
-        if series.min() < 0 or series.max() > 100:
-            return False, f"Out of bounds percentage: min={series.min():.1f}, max={series.max():.1f}."
-            
-        return True, "Valid"
-
-
-    @staticmethod
-    def is_valid_dosage(series):
-        """Pharma: Validates medical dosage (must be positive numbers)."""
-        if not pd.api.types.is_numeric_dtype(series):
-            return False, "Not numeric."
+    print("🧠 Running Evaluation Engine...")
+    try:
+        engine = EvaluationEngine(report_markdown, metadata_path, vocab_path)
+        report = engine.run_evaluation()
         
-        # Dosages must always be positive
-        if series.min() <= 0:
-            return False, f"Invalid dosage detected: minimum value is {series.min():.2f} (must be > 0)."
-            
-        # Flag extremely high outliers (e.g., > 1000x the median)
-        median_dosage = series.median()
-        if median_dosage > 0 and series.max() > (median_dosage * 1000):
-            return False, f"Extreme dosage outlier detected: {series.max():.2f} (>{1000}x median)."
-            
-        return True, "Valid"
-
-    @staticmethod
-    def is_valid_adverse_event_count(series):
-        """Pharma: Validates adverse event tracking (must be non-negative integers)."""
-        if not pd.api.types.is_numeric_dtype(series):
-            return False, "Not numeric."
+        # 📈 V3: Pull Difficulty (Defaults to 'Medium' if not specified in JSON)
+        difficulty = engine.metadata.get("difficulty", "medium").capitalize()
         
-        # Event counts must be non-negative integers
-        if series.min() < 0 or (series != series.astype(int)).any():
-            return False, "Adverse event counts must be non-negative integers."
+    except FileNotFoundError:
+        print(f"❌ Error: Metadata file missing! Run build_suite.py to generate {metadata_path}")
+        return
+    
+    os.makedirs(f"evaluation/results/{version}", exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    
+    dashboard_path = "evaluation/results/dashboard.csv"
+    file_exists = os.path.exists(dashboard_path)
+    
+    with open(dashboard_path, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            # 📈 V3: Added Difficulty column
+            writer.writerow([
+                "Timestamp", "Version", "Industry", "Dataset", "Scenario", "Difficulty",
+                "Total", "Max", "Percent", 
+                "Behavior", "Priority", "Traceability", 
+                "Governance", "Readability", "Realism"
+            ])
             
-        return True, "Valid"
-
-    @staticmethod
-    def is_valid_gmp_compliance(series):
-        """Pharma: Validates GMP inspection results (0 = compliant, >0 = defects)."""
-        if not pd.api.types.is_numeric_dtype(series):
-            return False, "Not numeric."
+        writer.writerow([
+            timestamp, version, industry, dataset_name, scenario, difficulty,
+            report["total_score"], report["max_score"], report["percentage"],
+            report["dimensions"]["behavioral_intelligence"],
+            report["dimensions"]["prioritization"],
+            report["dimensions"]["recommendation_traceability"],
+            report["dimensions"]["governance"],
+            report["dimensions"]["executive_readability"],
+            report["dimensions"]["industry_realism"]
+        ])
         
-        # GMP defect counts must be non-negative
-        if series.min() < 0:
-            return False, "GMP defect counts cannot be negative."
-            
-        return True, "Valid"
+    print(f"📊 Telemetry updated: {dashboard_path}")
+    
+    json_path = f"evaluation/results/{version}/{industry}_{scenario}_score_{timestamp}.json"
+    with open(json_path, "w", encoding="utf-8") as f:
+        json.dump(report, f, indent=4)
+        
+    print("✅ Benchmark Complete!")
+    print(f"Total Score: {report['total_score']} / {report['max_score']} ({report['percentage']}%)")
