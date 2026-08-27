@@ -21,6 +21,7 @@ from .product_performance_analysis import calc_product_performance_metrics
 from .manufacturing_analysis import calc_manufacturing_metrics
 from .supply_chain_analysis import calc_pharma_supply_metrics
 from .regulatory_analysis import calc_regulatory_metrics
+from utils.categorical_analysis import calc_universal_categorical_metrics
 
 
 def generate_dynamic_kpis(df):
@@ -55,7 +56,8 @@ def generate_dynamic_kpis(df):
         calc_product_performance_metrics,
         calc_manufacturing_metrics,
         calc_pharma_supply_metrics,
-        calc_regulatory_metrics
+        calc_regulatory_metrics,
+        calc_universal_categorical_metrics
     ]
     
     for module in modules:
