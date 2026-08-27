@@ -16,7 +16,7 @@ def get_scenario_from_filename(filename: str, industry: str) -> str:
         if any(w in lower_name for w in ["leader", "succession"]): return "leadership_gap"
         if any(w in lower_name for w in ["workforce", "headcount", "capacity"]): return "workforce_planning_risk"
         if any(w in lower_name for w in ["diversity", "inclusion", "equity"]): return "diversity_inclusion_risk"
-        if any(w in lower_name for w in ["governance", "missing", "data"]): return "governance_failure"
+        if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
         return "attrition_crisis"
         
     elif industry == "retail":
@@ -27,7 +27,7 @@ def get_scenario_from_filename(filename: str, industry: str) -> str:
         if any(w in lower_name for w in ["price", "pricing", "margin"]): return "pricing_pressure"
         if any(w in lower_name for w in ["promotion", "campaign"]): return "promotion_inefficiency"
         if any(w in lower_name for w in ["productivity", "labor", "staff"]): return "workforce_productivity_decline"
-        if any(w in lower_name for w in ["governance", "missing", "data"]): return "governance_failure"
+        if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
         return "store_performance_decline"
 
     elif industry == "finance":
@@ -38,7 +38,7 @@ def get_scenario_from_filename(filename: str, industry: str) -> str:
         if any(w in lower_name for w in ["working capital", "receivable"]): return "working_capital_stress"
         if any(w in lower_name for w in ["covenant", "debt"]): return "debt_covenant_risk"
         if any(w in lower_name for w in ["inflation", "opex", "cost"]): return "cost_inflation_pressure"
-        if any(w in lower_name for w in ["governance", "missing", "data"]): return "governance_failure"
+        if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
         return "margin_erosion"
 
     elif industry == "ecommerce":
@@ -49,7 +49,7 @@ def get_scenario_from_filename(filename: str, industry: str) -> str:
         if any(w in lower_name for w in ["fulfillment", "delivery"]): return "fulfillment_breakdown"
         if any(w in lower_name for w in ["promotion", "discount"]): return "promotion_dependency"
         if any(w in lower_name for w in ["marketplace", "channel"]): return "marketplace_risk"
-        if any(w in lower_name for w in ["governance", "missing", "data"]): return "governance_failure"
+        if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
         return "customer_churn"
 
     elif industry == "manufacturing":
@@ -60,7 +60,7 @@ def get_scenario_from_filename(filename: str, industry: str) -> str:
         if any(w in lower_name for w in ["capacity", "constraint"]): return "capacity_constraint"
         if any(w in lower_name for w in ["scrap", "waste"]): return "scrap_cost_explosion"
         if any(w in lower_name for w in ["supplier", "procurement"]): return "supplier_dependency"
-        if any(w in lower_name for w in ["governance", "missing", "data"]): return "governance_failure"
+        if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
         return "production_instability"
 
     elif industry == "pharma":
@@ -71,7 +71,7 @@ def get_scenario_from_filename(filename: str, industry: str) -> str:
         if any(w in lower_name for w in ["sterility", "contamination"]): return "sterility_failure"
         if any(w in lower_name for w in ["deviation", "capa"]): return "deviation_spike"
         if any(w in lower_name for w in ["supplier", "quality"]): return "supplier_quality_risk"
-        if any(w in lower_name for w in ["governance", "missing", "data"]): return "governance_failure"
+        if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
         return "compliance_breach"
 
     elif industry == "logistics":
@@ -82,7 +82,7 @@ def get_scenario_from_filename(filename: str, industry: str) -> str:
         if any(w in lower_name for w in ["sla", "breach", "service"]): return "sla_breach_crisis"
         if any(w in lower_name for w in ["route", "efficiency"]): return "route_efficiency_decline"
         if any(w in lower_name for w in ["asset", "utilization", "fleet"]): return "asset_utilization_failure"
-        if any(w in lower_name for w in ["governance", "missing", "data"]): return "governance_failure"
+        if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
         return "network_bottleneck"
 
     elif industry == "banking":
@@ -92,7 +92,7 @@ def get_scenario_from_filename(filename: str, industry: str) -> str:
         if any(w in lower_name for w in ["aml", "fraud"]): return "aml_fraud_risk"
         if any(w in lower_name for w in ["relationship", "depth"]): return "relationship_depth_decline"
         if any(w in lower_name for w in ["concentration", "exposure"]): return "concentration_risk"
-        if any(w in lower_name for w in ["governance", "missing", "data"]): return "governance_failure"
+        if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
         return "churn_crisis"
 
     return "generic_analysis"
