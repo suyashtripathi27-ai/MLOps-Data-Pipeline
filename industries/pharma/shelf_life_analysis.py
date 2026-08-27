@@ -4,6 +4,7 @@ Product shelf life, expiration risk, and stability metrics.
 import pandas as pd
 from utils.kpi_helpers import first_column, safe_kpi, confidence_for
 from utils.validator import SemanticValidator
+from utils.cleaner import smart_parse_dates
 
 def calc_shelf_life_metrics(df):
     """Calculates shelf life and expiration risk KPIs."""
@@ -77,7 +78,7 @@ def calc_shelf_life_metrics(df):
     
     # Expiration analysis
     if expiry_col:
-        expiry_dt = pd.to_datetime(df[expiry_col], errors="coerce")
+        expiry_dt = smart_parse_dates(df[expiry_col])
         dt_valid, reason = SemanticValidator.is_valid_datetime(expiry_dt.dropna())
         
         if dt_valid:
