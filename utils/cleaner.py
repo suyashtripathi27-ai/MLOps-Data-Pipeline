@@ -228,6 +228,21 @@ UNIVERSAL_SCHEMA = {
     "manager_id": ["supervisor_id", "reports_to", "line_manager"],
     "employment_type": ["contract_type", "full_time", "fte_status", "part_time", "contractor"],
     "training_hours": ["cpd_hours", "learning_hours", "course_duration"],
+
+    # Insurance
+    "policy_number": ["policy_no", "policy_id", "policyid"],
+    "premium_amount": ["annual_premium", "premium_paid", "gross_premium"],
+    "claim_amount": ["claim_paid", "claimed_amount", "payout_amount"],
+    "incurred_loss": ["incurred_losses", "loss_amount", "total_incurred"],
+    "claim_status": ["claim_state", "claim_outcome", "claim_disposition"],
+    "policy_status_ins": ["policy_state", "policy_disposition"],
+    "sum_insured": ["insured_amount", "coverage_amount", "sum_assured"],
+    "deductible_amount": ["excess_amount", "deductible"],
+    "underwriter_id": ["underwriter", "uw_id"],
+    "agent_id_ins": ["agent_code", "broker_id"],
+    "fraud_flag_ins": ["is_fraud", "fraud_indicator", "suspicious_claim"],
+    "policy_type": ["product_type", "coverage_type", "insurance_type"],
+    "loss_date": ["date_of_loss", "incident_date", "claim_date"],
 }
 
 def normalize_string(s):
