@@ -95,6 +95,16 @@ def get_scenario_from_filename(filename: str, industry: str) -> str:
         if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
         return "churn_crisis"
 
+    elif industry == "insurance":
+        if any(w in lower_name for w in ["loss", "underwriting", "combined"]): return "loss_ratio_deterioration"
+        if any(w in lower_name for w in ["claim", "frequency"]): return "claims_frequency_spike"
+        if any(w in lower_name for w in ["fraud", "suspicious"]): return "fraud_exposure_rise"
+        if any(w in lower_name for w in ["retention", "lapse", "churn"]): return "retention_decline"
+        if any(w in lower_name for w in ["severity", "settlement"]): return "claims_severity_spike"
+        if any(w in lower_name for w in ["concentration", "exposure"]): return "portfolio_concentration_risk"
+        if any(w in lower_name for w in ["governance", "missing"]): return "governance_failure"
+        return "loss_ratio_deterioration"
+
     return "generic_analysis"
 
 def run_benchmark(dataset_path: str, version: str = "v3", override_industry: str = None):
