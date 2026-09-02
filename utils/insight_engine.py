@@ -308,6 +308,32 @@ INDUSTRY_ONTOLOGIES = {
             "related_signals": ["network_bottleneck_cluster"],
             "criticality": "internal_operational"
         }
+    },
+    "insurance": {
+        "underwriting_risk_cluster": {
+            "keywords": ["loss ratio", "combined ratio", "adverse selection", "risk pooling", "underwriting loss", "premium adequacy", "reserve deficiency"],
+            "impact_areas": ["profitability", "capital_adequacy", "solvency_margin"],
+            "related_signals": ["claims_management_cluster"],
+            "criticality": "internal_operational"
+        },
+        "claims_management_cluster": {
+            "keywords": ["claims frequency", "claims severity", "settlement time", "reserve adequacy", "claim backlog", "loss development", "incurred but not reported"],
+            "impact_areas": ["cash_flow", "customer_satisfaction", "reserve_accuracy"],
+            "related_signals": ["underwriting_risk_cluster", "fraud_risk_cluster"],
+            "criticality": "customer_facing"
+        },
+        "fraud_risk_cluster": {
+            "keywords": ["fraud flag", "suspicious claim", "siu referral", "staged accident", "claim padding", "fraud ring"],
+            "impact_areas": ["direct_financial_loss", "reputational_risk", "regulatory_scrutiny"],
+            "related_signals": ["claims_management_cluster"],
+            "criticality": "customer_facing"
+        },
+        "retention_cluster": {
+            "keywords": ["lapse rate", "renewal rate", "policy churn", "non-renewal", "persistency", "cross-sell", "policyholder attrition"],
+            "impact_areas": ["revenue_stability", "acquisition_cost_recovery", "portfolio_growth"],
+            "related_signals": ["underwriting_risk_cluster"],
+            "criticality": "internal_operational"
+        }
     }
 }
 
