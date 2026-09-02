@@ -27,7 +27,7 @@ def calc_universal_categorical_metrics(df: pd.DataFrame) -> list:
     # ---------------------------------------------------------
     # STATUS & FRICTION ANALYSIS
     # ---------------------------------------------------------
-    status_col, status_series = engine.get_column(['status', 'state', 'condition', 'stage', 'outcome'])
+    status_col, status_series = engine.get_column(['status', 'state', 'condition', 'stage', 'outcome', 'claim_status', 'policy_status_ins', 'loan_status'])
     negative_counts = {}
     negative_rate = 0.0
     
@@ -67,7 +67,7 @@ def calc_universal_categorical_metrics(df: pd.DataFrame) -> list:
     # ---------------------------------------------------------
     entity_keywords = [
         'carrier', 'supplier', 'vendor', 'department', 'segment', 
-        'region', 'warehouse', 'location', 'store_type', 'facility'
+        'region', 'warehouse', 'location', 'store_type', 'facility', 'policy_type'
     ]
     
     entity_cols = [col for col in df.columns if any(k in col.lower() for k in entity_keywords)]
