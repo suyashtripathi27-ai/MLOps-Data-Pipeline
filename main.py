@@ -139,6 +139,12 @@ INDUSTRY_KEYWORDS = {
         'average_transaction_value', 'units_per_transaction', 'inventory_loss',
         'clearance_rate', 'markdown_amount', 'comp_sales', 'private_label'
     ],
+    "insurance": [
+        'policy_number', 'premium', 'underwrit', 'claim_status', 'sum_insured',
+        'deductible', 'reinsurance', 'actuarial', 'combined_ratio', 'loss_ratio',
+        'policyholder', 'beneficiary', 'coinsurance', 'endorsement', 'claim_amount',
+        'incurred_loss'
+    ],
 }
 
 # Fallback signal set used only when NOTHING above matched at all — picks the
@@ -368,7 +374,8 @@ def main():
             "finance":       ("industries.finance.pipeline",       "run_finance_analysis"),
             "manufacturing": ("industries.manufacturing.pipeline", "run_manufacturing_analysis"),
             "ecommerce":     ("industries.ecommerce.pipeline",     "run_ecommerce_analysis"),
-            "hr":            ("industries.hr.pipeline",            "run_hr_analysis")
+            "hr":            ("industries.hr.pipeline",            "run_hr_analysis"),
+            "insurance":     ("industries.insurance.pipeline",     "run_insurance_analysis")
         }
 
         if industry in ROUTER_MAP:
