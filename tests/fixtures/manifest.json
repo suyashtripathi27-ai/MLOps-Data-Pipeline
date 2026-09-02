@@ -185,5 +185,11 @@
     "min_kpis": 3,
     "source": "provided by user -- the well-known Kaggle Delhivery logistics feature-engineering dataset, 144,867 rows",
     "notes": "Real last-mile/parcel-delivery trip data. Genuinely scored only 1 point ('osrm') before the fix -- the existing logistics keyword list was built around trucking/freight terminology (demurrage, waybill, nmfc, ftl/ltl) with zero coverage for route-optimization/last-mile vocabulary (trip_uuid, route_schedule, source_center/destination_center, cutoff). Same pattern as the GSE mortgage vs retail-banking gap found earlier -- one sub-vertical's keyword coverage doesn't generalize to a sibling sub-vertical within the same broader industry. Added trip_uuid, route_schedule, source_center, destination_center, cutoff_factor, od_start_time/od_end_time, distance_to_destination -- now scores 9."
+  },
+  "insurance/clean_synthetic.csv": {
+    "expected_industry": "insurance",
+    "min_kpis": 10,
+    "source": "SYNTHETIC -- generated for initial testing, not a real dataset",
+    "notes": "Placeholder fixture only. Confirms the 9th industry wires together correctly (classification, all 4 KPI modules, the universal categorical module) but was never stress-tested against real, messy insurance data the way the other 8 industries have been this session. Per the established pattern, replace with a real Kaggle insurance dataset (auto claims, health insurance fraud detection) as soon as possible -- that's where the real bugs will actually surface, not here."
   }
 }
