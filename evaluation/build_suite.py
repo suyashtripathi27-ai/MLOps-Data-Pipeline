@@ -90,6 +90,15 @@ MATRIX = {
         "relationship_depth_decline": {"p": "product_underutilization", "s": ["wallet_share_loss"], "r": ["cross_sell_campaigns"], "g": ["wealth_data"], "v": {"product_underutilization": ["single-product", "underutilization", "shallow relationship"]}},
         "concentration_risk": {"p": "portfolio_concentration", "s": ["sector_exposure"], "r": ["diversify_portfolio"], "g": ["macro_indicators"], "v": {"portfolio_concentration": ["concentration", "over-indexed", "disproportionate"]}},
         "governance_failure": {"p": "data_blindspot", "s": ["reporting_failure"], "r": ["data_remediation"], "g": ["loan", "fee", "compliance"], "v": {"data_blindspot": ["missing data", "unavailable", "excluded", "blindspot"]}}
+    },
+    "insurance": {
+        "loss_ratio_deterioration": {"p": "underwriting_loss", "s": ["premium_inadequacy"], "r": ["repricing_review"], "g": ["reinsurance", "reserve_data"], "v": {"underwriting_loss": ["loss ratio", "underwriting loss", "combined ratio", "premium adequacy"]}},
+        "claims_frequency_spike": {"p": "claims_volatility", "s": ["reserve_strain"], "r": ["investigate_drivers"], "g": ["adjuster_notes"], "v": {"claims_volatility": ["claims frequency", "claims spike", "loss development", "reserve strain"]}},
+        "fraud_exposure_rise": {"p": "fraud_risk", "s": ["siu_backlog"], "r": ["escalate_siu_review"], "g": ["fraud_investigation_data"], "v": {"fraud_risk": ["fraud", "suspicious claim", "siu referral", "staged accident"]}},
+        "retention_decline": {"p": "policy_churn", "s": ["persistency_drop"], "r": ["renewal_incentive_review"], "g": ["agent_performance_data"], "v": {"policy_churn": ["lapse", "non-renewal", "persistency", "policyholder attrition"]}},
+        "claims_severity_spike": {"p": "cost_escalation", "s": ["settlement_delay"], "r": ["audit_claims_handling"], "g": ["settlement_data"], "v": {"cost_escalation": ["claims severity", "cost per claim", "settlement time"]}},
+        "portfolio_concentration_risk": {"p": "policy_concentration", "s": ["geographic_exposure"], "r": ["diversify_book"], "g": ["reinsurance_treaty_data"], "v": {"policy_concentration": ["concentration", "over-indexed", "geographic exposure"]}},
+        "governance_failure": {"p": "data_blindspot", "s": ["reporting_failure"], "r": ["data_remediation"], "g": ["claims", "premium", "underwriting"], "v": {"data_blindspot": ["missing data", "unavailable", "excluded", "blindspot"]}}
     }
 }
 
