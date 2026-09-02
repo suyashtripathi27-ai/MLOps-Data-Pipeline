@@ -48,6 +48,7 @@ ROUTER_MAP = {
     "manufacturing": "industries.manufacturing.pipeline",
     "ecommerce":     "industries.ecommerce.pipeline",
     "hr":            "industries.hr.pipeline",
+    "insurance":     "industries.insurance.pipeline",
 }
 
 
