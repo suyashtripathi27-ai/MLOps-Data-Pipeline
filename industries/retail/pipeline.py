@@ -18,9 +18,15 @@ from utils.categorical_analysis import calc_universal_categorical_metrics
 def generate_dynamic_kpis(df):
     all_kpis = []
     for module in [
-        calc_sales_metrics, calc_store_metrics, calc_department_metrics,
-        calc_inventory_metrics, calc_seasonality_metrics, calc_pricing_metrics,
-        calc_customer_metrics, calc_promotion_metrics, calc_workforce_metrics,
+        calc_sales_metrics, 
+        calc_store_metrics, 
+        calc_department_metrics,
+        calc_inventory_metrics, 
+        calc_seasonality_metrics, 
+        calc_pricing_metrics,
+        calc_customer_metrics, 
+        calc_promotion_metrics, 
+        calc_workforce_metrics,
         calc_universal_categorical_metrics
     ]:
         try:
