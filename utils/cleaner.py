@@ -85,7 +85,7 @@ def load_and_clean(file_path):
 # ==========================================
 UNIVERSAL_SCHEMA = {
     # Core Financials & Banking
-    "revenue": ["rev", "totalrevenue", "income", "sales", "triprevenue", "freightrevenue", "billedamount", "grossrevenue", "statvalue", "amt", "amount"],
+    "revenue": ["rev", "totalrevenue", "income", "sales", "triprevenue", "freightrevenue", "billedamount", "grossrevenue", "statvalue", "amt", "amount", "ordertotal", "subtotal", "grandtotal"],
     "total_cost": ["cost", "totalexpenses", "tripcost", "overallcost", "freightcost", "carrierfee", "invoicetotal"],
     "profit": ["netprofit", "netincome", "earnings", "netearnings", "profitamount"],
     "expense": ["expenses", "opex", "operatingexpense", "operating_expense", "operatingexpenses"],
@@ -157,21 +157,21 @@ UNIVERSAL_SCHEMA = {
     "days_without_incident": ["safe_days", "days_since_accident"],
     "asset_utilization_pct": ["assetutilization", "utilizationrate", "capacityused"],
     "cycle_time": ["process_time", "lead_time_per_unit", "machine_cycle", "tact_time"],
-    "defect_target": ["pass/fail", "class", "target", "label", "status", "yield_flag", "is_defect"],
+    "defect_target": ["pass/fail", "class", "target", "label", "yield_flag", "is_defect"],
     "sensor_timestamp": ["time", "timestamp", "datetime", "date_recorded"],
-    "sensor_id": ["sensor", "feature", "channel", "signal"],
+    "sensor_id": ["sensor", "feature", "signal"],
     "wip_inventory": ["work_in_progress", "wip_stock", "semi_finished_goods", "wip"],
     "rework_hours": ["rework_time", "correction_hours", "repair_labor", "re_processing_time"],
 
     # Pharma & Clinical
     "batch_id": ["batch_no", "lot_number", "lot_id", "production_batch"],
     "product_name": ["drug_name", "medication", "compound", "asset"],
-    "therapeutic_area": ["category", "drug_class", "indication", "disease_area"],
+    "therapeutic_area": ["drug_class", "indication", "disease_area"],
     "manufacturing_date": ["mfg_date", "production_date", "date_of_manufacture"],
     "expiry_date": ["exp_date", "expiration", "valid_until", "use_by"],
     "quantity_produced": ["yield", "batch_size", "units_manufactured"],
     "quality_pass_rate": ["purity_score", "qa_rate", "yield_percent", "qc_score"],
-    "regulatory_status": ["status", "fda_status", "approval_status", "qa_status"],
+    "regulatory_status": ["fda_status", "approval_status", "qa_status"],
     "enrolled": ["participants", "enrollment_count", "subjects"],
     "dropouts": ["dropout_count", "withdrawn", "lost_to_followup"],
     "sae_count": ["serious_adverse_events", "adverse_events", "ae_count"],
@@ -195,6 +195,7 @@ UNIVERSAL_SCHEMA = {
     "actual_demand": ["quantity_sold", "actual_sales"],
     "store_id": ["store_num", "location_id", "branch_id", "retail_store", "shop_id", "site_id"],
     "sku_code": ["sku", "item_code", "product_code", "barcode", "upc", "ean", "article_number"],
+    "product_category": ["productcategory", "product_cat", "merchandise_category"],
     "atv": ["average_transaction_value", "avg_ticket", "basket_size", "avg_order_value", "aov"],
     "upt": ["units_per_transaction", "items_per_basket", "basket_units", "items_per_ticket"],
     "footfall": ["store_traffic", "visitor_count", "walk_ins", "door_swings", "customer_traffic"],
@@ -211,7 +212,7 @@ UNIVERSAL_SCHEMA = {
     "bounce_rate": ["exit_rate", "bounces", "single_page_visits"],
     "conversion_rate": ["cvr", "conv_rate", "sales_conversion"],
     "device_type": ["platform", "mobile_vs_desktop", "os_version"],
-    "traffic_source": ["referrer", "channel", "utm_source", "campaign_origin"],
+    "traffic_source": ["referrer", "utm_source", "campaign_origin"],
     "payment_method": ["gateway", "card_type", "tender_type", "payment_processor"],
 
     # HR & Workforce Management
