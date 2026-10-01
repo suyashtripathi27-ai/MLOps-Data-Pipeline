@@ -14,9 +14,14 @@ from utils.categorical_analysis import calc_universal_categorical_metrics
 def generate_dynamic_kpis(df):
     all_kpis = []
     for module in [
-        calc_sla_performance, calc_route_efficiency, calc_cost_efficiency, 
-        calc_hub_intelligence, calc_fleet_economics, calc_iot_sensor_metrics, 
-        calc_freight_metrics, calc_universal_categorical_metrics
+        calc_sla_performance, 
+        calc_route_efficiency, 
+        calc_cost_efficiency, 
+        calc_hub_intelligence, 
+        calc_fleet_economics, 
+        calc_iot_sensor_metrics, 
+        calc_freight_metrics, 
+        calc_universal_categorical_metrics
     ]:
         try:
             result = module(df)
