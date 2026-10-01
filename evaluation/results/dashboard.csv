@@ -61,3 +61,6 @@ Timestamp,Version,Industry,Dataset,Scenario,Difficulty,Total,Max,Percent,Behavio
 20260902_094548,v3,insurance,insurance_clean_synthetic,loss_ratio_deterioration,Easy,51,60,85.0,9,10,10,2,10,10
 20261001_202911,v3,retail,Retail Insights A Comprehensive Sales Dataset,store_performance_decline,Medium,46,60,76.67,8,3,10,5,10,10
 20261001_210856,v3,retail,Retail Insights A Comprehensive Sales Dataset,store_performance_decline,Medium,40,60,66.67,5,3,10,2,10,10
+20261001_211149,v3,retail,Retail Store Sales Dirty for Data Cleaning,store_performance_decline,Medium,56,60,93.33,8,10,10,8,10,10
+20261001_211217,v3,retail,Retail Sales Dataset,store_performance_decline,Medium,44,60,73.33,9,3,10,2,10,10
+20261001_211235,v3,retail,Warehouse and Retail Sales,store_performance_decline,Medium,50,60,83.33,9,6,10,5,10,10
