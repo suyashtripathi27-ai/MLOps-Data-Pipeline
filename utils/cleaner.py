@@ -36,33 +36,58 @@ def load_and_clean(file_path):
         df = pd.read_csv(file_path, sep=None, engine='python', encoding='utf-8-sig')
         inner_filename = os.path.basename(file_path)
         
-    elif file_path.endswith('.zip'):
+        elif file_path.endswith('.zip'):
         print(f"📦 Inspecting ZIP archive for Star Schema...")
         with zipfile.ZipFile(file_path, 'r') as z:
             csv_files = [f for f in z.namelist() if f.endswith('.csv') and not f.startswith('__MACOSX')]
-            if not csv_files: raise ValueError("No CSV files found in ZIP.")
-            
-            if len(csv_files) == 1:
-                target_file = csv_files[0]
-                with z.open(target_file) as f: df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8-sig')
-                inner_filename = target_file
+            excel_files = [f for f in z.namelist() if f.endswith(('.xls', '.xlsx')) and not f.startswith('__MACOSX')]
+
+            if not csv_files and not excel_files:
+                raise ValueError("No CSV or Excel files found in ZIP.")
+
+            if csv_files:
+                if len(csv_files) == 1:
+                    target_file = csv_files[0]
+                    with z.open(target_file) as f: df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8-sig')
+                    inner_filename = target_file
+                else:
+                    core_keywords = ['trip', 'load', 'delivery', 'order', 'sales', 'pharmacy', 'pharma', 'otc']
+                    target_file = next((f for f in csv_files if any(k in f.lower() for k in core_keywords)), None)
+                    if not target_file:
+                        file_sizes = {f: z.getinfo(f).file_size for f in csv_files}
+                        target_file = max(file_sizes, key=file_sizes.get)
+                    
+                    with z.open(target_file) as f: 
+                        fact_df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8-sig')
+                    
+                    dim_dfs = {}
+                    for f_name in csv_files:
+                        if f_name != target_file and (z.getinfo(f_name).file_size / (1024 * 1024)) < 50.0:
+                            with z.open(f_name) as f:
+                                dim_dfs[f_name.replace('.csv', '').split('/')[-1]] = pd.read_csv(f, sep=None, engine='python', encoding='utf-8-sig')
+                                
+                    df = enrich_fact_table(fact_df, dim_dfs)
+                    inner_filename = target_file
             else:
-                core_keywords = ['trip', 'load', 'delivery', 'order', 'sales', 'pharmacy', 'pharma', 'otc']
-                target_file = next((f for f in csv_files if any(k in f.lower() for k in core_keywords)), None)
-                if not target_file:
-                    file_sizes = {f: z.getinfo(f).file_size for f in csv_files}
-                    target_file = max(file_sizes, key=file_sizes.get)
-                
-                with z.open(target_file) as f: 
-                    fact_df = pd.read_csv(f, sep=None, engine='python', encoding='utf-8-sig')
-                
-                dim_dfs = {}
-                for f_name in csv_files:
-                    if f_name != target_file and (z.getinfo(f_name).file_size / (1024 * 1024)) < 50.0:
-                        with z.open(f_name) as f:
-                            dim_dfs[f_name.replace('.csv', '').split('/')[-1]] = pd.read_csv(f, sep=None, engine='python', encoding='utf-8-sig')
-                            
-                df = enrich_fact_table(fact_df, dim_dfs)
+                # Excel-in-ZIP: no CSVs, but a real .xlsx/.xls workbook exists
+                # inside, possibly with multiple sheets (a fact sheet plus a
+                # calendar/dimension sheet, same shape as the multi-CSV case
+                # above). Previously this raised "No CSV files found" even
+                # though valid data existed.
+                target_file = excel_files[0]
+                with z.open(target_file) as f:
+                    all_sheets = pd.read_excel(f, sheet_name=None)
+
+                if len(all_sheets) == 1:
+                    df = list(all_sheets.values())[0]
+                else:
+                    core_keywords = ['trip', 'load', 'delivery', 'order', 'sales', 'pharmacy', 'pharma', 'otc']
+                    fact_sheet_name = next((s for s in all_sheets if any(k in s.lower() for k in core_keywords)), None)
+                    if not fact_sheet_name:
+                        fact_sheet_name = max(all_sheets, key=lambda s: len(all_sheets[s]))
+                    fact_df = all_sheets[fact_sheet_name]
+                    dim_dfs = {s: all_sheets[s] for s in all_sheets if s != fact_sheet_name}
+                    df = enrich_fact_table(fact_df, dim_dfs)
                 inner_filename = target_file
                 
     elif file_path.endswith(('.xls', '.xlsx')):
@@ -318,9 +343,37 @@ def run_schema_inference(df):
                 
                 col_profile = infer_data_profile(df[original_col])
                 numeric_metrics = ['revenue', 'total_cost', 'actual_duration_hours', 'total_weight', 'detention_minutes', 'temperature_celsius', 'asset_utilization_pct', 'actual_distance_miles']
-                
+                # Date-type fields had NO profile verification at all, unlike
+                # numeric fields above. Proven case: "Transaction ID" (an
+                # identifier, profile "text") matched "transaction_date" at
+                # ratio 0.857 and stole the slot from the dataset's real date
+                # column. Fixed by requiring the matched column to actually
+                # parse as sane dates -- checking both parse success rate AND
+                # that it isn't an epoch-anomaly artifact (plain integers
+                # parse "successfully" into meaningless 1970-01-01-ish
+                # timestamps, which a success-rate check alone wouldn't catch).
+                date_metrics = [std for std in UNIVERSAL_SCHEMA.keys() if 'date' in std or 'timestamp' in std]
+
                 if proposed_std in numeric_metrics and col_profile != "numeric":
                     evidence.append(f"Fuzzy match rejected: `{original_col}` is {col_profile}, requires numeric.")
+                elif proposed_std in date_metrics:
+                    sample = df[original_col].dropna().head(50)
+                    if sample.empty:
+                        evidence.append(f"Fuzzy match rejected: `{original_col}` has no values to verify as dates.")
+                    else:
+                        parsed_sample = smart_parse_dates(sample)
+                        valid_dates = parsed_sample.dropna()
+                        success_rate = len(valid_dates) / len(sample)
+                        years = valid_dates.dt.year if len(valid_dates) > 0 else pd.Series([], dtype=int)
+                        epoch_anomaly = len(years) == 0 or ((years >= 1969) & (years <= 1971)).mean() > 0.05
+
+                        if success_rate < 0.8 or epoch_anomaly:
+                            evidence.append(f"Fuzzy match rejected: `{original_col}` values don't look like real dates "
+                                             f"(parse rate {success_rate:.0%}, epoch anomaly: {epoch_anomaly}).")
+                        else:
+                            mapped_to = proposed_std
+                            confidence = round(ratio, 2)
+                            evidence.extend([f"Fuzzy Match: '{matched_alias}'", f"Profile Verified: datetime ({success_rate:.0%} parse rate)"])
                 else:
                     mapped_to = proposed_std
                     confidence = round(ratio, 2)
