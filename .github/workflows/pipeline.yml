@@ -4,7 +4,7 @@ on:
   # 1. MANUAL TRIGGER: Adds a "Run workflow" button in the GitHub Actions tab
   workflow_dispatch: 
 
-  # 2. FOLDER TRIGGER: Only runs when a file is added/modified in the raw folder
+  # 2. FOLDER TRIGGER: Only runs when a file is added in the raw folder
   push:
     paths:
       - 'data/raw/**'
