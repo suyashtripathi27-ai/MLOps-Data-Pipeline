@@ -36,7 +36,7 @@ def load_and_clean(file_path):
         df = pd.read_csv(file_path, sep=None, engine='python', encoding='utf-8-sig')
         inner_filename = os.path.basename(file_path)
         
-        elif file_path.endswith('.zip'):
+    elif file_path.endswith('.zip'):
         print(f"📦 Inspecting ZIP archive for Star Schema...")
         with zipfile.ZipFile(file_path, 'r') as z:
             csv_files = [f for f in z.namelist() if f.endswith('.csv') and not f.startswith('__MACOSX')]
